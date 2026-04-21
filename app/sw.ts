@@ -47,7 +47,7 @@ const serwist = new Serwist({
     {
       matcher: ({ request, url }) =>
         request.destination === "" && url.pathname.startsWith("/_next/data/"),
-      handler: new NetworkFirst({ cacheName: "next-data", networkTimeoutSeconds: 3 }),
+      handler: new NetworkFirst({ cacheName: "next-data", networkTimeoutSeconds: 10 }),
     },
     ...defaultCache,
   ],

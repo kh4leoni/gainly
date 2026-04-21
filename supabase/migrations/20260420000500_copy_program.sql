@@ -8,9 +8,9 @@ declare
   _day  record;
 begin
   if not exists (
-    select 1 from public.programs where id = _source and coach_id = auth.uid()
+    select 1 from public.programs where id = _source and coach_id = auth.uid() and client_id is null
   ) then
-    raise exception 'not authorized';
+    raise exception 'only template programs can be assigned';
   end if;
 
   insert into public.programs (coach_id, client_id, title, description)

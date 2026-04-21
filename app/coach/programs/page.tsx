@@ -15,6 +15,7 @@ export default async function ProgramsPage() {
     .from("programs")
     .select("id, title, description, client_id, is_template, created_at, profiles:client_id(full_name)")
     .eq("coach_id", user.user.id)
+    .eq("is_template", true)
     .order("created_at", { ascending: false });
 
   return (
@@ -22,6 +23,12 @@ export default async function ProgramsPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Ohjelmat</h1>
         <NewProgramButton />
+      </div>
+      <div className="mt-4 mb-6 rounded-lg border bg-muted/40 p-4">
+        <h2 className="text-base font-medium">Malliportaat</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Nämä ohjelmat on tarkoitettu itsenäisesti ostettaviksi. Coach-asiakkaille luodaan henkilökohtaiset ohjelmat asiakassivulta.
+        </p>
       </div>
       <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {(data ?? []).map((p: any) => (

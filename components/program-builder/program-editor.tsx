@@ -102,7 +102,9 @@ export function ProgramEditor({ programId }: { programId: string }) {
             <AssignProgramButton programId={programId} />
           ) : (
             <span className="text-sm text-muted-foreground">
-              Määritetty
+              {(program as any).client_profile?.full_name
+                ? `Henkilökohtainen ohjelma: ${(program as any).client_profile.full_name}`
+                : "Henkilökohtainen ohjelma"}
             </span>
           )}
           <Button variant="outline" onClick={() => addWeek.mutate()}>
