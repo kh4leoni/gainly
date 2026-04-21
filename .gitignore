@@ -1,0 +1,21 @@
+node_modules
+.next
+out
+build
+.DS_Store
+*.tsbuildinfo
+next-env.d.ts
+
+.env
+.env*.local
+
+.vercel
+
+# supabase
+supabase/.branches
+supabase/.temp
+
+# sw output
+public/sw.js
+public/sw.js.map
+public/swe-worker-*.js

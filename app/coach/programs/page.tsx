@@ -1,0 +1,48 @@
+import Link from "next/link";
+import { createClient } from "@/lib/supabase/server";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { NewProgramButton } from "@/components/program-builder/new-program-button";
+
+export const dynamic = "force-dynamic";
+
+export default async function ProgramsPage() {
+  const supabase = await createClient();
+  const { data: user } = await supabase.auth.getUser();
+  if (!user.user) return null;
+
+  const { data } = await supabase
+    .from("programs")
+    .select("id, title, description, client_id, is_template, created_at, profiles:client_id(full_name)")
+    .eq("coach_id", user.user.id)
+    .order("created_at", { ascending: false });
+
+  return (
+    <div className="p-4 md:p-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">Programs</h1>
+        <NewProgramButton />
+      </div>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {(data ?? []).map((p: any) => (
+          <Link key={p.id} href={`/coach/programs/${p.id}/edit`} prefetch>
+            <Card className="transition hover:border-primary">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">{p.title}</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {p.description && <p className="text-sm text-muted-foreground line-clamp-2">{p.description}</p>}
+                {p.is_template ? (
+                  <Badge variant="outline">Template</Badge>
+                ) : (
+                  <Badge variant="secondary">For {p.profiles?.full_name ?? "client"}</Badge>
+                )}
+              </CardContent>
+            </Card>
+          </Link>
+        ))}
+        {data?.length === 0 && <p className="text-muted-foreground">No programs yet.</p>}
+      </div>
+    </div>
+  );
+}
