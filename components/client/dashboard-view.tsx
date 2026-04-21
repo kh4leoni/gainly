@@ -35,7 +35,7 @@ export function ClientDashboardView({ clientId }: { clientId: string }) {
     <div className="space-y-4 p-4 md:p-6">
       <Card>
         <CardHeader>
-          <CardTitle>Today</CardTitle>
+          <CardTitle>Tänään</CardTitle>
         </CardHeader>
         <CardContent>
           {today.data ? (
@@ -45,17 +45,17 @@ export function ClientDashboardView({ clientId }: { clientId: string }) {
                   {today.data.program_days?.name ?? "Workout"}
                 </p>
                 <Badge variant={today.data.status === "completed" ? "success" : "secondary"}>
-                  {today.data.status}
+                  {today.data.status === "completed" ? "Valmis" : today.data.status === "pending" ? "Odottaa" : today.data.status}
                 </Badge>
               </div>
               <Button asChild>
                 <Link href={`/client/workout/${today.data.id}`} prefetch>
-                  {today.data.status === "completed" ? "Review" : "Start workout"}
+                  {today.data.status === "completed" ? "Tarkastele" : "Aloita treeni"}
                 </Link>
               </Button>
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">No workout scheduled today. Enjoy the rest.</p>
+            <p className="text-sm text-muted-foreground">Treeniä ei ole suunniteltu tälle päivälle. Nauti levosta.</p>
           )}
         </CardContent>
       </Card>
@@ -63,7 +63,7 @@ export function ClientDashboardView({ clientId }: { clientId: string }) {
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Recent PRs</CardTitle>
+            <CardTitle className="text-base">Viimeisimmät ennätykset</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             {(prs.data ?? []).map((pr: any) => (
@@ -74,24 +74,24 @@ export function ClientDashboardView({ clientId }: { clientId: string }) {
                 <span className="text-xs text-muted-foreground">{relativeTime(pr.achieved_at)}</span>
               </div>
             ))}
-            {prs.data?.length === 0 && <p className="text-sm text-muted-foreground">None yet. Go set some.</p>}
+            {prs.data?.length === 0 && <p className="text-sm text-muted-foreground">Ei vielä. Mene asettamaan.</p>}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Upcoming</CardTitle>
+            <CardTitle className="text-base">Tulevat</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             {(upcoming.data ?? []).slice(0, 7).map((w: any) => (
               <div key={w.id} className="flex items-center justify-between border-b pb-2 last:border-0">
                 <span className="text-sm">
-                  {new Date(w.scheduled_date).toLocaleDateString()} — {w.program_days?.name ?? "Workout"}
+                  {new Date(w.scheduled_date).toLocaleDateString("fi-FI")} — {w.program_days?.name?.replace(/^Day(\d+)/, "Päivä $1") ?? "Treeni"}
                 </span>
-                <Badge variant={w.status === "completed" ? "success" : "secondary"}>{w.status}</Badge>
+                <Badge variant={w.status === "completed" ? "success" : "secondary"}>{w.status === "completed" ? "Valmis" : w.status === "pending" ? "Odottaa" : w.status}</Badge>
               </div>
             ))}
-            {upcoming.data?.length === 0 && <p className="text-sm text-muted-foreground">Nothing scheduled.</p>}
+            {upcoming.data?.length === 0 && <p className="text-sm text-muted-foreground">Ei suunnitelmia.</p>}
           </CardContent>
         </Card>
       </div>

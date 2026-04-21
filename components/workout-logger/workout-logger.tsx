@@ -72,7 +72,7 @@ export function WorkoutLogger({ scheduledWorkoutId }: { scheduledWorkoutId: stri
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["workout", scheduledWorkoutId] });
-      toast({ title: "Workout completed" });
+      toast({ title: "Treeni valmis" });
     },
   });
 
@@ -86,17 +86,17 @@ export function WorkoutLogger({ scheduledWorkoutId }: { scheduledWorkoutId: stri
     <div className="p-4 md:p-6">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">{day?.name ?? "Workout"}</h1>
+          <h1 className="text-2xl font-semibold">{day?.name?.replace(/^Day(\d+)/, "Päivä $1") ?? "Treeni"}</h1>
           <p className="text-sm text-muted-foreground">
-            {new Date(workout.scheduled_date).toLocaleDateString()}
+            {new Date(workout.scheduled_date).toLocaleDateString("fi-FI")}
           </p>
         </div>
         <div className="flex items-center gap-2">
           {pending > 0 && (
-            <Badge variant="outline" className="gap-1"><WifiOff className="h-3 w-3" /> {pending} pending</Badge>
+            <Badge variant="outline" className="gap-1"><WifiOff className="h-3 w-3" /> {pending} odottaa</Badge>
           )}
           <Button onClick={() => complete.mutate()} disabled={complete.isPending}>
-            <Check className="h-4 w-4" /> Mark complete
+            <Check className="h-4 w-4" /> Merkitse valmiiksi
           </Button>
         </div>
       </header>
@@ -110,7 +110,7 @@ export function WorkoutLogger({ scheduledWorkoutId }: { scheduledWorkoutId: stri
           />
         ))}
         {(!day || (day.program_exercises ?? []).length === 0) && (
-          <p className="text-muted-foreground">No exercises in this session.</p>
+          <p className="text-muted-foreground">Ei harjoituksia tässä istunnossa.</p>
         )}
       </div>
     </div>
@@ -183,8 +183,8 @@ function ExerciseBlock({
         <ul className="space-y-1 text-sm">
           {sets.map((s: any) => (
             <li key={s.id} className="flex items-center justify-between rounded-md border p-2">
-              <span>Set {s.set_number}: {s.weight ?? "—"}kg × {s.reps ?? "—"} {s.rpe != null && `@ RPE ${s.rpe}`}</span>
-              {s.is_pr && <Badge variant="success">PR</Badge>}
+              <span>Sarja {s.set_number}: {s.weight ?? "—"}kg × {s.reps ?? "—"} {s.rpe != null && `@ RPE ${s.rpe}`}</span>
+              {s.is_pr && <Badge variant="success">Ennätys</Badge>}
             </li>
           ))}
         </ul>
@@ -210,11 +210,11 @@ function SetRow({
   return (
     <div className="flex flex-wrap items-end gap-2">
       <div>
-        <label className="text-xs text-muted-foreground">Weight (kg)</label>
+        <label className="text-xs text-muted-foreground">Paino (kg)</label>
         <Input className="w-24" type="number" step="0.5" value={weight} onChange={(e) => setWeight(e.target.value)} />
       </div>
       <div>
-        <label className="text-xs text-muted-foreground">Reps</label>
+        <label className="text-xs text-muted-foreground">Toistot</label>
         <Input className="w-20" type="number" value={reps} onChange={(e) => setReps(e.target.value)} />
       </div>
       <div>
@@ -230,7 +230,7 @@ function SetRow({
           })
         }
       >
-        Log set
+        Kirjaa sarja
       </Button>
     </div>
   );

@@ -40,7 +40,7 @@ export function ProgramEditor({ programId }: { programId: string }) {
       const week = program?.program_weeks?.find((w) => w.id === weekId);
       const next = (week?.program_days?.length ?? 0) + 1;
       const { error } = await supabase.from("program_days").insert({
-        week_id: weekId, day_number: next, name: `Day ${next}`,
+        week_id: weekId, day_number: next, name: `Päivä ${next}`,
       });
       if (error) throw error;
     },
@@ -102,11 +102,11 @@ export function ProgramEditor({ programId }: { programId: string }) {
             <AssignProgramButton programId={programId} />
           ) : (
             <span className="text-sm text-muted-foreground">
-              Assigned
+              Määritetty
             </span>
           )}
           <Button variant="outline" onClick={() => addWeek.mutate()}>
-            <Plus className="h-4 w-4" /> Add week
+            <Plus className="h-4 w-4" /> Lisää viikko
           </Button>
         </div>
       </header>
@@ -115,9 +115,9 @@ export function ProgramEditor({ programId }: { programId: string }) {
         {(program.program_weeks ?? []).map((w: ProgramFull["program_weeks"][number]) => (
           <Card key={w.id}>
             <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-base">Week {w.week_number}</CardTitle>
+              <CardTitle className="text-base">Viikko {w.week_number}</CardTitle>
               <Button size="sm" variant="ghost" onClick={() => addDay.mutate(w.id)}>
-                <Plus className="h-4 w-4" /> Day
+                <Plus className="h-4 w-4" /> Päivä
               </Button>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -125,7 +125,7 @@ export function ProgramEditor({ programId }: { programId: string }) {
                 <div key={d.id} className="rounded-md border p-3">
                   <div className="flex items-center justify-between">
                     <div className="text-sm font-medium">
-                      Day {d.day_number}{d.name ? ` · ${d.name}` : ""}
+                      Päivä {d.day_number}{d.name ? ` · ${d.name}` : ""}
                     </div>
                     <AddExerciseControl
                       exercises={exercises}
@@ -143,7 +143,7 @@ export function ProgramEditor({ programId }: { programId: string }) {
                         <input
                           className="h-8 w-14 rounded border px-2 text-sm"
                           defaultValue={pe.sets ?? ""}
-                          placeholder="sets"
+                          placeholder="sarjat"
                           type="number"
                           min={0}
                           onBlur={(e) => {
@@ -154,7 +154,7 @@ export function ProgramEditor({ programId }: { programId: string }) {
                         <input
                           className="h-8 w-20 rounded border px-2 text-sm"
                           defaultValue={pe.reps ?? ""}
-                          placeholder="reps"
+                          placeholder="toistot"
                           onBlur={(e) => {
                             const v = e.target.value || null;
                             if (v !== pe.reps) updateExercise.mutate({ id: pe.id, reps: v });
@@ -186,13 +186,13 @@ export function ProgramEditor({ programId }: { programId: string }) {
                       </li>
                     ))}
                     {(d.program_exercises ?? []).length === 0 && (
-                      <li className="text-sm text-muted-foreground">No exercises yet.</li>
+                      <li className="text-sm text-muted-foreground">Ei vielä harjoituksia.</li>
                     )}
                   </ul>
                 </div>
               ))}
               {(w.program_days ?? []).length === 0 && (
-                <p className="text-sm text-muted-foreground">No days yet.</p>
+                <p className="text-sm text-muted-foreground">Ei vielä päiviä.</p>
               )}
             </CardContent>
           </Card>
@@ -212,7 +212,7 @@ function AddExerciseControl({
   return (
     <Select onValueChange={(v) => onAdd(v)}>
       <SelectTrigger className="h-8 w-[220px]">
-        <SelectValue placeholder="Add exercise…" />
+        <SelectValue placeholder="Lisää harjoitus…" />
       </SelectTrigger>
       <SelectContent>
         {exercises.map((e) => (

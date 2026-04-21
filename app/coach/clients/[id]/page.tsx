@@ -39,7 +39,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
         <div>
           <h1 className="text-2xl font-semibold">{profile.full_name ?? "Unnamed"}</h1>
           <p className="text-sm text-muted-foreground">
-            Joined {new Date(profile.created_at).toLocaleDateString()}
+            Liittynyt {new Date(profile.created_at).toLocaleDateString("fi-FI")}
           </p>
         </div>
         <div className="flex gap-2">
@@ -47,13 +47,13 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
             href={`/coach/messages${threadRes.data ? `?thread=${threadRes.data.id}` : `?with=${profile.id}`}`}
             className="rounded-md border px-3 py-2 text-sm hover:bg-accent"
           >
-            Message
+            Viesti
           </Link>
           <Link
             href={`/coach/programs?assignTo=${profile.id}`}
             className="rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground hover:bg-primary/90"
           >
-            Assign program
+            Määritä ohjelma
           </Link>
         </div>
       </div>
@@ -61,26 +61,26 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
       <div className="mt-6 grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Upcoming</CardTitle>
+            <CardTitle className="text-base">Tulevat</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             {(upcomingRes.data ?? []).map((w: any) => (
               <div key={w.id} className="flex items-center justify-between border-b pb-2 last:border-0">
                 <span className="text-sm">
-                  {new Date(w.scheduled_date).toLocaleDateString()} — {w.program_days?.name ?? "Workout"}
+                  {new Date(w.scheduled_date).toLocaleDateString("fi-FI")} — {w.program_days?.name?.replace(/^Day(\d+)/, "Päivä $1") ?? "Treeni"}
                 </span>
-                <Badge variant={w.status === "completed" ? "success" : "secondary"}>{w.status}</Badge>
+                <Badge variant={w.status === "completed" ? "success" : "secondary"}>{w.status === "completed" ? "Valmis" : w.status === "pending" ? "Odottaa" : w.status}</Badge>
               </div>
             ))}
             {upcomingRes.data?.length === 0 && (
-              <p className="text-sm text-muted-foreground">Nothing scheduled.</p>
+              <p className="text-sm text-muted-foreground">Ei suunnitelmia.</p>
             )}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Recent PRs</CardTitle>
+            <CardTitle className="text-base">Viimeisimmät ennätykset</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             {(prsRes.data ?? []).map((pr: any) => (
@@ -92,7 +92,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
               </div>
             ))}
             {prsRes.data?.length === 0 && (
-              <p className="text-sm text-muted-foreground">No PRs yet.</p>
+              <p className="text-sm text-muted-foreground">Ei ennätyksiä vielä.</p>
             )}
           </CardContent>
         </Card>

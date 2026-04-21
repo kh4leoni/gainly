@@ -6,23 +6,22 @@ export default function LandingPage() {
     <main className="mx-auto max-w-3xl px-6 py-20">
       <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">Gainly</h1>
       <p className="mt-4 text-lg text-muted-foreground">
-        Strength coaching built for coaches and clients who want structure, feedback and progress tracking
-        without friction. Offline-first. Real-time messaging. Automatic PR detection.
+        Voimaharjoitteluvalmennus valmentajille ja asiakkaille, jotka haluavat rakennetta, palautetta ja edistymisen seuraamista ilman hankausta. Offline-ensimmäinen. Reaaliaikainen viestintä. Automaattinen PR-tunnistus.
       </p>
 
       <div className="mt-10 flex gap-3">
         <Button asChild>
-          <Link href="/signup">Get started</Link>
+          <Link href="/signup">Aloita</Link>
         </Button>
         <Button asChild variant="outline">
-          <Link href="/login">Log in</Link>
+          <Link href="/login">Kirjaudu sisään</Link>
         </Button>
       </div>
 
       <section className="mt-16 grid gap-6 sm:grid-cols-3">
-        <Feature title="Program builder" body="Drag-drop weeks, days and exercises with reps, sets and intensity." />
-        <Feature title="Offline logging" body="Log workouts without signal. Everything syncs the moment you're back." />
-        <Feature title="Real-time" body="Coach sees PRs and messages the instant they happen." />
+        <Feature title="Ohjelmien rakentaja" body="Vedä ja pudota viikkoja, päiviä ja harjoituksia toistoilla, sarjoilla ja intensiteetillä." />
+        <Feature title="Offline-lokit" body="Kirjaa treenit ilman yhteyttä. Kaikki synkronoituu heti kun olet takaisin." />
+        <Feature title="Reaaliaikainen" body="Valmentaja näkee PR:t ja viestit samoin kuin ne tapahtuvat." />
       </section>
     </main>
   );

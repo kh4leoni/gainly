@@ -30,7 +30,7 @@ export function AppShell({
         <div className="mt-auto p-2">
           <form action="/auth/logout" method="post">
             <button className="w-full rounded-md border border-input px-3 py-2 text-left text-sm hover:bg-accent">
-              Log out
+              Kirjaudu ulos
             </button>
           </form>
         </div>

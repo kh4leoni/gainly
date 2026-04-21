@@ -18,8 +18,8 @@ export function CoachDashboardView() {
 
   return (
     <div className="p-4 md:p-6">
-      <h1 className="text-2xl font-semibold">Today</h1>
-      <p className="text-muted-foreground">Your clients at a glance.</p>
+      <h1 className="text-2xl font-semibold">Tänään</h1>
+      <p className="text-muted-foreground">Asiakkaat yhdellä silmäyksellä.</p>
 
       <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {isLoading
@@ -40,13 +40,13 @@ export function CoachDashboardView() {
                   <CardContent className="flex flex-wrap items-center gap-2 text-sm">
                     {row.today_status ? (
                       <Badge variant={row.today_status === "completed" ? "success" : "secondary"}>
-                        {row.today_status}
+                        {row.today_status === "completed" ? "Valmis" : row.today_status === "pending" ? "Odottaa" : row.today_status}
                       </Badge>
                     ) : (
-                      <Badge variant="outline">no session</Badge>
+                      <Badge variant="outline">ei istuntoa</Badge>
                     )}
                     {row.unread_count > 0 && (
-                      <Badge variant="destructive">{row.unread_count} unread</Badge>
+                      <Badge variant="destructive">{row.unread_count} lukematta</Badge>
                     )}
                     {row.last_pr_at && (
                       <span className="text-muted-foreground">PR {relativeTime(row.last_pr_at)}</span>
@@ -57,7 +57,7 @@ export function CoachDashboardView() {
             ))}
 
         {data && data.length === 0 && (
-          <p className="text-muted-foreground">No active clients yet.</p>
+          <p className="text-muted-foreground">Ei aktiivisia asiakkaita vielä.</p>
         )}
       </div>
     </div>

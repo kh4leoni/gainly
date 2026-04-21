@@ -92,7 +92,7 @@ export function MessagesView({ userId, initialThreadId }: { userId: string; init
             );
           })}
           {(threads.data ?? []).length === 0 && (
-            <li className="p-4 text-sm text-muted-foreground">No conversations yet.</li>
+            <li className="p-4 text-sm text-muted-foreground">Ei vielä keskusteluja.</li>
           )}
         </ul>
       </aside>
@@ -102,7 +102,7 @@ export function MessagesView({ userId, initialThreadId }: { userId: string; init
         {threadId ? (
           <ChatPane threadId={threadId} userId={userId} messages={messages.data ?? []} />
         ) : (
-          <div className="flex flex-1 items-center justify-center text-muted-foreground">Select a conversation</div>
+          <div className="flex flex-1 items-center justify-center text-muted-foreground">Valitse keskustelu</div>
         )}
       </section>
     </div>
@@ -166,7 +166,7 @@ function ChatPane({
         className="border-t p-3"
       >
         <div className="mx-auto flex max-w-2xl gap-2">
-          <Input value={content} onChange={(e) => setContent(e.target.value)} placeholder="Type a message…" />
+          <Input value={content} onChange={(e) => setContent(e.target.value)} placeholder="Kirjoita viesti…" />
           <Button type="submit" disabled={!content.trim()}>
             <Send className="h-4 w-4" />
           </Button>

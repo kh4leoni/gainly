@@ -44,11 +44,11 @@ export function AssignProgramButton({ programId }: { programId: string }) {
         _program: newProgId, _client: clientId, _start_date: startDate,
       });
       if (rpcErr) throw rpcErr;
-      toast({ title: "Program assigned", description: "Sessions scheduled." });
+      toast({ title: "Ohjelma määritetty", description: "Istunnot ajastettu." });
       setOpen(false);
       router.refresh();
     } catch (e: any) {
-      toast({ title: "Assign failed", description: e.message, variant: "destructive" });
+      toast({ title: "Määrittäminen epäonnistui", description: e.message, variant: "destructive" });
     } finally {
       setWorking(false);
     }
@@ -56,18 +56,18 @@ export function AssignProgramButton({ programId }: { programId: string }) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <Button onClick={() => setOpen(true)} variant="outline">Assign</Button>
+      <Button onClick={() => setOpen(true)} variant="outline">Määritä</Button>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Assign program</DialogTitle>
-          <DialogDescription>Schedules one workout per day starting on the chosen date.</DialogDescription>
+          <DialogTitle>Määritä ohjelma</DialogTitle>
+          <DialogDescription>Aikatauluttaa yhden treenin päivässä valitusta päivämäärästä alkaen.</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           <div>
-            <Label>Client</Label>
+            <Label>Asiakas</Label>
             <Select value={clientId} onValueChange={setClientId}>
               <SelectTrigger>
-                <SelectValue placeholder="Select a client" />
+                <SelectValue placeholder="Valitse asiakas" />
               </SelectTrigger>
               <SelectContent>
                 {clients.map((c: any) => (
@@ -79,7 +79,7 @@ export function AssignProgramButton({ programId }: { programId: string }) {
             </Select>
           </div>
           <div>
-            <Label htmlFor="start">Start date</Label>
+            <Label htmlFor="start">Aloituspäivämäärä</Label>
             <Input
               id="start"
               type="date"
@@ -89,9 +89,9 @@ export function AssignProgramButton({ programId }: { programId: string }) {
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+          <Button variant="outline" onClick={() => setOpen(false)}>Peruuta</Button>
           <Button onClick={assign} disabled={!clientId || working}>
-            {working ? "Assigning…" : "Assign"}
+            {working ? "Määritetään…" : "Määritä"}
           </Button>
         </DialogFooter>
       </DialogContent>

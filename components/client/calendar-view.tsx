@@ -50,7 +50,7 @@ export function CalendarView({
       <Card>
         <CardHeader className="flex-row items-center justify-between space-y-0">
           <CardTitle className="text-base">
-            {new Date(year, month - 1, 1).toLocaleString(undefined, { month: "long", year: "numeric" })}
+            {new Date(year, month - 1, 1).toLocaleString("fi-FI", { month: "long", year: "numeric" })}
           </CardTitle>
           <div className="flex gap-2">
             <Button asChild size="icon" variant="ghost">
@@ -63,7 +63,7 @@ export function CalendarView({
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-7 gap-1 text-center text-xs text-muted-foreground">
-            {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => <div key={d}>{d}</div>)}
+            {["Ma", "Ti", "Ke", "To", "Pe", "La", "Su"].map((d) => <div key={d}>{d}</div>)}
           </div>
           <div className="mt-1 grid grid-cols-7 gap-1">
             {cells.map((c, i) => {
@@ -88,7 +88,7 @@ export function CalendarView({
                     <span>{c.day}</span>
                     {w && <span className={cn("h-2 w-2 rounded-full", dot)} />}
                   </div>
-                  {w && <div className="truncate text-[10px]">{w.program_days?.name ?? ""}</div>}
+                  {w && <div className="truncate text-[10px]">{w.program_days?.name?.replace(/^Day(\d+)/, "Päivä $1") ?? ""}</div>}
                 </Link>
               );
             })}

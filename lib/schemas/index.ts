@@ -8,8 +8,8 @@ export type IntensityType = z.infer<typeof IntensityTypeSchema>;
 
 export const SignupSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(8, "At least 8 characters"),
-  full_name: z.string().min(1, "Required").max(120),
+  password: z.string().min(8, "Vähintään 8 merkkiä"),
+  full_name: z.string().min(1, "Pakollinen").max(120),
   role: RoleSchema,
 });
 export type SignupInput = z.infer<typeof SignupSchema>;

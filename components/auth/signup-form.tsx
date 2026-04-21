@@ -46,7 +46,7 @@ export function SignupForm() {
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <div>
-        <Label>I am a…</Label>
+        <Label>Olen…</Label>
         <div className="mt-1 grid grid-cols-2 gap-2">
           {(["coach", "client"] as const).map((r) => (
             <button
@@ -57,26 +57,26 @@ export function SignupForm() {
                 role === r ? "border-primary bg-primary/5" : "border-input hover:bg-accent"
               }`}
             >
-              {r === "coach" ? "Coach" : "Client"}
+              {r === "coach" ? "Valmentaja" : "Asiakas"}
             </button>
           ))}
         </div>
       </div>
 
       <div>
-        <Label htmlFor="full_name">Full name</Label>
+        <Label htmlFor="full_name">Nimi</Label>
         <Input id="full_name" autoComplete="name" {...register("full_name")} />
         {errors.full_name && <p className="mt-1 text-sm text-destructive">{errors.full_name.message}</p>}
       </div>
 
       <div>
-        <Label htmlFor="email">Email</Label>
+        <Label htmlFor="email">Sähköposti</Label>
         <Input id="email" type="email" autoComplete="email" {...register("email")} />
         {errors.email && <p className="mt-1 text-sm text-destructive">{errors.email.message}</p>}
       </div>
 
       <div>
-        <Label htmlFor="password">Password</Label>
+        <Label htmlFor="password">Salasana</Label>
         <Input id="password" type="password" autoComplete="new-password" {...register("password")} />
         {errors.password && <p className="mt-1 text-sm text-destructive">{errors.password.message}</p>}
       </div>
@@ -84,7 +84,7 @@ export function SignupForm() {
       {serverError && <p className="text-sm text-destructive">{serverError}</p>}
 
       <Button type="submit" disabled={isSubmitting} className="w-full">
-        {isSubmitting ? "Creating account…" : "Create account"}
+        {isSubmitting ? "Luodaan tiliä…" : "Luo tili"}
       </Button>
     </form>
   );

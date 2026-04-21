@@ -20,7 +20,7 @@ export default async function ProgramsPage() {
   return (
     <div className="p-4 md:p-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Programs</h1>
+        <h1 className="text-2xl font-semibold">Ohjelmat</h1>
         <NewProgramButton />
       </div>
       <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -33,15 +33,15 @@ export default async function ProgramsPage() {
               <CardContent className="space-y-2">
                 {p.description && <p className="text-sm text-muted-foreground line-clamp-2">{p.description}</p>}
                 {p.is_template ? (
-                  <Badge variant="outline">Template</Badge>
+                  <Badge variant="outline">Malli</Badge>
                 ) : (
-                  <Badge variant="secondary">For {p.profiles?.full_name ?? "client"}</Badge>
+                  <Badge variant="secondary">Asiakkaalle {p.profiles?.full_name ?? ""}</Badge>
                 )}
               </CardContent>
             </Card>
           </Link>
         ))}
-        {data?.length === 0 && <p className="text-muted-foreground">No programs yet.</p>}
+        {data?.length === 0 && <p className="text-muted-foreground">Ei vielä ohjelmia.</p>}
       </div>
     </div>
   );

@@ -44,27 +44,27 @@ export function NewProgramButton() {
     <Dialog open={open} onOpenChange={setOpen}>
       <Button onClick={() => setOpen(true)}>
         <Plus className="h-4 w-4" />
-        New program
+        Lisää ohjelma
       </Button>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>New program</DialogTitle>
-          <DialogDescription>Create a template you can assign later, or start a client-specific plan.</DialogDescription>
+          <DialogTitle>Lisää ohjelma</DialogTitle>
+          <DialogDescription>Luo malli, jonka voit määrittää myöhemmin, tai aloita asiakaskohtainen suunnitelma.</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           <div>
-            <Label htmlFor="title">Title</Label>
+            <Label htmlFor="title">Otsikko</Label>
             <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} />
           </div>
           <div>
-            <Label htmlFor="desc">Description</Label>
+            <Label htmlFor="desc">Kuvaus</Label>
             <Textarea id="desc" value={description} onChange={(e) => setDescription(e.target.value)} />
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+          <Button variant="outline" onClick={() => setOpen(false)}>Peruuta</Button>
           <Button onClick={submit} disabled={submitting || !title}>
-            {submitting ? "Creating…" : "Create"}
+            {submitting ? "Luodaan…" : "Luo"}
           </Button>
         </DialogFooter>
       </DialogContent>
