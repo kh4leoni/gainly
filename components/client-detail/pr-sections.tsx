@@ -109,7 +109,7 @@ export function PersonalRecordsSection({ clientId, exercises }: Props) {
       ) : pr ? (
         <div className="flex items-center justify-between rounded-xl border bg-muted/30 px-4 py-3">
           <div>
-            <div className="text-2xl font-bold tabular-nums">{pr.weight ?? 0}<span className="text-base font-normal text-muted-foreground">kg × {pr.reps ?? 0}</span></div>
+            <div className="text-2xl font-bold tabular-nums">{pr.weight ?? 0} <span className="text-base font-normal text-muted-foreground">kg</span></div>
             <div className="text-xs text-muted-foreground">
               Epley {pr.estimated_1rm?.toFixed(1) ?? "—"}kg · {relativeTime(pr.achieved_at)}
             </div>
@@ -206,7 +206,7 @@ export function EstimatedBestSection({ clientId, exercises }: Props) {
       ) : best ? (
         <div className="flex items-center justify-between rounded-xl border bg-muted/30 px-4 py-3">
           <div>
-            <div className="text-2xl font-bold tabular-nums">{best.weight ?? 0}<span className="text-base font-normal text-muted-foreground">kg × {best.reps ?? 0}</span> <span className="text-sm font-normal text-muted-foreground">@ RPE {best.rpe ?? "-"}</span></div>
+            <div className="text-2xl font-bold tabular-nums">{best.weight ?? 0} <span className="text-base font-normal text-muted-foreground">kg</span></div>
             <div className="text-xs text-muted-foreground">
               RPE-arvioitu 1RM: {best.estimated_1rm?.toFixed(1) ?? "—"}kg · {relativeTime(best.achieved_at)}
             </div>
