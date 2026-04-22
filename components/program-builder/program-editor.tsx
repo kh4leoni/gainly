@@ -85,6 +85,38 @@ export function ProgramEditor({ programId }: { programId: string }) {
     onSuccess: invalidate,
   });
 
+  const setActiveWeek = useMutation({
+    mutationFn: async (weekId: string) => {
+      const weeks = program?.program_weeks ?? [];
+      // Deactivate all weeks in this program first
+      const { error: e1 } = await supabase
+        .from("program_weeks")
+        .update({ is_active: false })
+        .in("id", weeks.map((w) => w.id));
+      if (e1) throw e1;
+      // Activate the chosen week
+      const { error: e2 } = await supabase.from("program_weeks").update({ is_active: true }).eq("id", weekId);
+      if (e2) throw e2;
+    },
+    onMutate: async (weekId) => {
+      await qc.cancelQueries({ queryKey: ["program", programId] });
+      const prev = qc.getQueryData<ProgramFull>(["program", programId]);
+      qc.setQueryData(["program", programId], (old: ProgramFull) => {
+        if (!old) return old;
+        const next = structuredClone(old);
+        for (const w of next.program_weeks ?? []) {
+          w.is_active = w.id === weekId;
+        }
+        return next;
+      });
+      return { prev };
+    },
+    onError: (_err, _patch, ctx) => {
+      if (ctx?.prev) qc.setQueryData(["program", programId], ctx.prev);
+    },
+    onSettled: invalidate,
+  });
+
   const updateWeek = useMutation({
     mutationFn: async (patch: { id: string; description: string | null }) => {
       const { error } = await supabase.from("program_weeks").update({ description: patch.description }).eq("id", patch.id);
@@ -262,11 +294,29 @@ export function ProgramEditor({ programId }: { programId: string }) {
       </header>
 
       <div className="mt-6 space-y-6">
-        {(program.program_weeks ?? []).map((w: ProgramFull["program_weeks"][number]) => (
-          <Card key={w.id}>
+        {[...(program.program_weeks ?? [])].sort((a, b) => {
+          if (a.is_active !== b.is_active) return a.is_active ? -1 : 1;
+          return a.week_number - b.week_number;
+        }).map((w: ProgramFull["program_weeks"][number]) => (
+          <Card key={w.id} className={w.is_active ? "ring-2 ring-emerald-500/50" : ""}>
             <CardHeader className="space-y-0 pb-2">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-base">Viikko {w.week_number}</CardTitle>
+                <div className="flex items-center gap-3">
+                  <CardTitle className="text-base">Viikko {w.week_number}</CardTitle>
+                  <button
+                    type="button"
+                    onClick={() => { if (!w.is_active) setActiveWeek.mutate(w.id); }}
+                    className={`flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-medium transition-colors ${
+                      w.is_active
+                        ? "bg-emerald-500/15 text-emerald-500 cursor-default"
+                        : "bg-muted text-muted-foreground hover:bg-emerald-500/10 hover:text-emerald-500"
+                    }`}
+                    title={w.is_active ? "Aktiivinen viikko" : "Aseta aktiiviseksi"}
+                  >
+                    <span className={`h-1.5 w-1.5 rounded-full ${w.is_active ? "bg-emerald-500" : "bg-muted-foreground"}`} />
+                    {w.is_active ? "Aktiivinen" : "Ei aktiivinen"}
+                  </button>
+                </div>
                 <Button size="sm" variant="ghost" onClick={() => addDay.mutate(w.id)}>
                   <Plus className="h-4 w-4" /> Treeni
                 </Button>

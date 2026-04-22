@@ -77,8 +77,8 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["programs"]["Insert"]>;
       };
       program_weeks: {
-        Row: { id: string; program_id: string; week_number: number; description: string | null };
-        Insert: { id?: string; program_id: string; week_number: number; description?: string | null };
+        Row: { id: string; program_id: string; week_number: number; description: string | null; is_active: boolean };
+        Insert: { id?: string; program_id: string; week_number: number; description?: string | null; is_active?: boolean };
         Update: Partial<Database["public"]["Tables"]["program_weeks"]["Insert"]>;
       };
       program_days: {
