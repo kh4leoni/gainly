@@ -25,9 +25,11 @@ if (!/^eyJ/.test(key)) {
 const admin = createClient(url, key, { auth: { persistSession: false } });
 
 const users = [
-  { email: "coach@gainly.local",   role: "coach",  full_name: "Coach Cory"  },
-  { email: "client1@gainly.local", role: "client", full_name: "Alex Client" },
-  { email: "client2@gainly.local", role: "client", full_name: "Sam Client"  },
+  { email: "coach@gainly.local",     role: "coach",  full_name: "Coach Cory",   password: "password"     },
+  { email: "client1@gainly.local",   role: "client", full_name: "Alex Client",  password: "password"     },
+  { email: "client2@gainly.local",   role: "client", full_name: "Sam Client",   password: "password"     },
+  { email: "valmentaja@testi.fi",    role: "coach",  full_name: "Valmentaja",   password: "valmentaja123" },
+  { email: "asiakas@testi.fi",       role: "client", full_name: "Asiakas",      password: "asiakas123"   },
 ];
 
 async function main() {
@@ -35,7 +37,7 @@ async function main() {
   for (const u of users) {
     const { data, error } = await admin.auth.admin.createUser({
       email: u.email,
-      password: "password",
+      password: u.password,
       email_confirm: true,
       user_metadata: { role: u.role, full_name: u.full_name },
     });
@@ -48,8 +50,9 @@ async function main() {
 
   // Link coach ↔ clients
   await admin.from("coach_clients").upsert([
-    { coach_id: ids["coach@gainly.local"], client_id: ids["client1@gainly.local"], status: "active" },
-    { coach_id: ids["coach@gainly.local"], client_id: ids["client2@gainly.local"], status: "active" },
+    { coach_id: ids["coach@gainly.local"],  client_id: ids["client1@gainly.local"], status: "active" },
+    { coach_id: ids["coach@gainly.local"],  client_id: ids["client2@gainly.local"], status: "active" },
+    { coach_id: ids["valmentaja@testi.fi"], client_id: ids["asiakas@testi.fi"],     status: "active" },
   ]);
 
   // Sample program for client1

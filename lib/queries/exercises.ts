@@ -9,6 +9,15 @@ export async function getExercises(supabase: DB) {
   return data ?? [];
 }
 
+export async function updateExercise(
+  supabase: DB,
+  id: string,
+  patch: { name?: string; instructions?: string | null; video_path?: string | null }
+) {
+  const { error } = await supabase.from("exercises").update(patch).eq("id", id);
+  if (error) throw error;
+}
+
 export async function createExercise(
   supabase: DB,
   input: { name: string; instructions?: string | null; muscle_groups?: string[]; video_path?: string | null; created_by: string }

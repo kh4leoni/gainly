@@ -80,11 +80,22 @@ export function WorkoutLogger({ scheduledWorkoutId }: { scheduledWorkoutId: stri
   return (
     <div className="p-4 md:p-6">
       <header className="flex flex-wrap items-start justify-between gap-3">
-        <div>
+        <div className="flex-1">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            {day?.program_weeks ? `Viikko ${day.program_weeks.week_number}` : null}
+          </p>
           <h1 className="text-3xl font-bold">{day?.name?.replace(/^Day(\d+)/, "Päivä $1") ?? "Treeni"}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {new Date(workout.scheduled_date).toLocaleDateString("fi-FI")}
           </p>
+          {day?.program_weeks?.description && (
+            <p className="mt-2 rounded-md border border-border/60 bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+              {day.program_weeks.description}
+            </p>
+          )}
+          {day?.description && (
+            <p className="mt-2 text-sm text-foreground/80">{day.description}</p>
+          )}
         </div>
         {pending > 0 && (
           <Badge variant="outline" className="gap-1.5 text-sm px-3 py-1.5">
@@ -179,7 +190,13 @@ function ExerciseBlock({
           {programExercise.intensity
             ? ` @ ${programExercise.intensity}${programExercise.intensity_type === "percent_1rm" ? "%" : "kg"}`
             : ""}
+          {programExercise.target_rpe !== null
+            ? ` · RPE ${programExercise.target_rpe === 0 ? "< 6" : programExercise.target_rpe}`
+            : ""}
         </p>
+        {programExercise.notes && (
+          <p className="mt-1.5 text-sm italic text-muted-foreground">{programExercise.notes}</p>
+        )}
       </div>
 
       <ul className="mb-3 space-y-1.5">
@@ -188,7 +205,7 @@ function ExerciseBlock({
             key={s.id}
             className="flex items-center justify-between rounded-md border px-3 py-2 text-sm"
           >
-            <span>Sarja {s.set_number}: {s.weight ?? "—"}kg × {s.reps ?? "—"}{s.rpe != null && ` @ RPE ${s.rpe}`}</span>
+            <span>Sarja {s.set_number}: {s.weight ?? "—"}kg × {s.reps ?? "—"}{s.rpe != null ? ` @ RPE ${s.rpe}` : " @ RPE < 6"}</span>
             {s.is_pr && (
               <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-xs font-bold text-primary-foreground">
                 Uusi ennätys! 🏆
@@ -201,6 +218,7 @@ function ExerciseBlock({
       <SetRow
         targetWeight={programExercise.intensity ?? null}
         targetReps={programExercise.reps ?? null}
+        targetRpe={programExercise.target_rpe ?? null}
         onLog={(v) => add.mutate(v)}
       />
     </section>
@@ -210,19 +228,23 @@ function ExerciseBlock({
 function SetRow({
   targetWeight,
   targetReps,
+  targetRpe,
   onLog,
 }: {
   targetWeight: number | null;
   targetReps: string | null;
+  targetRpe: number | null;
   onLog: (v: { weight: number | null; reps: number | null; rpe: number | null }) => void;
 }) {
   const [weight, setWeight] = useState<string>(targetWeight ? String(targetWeight) : "");
   const [reps, setReps] = useState<string>(targetReps ?? "");
-  const [rpe, setRpe] = useState<string>("");
+  const [rpe, setRpe] = useState<string>(targetRpe !== null ? String(targetRpe === 0 ? "< 6" : targetRpe) : "");
+
+  const RPE_VALUES: (number | "< 6")[] = ["< 6" as const, 6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10];
 
   return (
     <div className="space-y-2">
-      <div className="grid grid-cols-3 gap-2 md:flex md:flex-wrap md:items-end md:gap-2">
+      <div className="grid grid-cols-2 gap-2 md:flex md:flex-wrap md:items-end md:gap-2">
         <div>
           <label className="text-xs text-muted-foreground">Paino (kg)</label>
           <Input
@@ -244,16 +266,26 @@ function SetRow({
             onChange={(e) => setReps(e.target.value)}
           />
         </div>
-        <div>
-          <label className="text-xs text-muted-foreground">RPE</label>
-          <Input
-            className="h-14 text-xl text-center"
-            type="number"
-            step="0.5"
-            inputMode="decimal"
-            value={rpe}
-            onChange={(e) => setRpe(e.target.value)}
-          />
+      </div>
+      <div>
+        <label className="text-xs text-muted-foreground">
+          RPE {targetRpe ? `(tavoite: ${targetRpe})` : "(6–10, 0.5 välein)"}
+        </label>
+        <div className="flex flex-wrap gap-1">
+          {RPE_VALUES.map((v) => (
+            <button
+              key={v}
+              type="button"
+              onClick={() => setRpe(String(v))}
+              className={`h-9 min-w-[40px] rounded-md border px-2 text-sm font-medium transition-colors ${
+                rpe === String(v)
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-background hover:bg-muted"
+              }`}
+            >
+              {v}
+            </button>
+          ))}
         </div>
       </div>
       <button
@@ -261,7 +293,7 @@ function SetRow({
           onLog({
             weight: weight ? Number(weight) : null,
             reps: reps ? Number(reps) : null,
-            rpe: rpe ? Number(rpe) : null,
+            rpe: rpe && rpe !== "< 6" ? Number(rpe) : null,
           })
         }
         className="flex h-14 w-full items-center justify-center rounded-lg bg-primary text-primary-foreground font-semibold text-base active:scale-[0.97] transition-transform duration-150"
