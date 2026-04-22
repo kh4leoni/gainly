@@ -191,12 +191,7 @@ function WorkoutRow({ workout }: { workout: WorkoutEntry }) {
             <span className="h-3.5 w-3.5 rounded-full" style={statusDotStyle(workout.status)} />
           )}
           <span className="text-sm">
-            {new Date(workout.scheduled_date).toLocaleDateString("fi-FI", {
-              weekday: "short",
-              day: "numeric",
-              month: "numeric",
-            })}{" "}
-            — {workout.program_days?.name?.replace(/^Day(\d+)/, "Päivä $1") ?? "Treeni"}
+            {workout.program_days?.name?.replace(/^Day(\d+)/, "Päivä $1") ?? "Treeni"}
           </span>
         </div>
         {isCompleted ? (
