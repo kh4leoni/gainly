@@ -92,16 +92,26 @@ export function PersonalRecordsSection({ clientId, exercises }: Props) {
             ))}
           </SelectContent>
         </Select>
-        <Select value={repRange} onValueChange={setRepRange}>
-          <SelectTrigger className="w-16">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {REP_RANGES.map((r) => (
-              <SelectItem key={r.value} value={r.value}>{r.label} rep</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex flex-col items-center gap-1">
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setRepRange((p) => String(Math.max(1, parseInt(p) - 1)))}
+              className="flex h-9 w-8 items-center justify-center rounded-lg border bg-background text-sm font-medium hover:bg-muted transition-colors"
+            >
+              −
+            </button>
+            <span className="w-8 text-center text-base font-semibold tabular-nums">{repRange}</span>
+            <button
+              type="button"
+              onClick={() => setRepRange((p) => String(Math.min(5, parseInt(p) + 1)))}
+              className="flex h-9 w-8 items-center justify-center rounded-lg border bg-background text-sm font-medium hover:bg-muted transition-colors"
+            >
+              +
+            </button>
+          </div>
+          <span className="text-[10px] text-muted-foreground">rep</span>
+        </div>
       </div>
 
       {loading ? (
@@ -189,16 +199,26 @@ export function EstimatedBestSection({ clientId, exercises }: Props) {
             ))}
           </SelectContent>
         </Select>
-        <Select value={repRange} onValueChange={setRepRange}>
-          <SelectTrigger className="w-16">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {REP_RANGES.map((r) => (
-              <SelectItem key={r.value} value={r.value}>{r.label} rep</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex flex-col items-center gap-1">
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setRepRange((p) => String(Math.max(1, parseInt(p) - 1)))}
+              className="flex h-9 w-8 items-center justify-center rounded-lg border bg-background text-sm font-medium hover:bg-muted transition-colors"
+            >
+              −
+            </button>
+            <span className="w-8 text-center text-base font-semibold tabular-nums">{repRange}</span>
+            <button
+              type="button"
+              onClick={() => setRepRange((p) => String(Math.min(5, parseInt(p) + 1)))}
+              className="flex h-9 w-8 items-center justify-center rounded-lg border bg-background text-sm font-medium hover:bg-muted transition-colors"
+            >
+              +
+            </button>
+          </div>
+          <span className="text-[10px] text-muted-foreground">rep</span>
+        </div>
       </div>
 
       {loading ? (
