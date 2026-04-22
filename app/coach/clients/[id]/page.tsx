@@ -23,9 +23,10 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
       .from("scheduled_workouts")
       .select("id, scheduled_date, status, program_days(name)")
       .eq("client_id", id)
-      .gte("scheduled_date", today)
+      .neq("status", "completed")
+      .gte("scheduled_date", currentWeekStart)
       .order("scheduled_date")
-      .limit(7),
+      .limit(21),
     supabase.from("threads").select("id").eq("client_id", id).maybeSingle(),
     supabase
       .from("programs")

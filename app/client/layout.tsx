@@ -1,7 +1,9 @@
+"use client";
+
 import { LayoutDashboard, CalendarDays, TrendingUp, MessageSquare } from "lucide-react";
 import { AppShell } from "@/components/app-shell/shell";
 
-const ICON = "h-5 w-5";
+const ICON = "h-6 w-6";
 const nav = [
   { href: "/client/dashboard", icon: <LayoutDashboard className={ICON} />, label: "Tänään"     },
   { href: "/client/calendar",  icon: <CalendarDays    className={ICON} />, label: "Kalenteri"  },
@@ -10,5 +12,5 @@ const nav = [
 ];
 
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
-  return <AppShell title="Gainly" nav={nav}>{children}</AppShell>;
+  return <AppShell title="Gainly" nav={nav} variant="athlete">{children}</AppShell>;
 }

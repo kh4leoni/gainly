@@ -20,6 +20,7 @@ const config: Config = {
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
+        brand: "hsl(var(--primary))",
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
@@ -59,10 +60,21 @@ const config: Config = {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
+        "pr-burst": {
+          "0%": { transform: "scale(0) rotate(-12deg)" },
+          "70%": { transform: "scale(1.4) rotate(4deg)" },
+          "100%": { transform: "scale(1) rotate(0deg)" },
+        },
+        "fade-up": {
+          "0%": { opacity: "0", transform: "translateY(14px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "pr-burst": "pr-burst 0.5s cubic-bezier(0.16, 1, 0.3, 1) both",
+        "fade-up": "fade-up 0.18s cubic-bezier(0.16, 1, 0.3, 1) both",
       },
     },
   },

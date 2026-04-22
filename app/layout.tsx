@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0f172a",
+  themeColor: "#FF007A",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -26,6 +26,13 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){var t=localStorage.getItem('theme');if(t&&(t==='dark'||t==='light')){document.documentElement.className=t}})()`,
+          }}
+        />
+      </head>
       <body className="antialiased">
         <Providers>
           {children}

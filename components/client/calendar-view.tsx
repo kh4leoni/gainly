@@ -5,7 +5,6 @@ import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { getMonthWorkouts } from "@/lib/queries/workouts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -53,12 +52,20 @@ export function CalendarView({
             {new Date(year, month - 1, 1).toLocaleString("fi-FI", { month: "long", year: "numeric" })}
           </CardTitle>
           <div className="flex gap-2">
-            <Button asChild size="icon" variant="ghost">
-              <Link href={`/client/calendar?y=${prev.y}&m=${prev.m}`} prefetch><ChevronLeft className="h-4 w-4" /></Link>
-            </Button>
-            <Button asChild size="icon" variant="ghost">
-              <Link href={`/client/calendar?y=${next.y}&m=${next.m}`} prefetch><ChevronRight className="h-4 w-4" /></Link>
-            </Button>
+            <Link
+              href={`/client/calendar?y=${prev.y}&m=${prev.m}`}
+              prefetch
+              className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-accent active:scale-90 transition-transform duration-150"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Link>
+            <Link
+              href={`/client/calendar?y=${next.y}&m=${next.m}`}
+              prefetch
+              className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-accent active:scale-90 transition-transform duration-150"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Link>
           </div>
         </CardHeader>
         <CardContent>
@@ -69,9 +76,11 @@ export function CalendarView({
             {cells.map((c, i) => {
               if (!c.date) return <div key={i} className="aspect-square rounded-md" />;
               const w = c.workout;
+              const today = new Date().toISOString().slice(0, 10);
+              const isToday = c.date === today;
               const dot = w
                 ? w.status === "completed"
-                  ? "bg-green-600"
+                  ? "bg-primary"
                   : "bg-amber-500"
                 : "";
               return (
@@ -81,7 +90,8 @@ export function CalendarView({
                   prefetch={!!w}
                   className={cn(
                     "aspect-square rounded-md border p-1 text-left text-xs",
-                    w ? "hover:bg-accent" : "text-muted-foreground"
+                    w ? "hover:bg-accent" : "text-muted-foreground",
+                    isToday && "ring-2 ring-primary"
                   )}
                 >
                   <div className="flex items-center justify-between">

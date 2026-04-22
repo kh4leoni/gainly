@@ -49,6 +49,16 @@ const serwist = new Serwist({
         request.destination === "" && url.pathname.startsWith("/_next/data/"),
       handler: new NetworkFirst({ cacheName: "next-data", networkTimeoutSeconds: 10 }),
     },
+    // Next static JS/CSS: NetworkFirst so new chunk hashes always win.
+    // Serving stale webpack.js or chunk manifest crashes the app with
+    // "Cannot read properties of undefined (reading 'call')".
+    {
+      matcher: ({ url }) => url.pathname.startsWith("/_next/static/"),
+      handler: new NetworkFirst({
+        cacheName: "next-static",
+        networkTimeoutSeconds: 5,
+      }),
+    },
     ...defaultCache,
   ],
   fallbacks: {

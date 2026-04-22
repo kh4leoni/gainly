@@ -93,18 +93,18 @@ export function ExerciseLibrary() {
         </Button>
       </div>
 
-      <div className="mt-4 flex items-center">
+      <div className="mt-4">
         <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Hae liikkeitä…"
-          className="max-w-xs"
+          className="h-10 w-full md:max-w-xs"
         />
       </div>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {filtered.map((e) => (
-          <Card key={e.id}>
+          <Card key={e.id} className="h-full hover:-translate-y-0.5 transition-transform duration-150">
             <CardHeader className="pb-2">
               <CardTitle className="text-base">{e.name}</CardTitle>
             </CardHeader>

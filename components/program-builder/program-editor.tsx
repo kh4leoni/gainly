@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { getProgramFull, type ProgramFull } from "@/lib/queries/programs";
@@ -10,6 +11,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, Trash2, GripVertical } from "lucide-react";
 import { AssignProgramButton } from "./assign-program-button";
+
+function getNextMonday(date: Date): string {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = day === 0 ? 1 : 8 - day;
+  d.setDate(d.getDate() + diff);
+  return d.toISOString().slice(0, 10);
+}
 
 export function ProgramEditor({ programId }: { programId: string }) {
   const supabase = createClient();
@@ -25,6 +34,43 @@ export function ProgramEditor({ programId }: { programId: string }) {
   });
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["program", programId] });
+
+  const [saveLabel, setSaveLabel] = useState("Tallenna");
+
+  const rescheduleMutation = useMutation({
+    mutationFn: async () => {
+      if (!program?.client_id) return;
+      // Use the earliest existing scheduled_date as the anchor so the schedule stays aligned
+      const { data: existing } = await supabase
+        .from("scheduled_workouts")
+        .select("scheduled_date")
+        .eq("program_id", programId)
+        .eq("client_id", program.client_id)
+        .order("scheduled_date")
+        .limit(1)
+        .single();
+      const startDate = existing?.scheduled_date ?? getNextMonday(new Date());
+      const { error } = await supabase.rpc("schedule_program", {
+        _program: programId,
+        _client: program.client_id,
+        _start_date: startDate,
+      });
+      if (error) throw error;
+    },
+  });
+
+  async function handleSave() {
+    if (rescheduleMutation.isPending) return;
+    try {
+      await rescheduleMutation.mutateAsync();
+      setSaveLabel("Tallennettu!");
+    } catch (e) {
+      console.error(e);
+      setSaveLabel("Virhe!");
+    }
+    invalidate();
+    setTimeout(() => setSaveLabel("Tallenna"), 1500);
+  }
 
   const addWeek = useMutation({
     mutationFn: async () => {
@@ -106,6 +152,11 @@ export function ProgramEditor({ programId }: { programId: string }) {
                 ? `Henkilökohtainen ohjelma: ${(program as any).client_profile.full_name}`
                 : "Henkilökohtainen ohjelma"}
             </span>
+          )}
+          {!program.is_template && (
+            <Button variant="outline" onClick={handleSave}>
+              {saveLabel}
+            </Button>
           )}
           <Button variant="outline" onClick={() => addWeek.mutate()}>
             <Plus className="h-4 w-4" /> Lisää viikko
