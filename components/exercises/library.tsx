@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { getExercises, createExercise, updateExercise } from "@/lib/queries/exercises";
@@ -10,50 +10,59 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Play, Plus } from "lucide-react";
+import { Pencil, Play, Plus } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 
 const MUSCLE_GROUPS: Record<string, string> = {
-  chest: "rinta",
-  back: "selkä",
-  shoulders: "olkapäät",
-  biceps: "hauis",
-  triceps: "ojentajat",
-  quadriceps: "etureisi",
-  quads: "etureisi",
-  hamstrings: "takareisi",
-  glutes: "pakarat",
-  calves: "pohkeet",
-  abs: "vatsalihakset",
-  forearms: "kyynärvarret",
-  core: "keskivartalo",
-  full_body: "koko keho",
-  adductors: "lähentäjät",
-  abductors: "loitontajat",
-  traps: "trapetsi",
-  obliques: "vinot vatsalihakset",
-  "hip flexors": "lonkankoukistajat",
+  chest: "Rintalihakset",
+  lats: "Leveät selkälihakset",
+  mid_back: "Keskiselkä",
+  lower_back: "Alaselkä",
+  back: "Selkä",
+  shoulders: "Olkapäät",
+  biceps: "Hauikset",
+  triceps: "Ojentajat",
+  forearms: "Kyynärvarret",
+  traps: "Epäkkäät",
+  neck: "Niska",
+  abs: "Vatsalihakset",
+  core: "Core",
+  obliques: "Vinot vatsalihakset",
+  glutes: "Pakarat",
+  quadriceps: "Etureidet",
+  quads: "Etureidet",
+  hamstrings: "Takareidet",
+  adductors: "Reiden lähentäjät",
+  abductors: "Reiden loitontajat",
+  "hip flexors": "Lonkankoukistajat",
+  calves: "Pohkeet",
+  full_body: "Koko keho",
 };
 
 const MUSCLE_COLORS: Record<string, string> = {
-  chest: "bg-rose-400",
-  back: "bg-sky-400",
-  shoulders: "bg-violet-400",
-  biceps: "bg-amber-400",
-  triceps: "bg-orange-400",
-  quadriceps: "bg-green-400",
-  quads: "bg-green-400",
-  hamstrings: "bg-emerald-500",
-  glutes: "bg-pink-400",
-  calves: "bg-teal-400",
-  abs: "bg-yellow-400",
-  core: "bg-yellow-400",
-  forearms: "bg-amber-300",
-  traps: "bg-purple-400",
-  adductors: "bg-lime-400",
-  abductors: "bg-cyan-400",
-  obliques: "bg-yellow-500",
-  "hip flexors": "bg-indigo-400",
+  chest: "#ef4444",
+  neck: "#f97316",
+  triceps: "#f59e0b",
+  biceps: "#eab308",
+  forearms: "#84cc16",
+  quadriceps: "#22c55e",
+  quads: "#22c55e",
+  adductors: "#10b981",
+  hamstrings: "#14b8a6",
+  calves: "#06b6d4",
+  abductors: "#0ea5e9",
+  back: "#3b82f6",
+  lats: "#6366f1",
+  mid_back: "#0f766e",
+  "hip flexors": "#8b5cf6",
+  shoulders: "#a855f7",
+  traps: "#d946ef",
+  glutes: "#ec4899",
+  abs: "#f43f5e",
+  core: "#64748b",
+  obliques: "#c2410c",
+  lower_back: "#a16207",
+  full_body: "#374151",
 };
 
 function translateMuscle(m: string) {
@@ -61,7 +70,60 @@ function translateMuscle(m: string) {
 }
 
 function muscleColor(m: string) {
-  return MUSCLE_COLORS[m.toLowerCase()] ?? "bg-slate-400";
+  return MUSCLE_COLORS[m.toLowerCase()] ?? "#94a3b8";
+}
+
+// One canonical key per unique color, sorted by Finnish label
+const CANONICAL_TAGS = (() => {
+  const seen = new Set<string>();
+  return Object.keys(MUSCLE_COLORS)
+    .filter((k) => {
+      const c = MUSCLE_COLORS[k]!;
+      if (seen.has(c)) return false;
+      seen.add(c);
+      return true;
+    })
+    .sort((a, b) => translateMuscle(a).localeCompare(translateMuscle(b), "fi"));
+})();
+
+type TagDef = { key: string; label: string; color: string };
+
+function MuscleGroupPicker({
+  selected,
+  onChange,
+  tags,
+}: {
+  selected: Set<string>;
+  onChange: (s: Set<string>) => void;
+  tags: TagDef[];
+}) {
+  return (
+    <div className="flex flex-wrap gap-1.5 pt-1">
+      {tags.map((t) => {
+        const active = selected.has(t.key);
+        return (
+          <button
+            key={t.key}
+            type="button"
+            onClick={() => {
+              const next = new Set(selected);
+              active ? next.delete(t.key) : next.add(t.key);
+              onChange(next);
+            }}
+            className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium transition-all"
+            style={{
+              backgroundColor: active ? t.color : "transparent",
+              color: active ? "#fff" : t.color,
+              border: `1.5px solid ${t.color}`,
+              opacity: active ? 1 : 0.65,
+            }}
+          >
+            {t.label}
+          </button>
+        );
+      })}
+    </div>
+  );
 }
 
 function getEmbedUrl(url: string | null): string | null {
@@ -89,27 +151,84 @@ export function ExerciseLibrary() {
 
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
+  const [editingTag, setEditingTag] = useState<string | null>(null);
+  const [customLabels, setCustomLabels] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("muscle-labels");
+      if (stored) setCustomLabels(JSON.parse(stored));
+    } catch {}
+  }, []);
+
+  function saveLabel(tag: string, value: string) {
+    const trimmed = value.trim();
+    if (!trimmed) return;
+    const next = { ...customLabels, [tag]: trimmed };
+    setCustomLabels(next);
+    localStorage.setItem("muscle-labels", JSON.stringify(next));
+  }
+
+  function tagLabel(tag: string) {
+    return customLabels[tag] ?? translateMuscle(tag);
+  }
+
+  function getTagColor(tag: string) {
+    return MUSCLE_COLORS[tag.toLowerCase()] ?? "#94a3b8";
+  }
 
   // create dialog
   const [createOpen, setCreateOpen] = useState(false);
   const [cName, setCName] = useState("");
   const [cInstructions, setCInstructions] = useState("");
-  const [cMuscleGroups, setCMuscleGroups] = useState("");
+  const [cSelectedGroups, setCSelectedGroups] = useState<Set<string>>(new Set());
   const [cVideoUrl, setCVideoUrl] = useState("");
 
   // edit dialog
   const [editExercise, setEditExercise] = useState<Exercise | null>(null);
   const [eName, setEName] = useState("");
   const [eInstructions, setEInstructions] = useState("");
-  const [eMuscleGroups, setEMuscleGroups] = useState("");
+  const [eSelectedGroups, setESelectedGroups] = useState<Set<string>>(new Set());
   const [eVideoUrl, setEVideoUrl] = useState("");
 
   // video preview dialog
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
 
-  const filtered = search.trim()
-    ? data.filter((e) => e.name.toLowerCase().includes(search.toLowerCase()))
-    : data;
+  // Unique tags from data, deduped by color
+  const allTags = (() => {
+    const known = new Set(Object.keys(MUSCLE_COLORS));
+    const keys = Array.from(
+      new Set(data.flatMap((e) => e.muscle_groups ?? []).map((m) => m.toLowerCase()))
+    ).filter((k) => known.has(k));
+    const seenColors = new Set<string>();
+    return keys
+      .sort((a, b) => tagLabel(a).localeCompare(tagLabel(b), "fi"))
+      .filter((tag) => {
+        const color = getTagColor(tag);
+        if (seenColors.has(color)) return false;
+        seenColors.add(color);
+        return true;
+      });
+  })();
+
+  const pickerTags: TagDef[] = CANONICAL_TAGS.map((k) => ({ key: k, label: tagLabel(k), color: getTagColor(k) }));
+
+  function toggleTag(tag: string) {
+    setSelectedTags((prev) => {
+      const next = new Set(prev);
+      next.has(tag) ? next.delete(tag) : next.add(tag);
+      return next;
+    });
+  }
+
+  const selectedColors = new Set(Array.from(selectedTags).map(getTagColor));
+
+  const filtered = data.filter((e) => {
+    const matchesSearch = !search.trim() || e.name.toLowerCase().includes(search.toLowerCase());
+    const matchesTags = selectedTags.size === 0 || (e.muscle_groups ?? []).some((m) => selectedColors.has(getTagColor(m.toLowerCase())));
+    return matchesSearch && matchesTags;
+  });
 
   const create = useMutation({
     mutationFn: async () => {
@@ -119,14 +238,14 @@ export function ExerciseLibrary() {
         created_by: user.user.id,
         name: cName,
         instructions: cInstructions || null,
-        muscle_groups: cMuscleGroups.split(",").map((s) => s.trim()).filter(Boolean),
+        muscle_groups: Array.from(cSelectedGroups),
         video_path: cVideoUrl.trim() || null,
       });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["exercises"] });
       setCreateOpen(false);
-      setCName(""); setCInstructions(""); setCMuscleGroups(""); setCVideoUrl("");
+      setCName(""); setCInstructions(""); setCSelectedGroups(new Set()); setCVideoUrl("");
       toast({ title: "Liike lisätty" });
     },
     onError: (e: any) => toast({ title: "Epäonnistui", description: e.message, variant: "destructive" }),
@@ -139,6 +258,7 @@ export function ExerciseLibrary() {
         name: eName,
         instructions: eInstructions || null,
         video_path: eVideoUrl.trim() || null,
+        muscle_groups: Array.from(eSelectedGroups),
       });
     },
     onSuccess: () => {
@@ -153,7 +273,7 @@ export function ExerciseLibrary() {
     setEditExercise(e);
     setEName(e.name);
     setEInstructions(e.instructions ?? "");
-    setEMuscleGroups((e.muscle_groups ?? []).join(", "));
+    setESelectedGroups(new Set((e.muscle_groups ?? []).map((m) => m.toLowerCase())));
     setEVideoUrl(e.video_path ?? "");
   }
 
@@ -166,13 +286,72 @@ export function ExerciseLibrary() {
         </Button>
       </div>
 
-      <div className="mt-4">
+      <div className="mt-4 flex flex-wrap items-center gap-3">
         <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Hae liikkeitä…"
           className="h-10 w-full md:max-w-xs"
         />
+        <div className="flex flex-wrap gap-1.5">
+          {allTags.map((tag) => {
+            const active = selectedTags.has(tag);
+            const color = getTagColor(tag);
+            const isEditing = editingTag === tag;
+            const label = tagLabel(tag);
+            return (
+              <span key={tag} className="group/tag relative inline-flex">
+                {isEditing ? (
+                  <input
+                    autoFocus
+                    defaultValue={label}
+                    className="rounded-full px-2.5 py-0.5 text-[11px] font-medium outline-none"
+                    style={{
+                      border: `1.5px solid ${color}`,
+                      color,
+                      width: `${Math.max(label.length + 2, 6)}ch`,
+                    }}
+                    onBlur={(e) => { saveLabel(tag, e.target.value); setEditingTag(null); }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") e.currentTarget.blur();
+                      if (e.key === "Escape") setEditingTag(null);
+                    }}
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => toggleTag(tag)}
+                    className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-medium"
+                    style={{
+                      backgroundColor: active ? color : "transparent",
+                      color: active ? "#fff" : color,
+                      border: `1.5px solid ${color}`,
+                      opacity: active ? 1 : 0.7,
+                      transition: "transform 200ms cubic-bezier(0.34,1.56,0.64,1), opacity 150ms ease",
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.1)")}
+                    onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
+                  >
+                    {label}
+                    <Pencil
+                      className="h-2.5 w-2.5 opacity-0 group-hover/tag:opacity-60 hover:!opacity-100 transition-opacity"
+                      onClick={(e) => { e.stopPropagation(); setEditingTag(tag); }}
+                    />
+                  </button>
+                )}
+              </span>
+            );
+          })}
+          {selectedTags.size > 0 && (
+            <button
+              type="button"
+              onClick={() => setSelectedTags(new Set())}
+              className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors border border-muted"
+            >
+              Tyhjennä
+            </button>
+          )}
+        </div>
       </div>
 
       <div
@@ -198,7 +377,7 @@ export function ExerciseLibrary() {
                 <p className="text-xs font-medium leading-tight line-clamp-2">{e.name}</p>
                 <div className="flex gap-1">
                   {(e.muscle_groups ?? []).slice(0, 4).map((m) => (
-                    <span key={m} className={`h-1.5 w-1.5 rounded-full ${muscleColor(m)}`} title={translateMuscle(m)} />
+                    <span key={m} className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: getTagColor(m) }} title={tagLabel(m)} />
                   ))}
                 </div>
               </div>
@@ -244,7 +423,9 @@ export function ExerciseLibrary() {
                 )}
                 <div className="mt-auto flex flex-wrap gap-1">
                   {(e.muscle_groups ?? []).map((m) => (
-                    <Badge key={m} variant="outline" className="text-[9px] px-1 py-0 h-4">{translateMuscle(m)}</Badge>
+                    <span key={m} className="inline-flex items-center rounded-full px-1.5 h-4 text-[9px] font-medium text-white" style={{ backgroundColor: getTagColor(m) }}>
+                      {tagLabel(m)}
+                    </span>
                   ))}
                 </div>
               </div>
@@ -263,8 +444,8 @@ export function ExerciseLibrary() {
               <Input value={cName} onChange={(e) => setCName(e.target.value)} />
             </div>
             <div>
-              <Label>Lihasryhmät (pilkulla erotettuna)</Label>
-              <Input value={cMuscleGroups} onChange={(e) => setCMuscleGroups(e.target.value)} placeholder="chest, triceps" />
+              <Label>Lihasryhmät</Label>
+              <MuscleGroupPicker selected={cSelectedGroups} onChange={setCSelectedGroups} tags={pickerTags} />
             </div>
             <div>
               <Label>Ohjeet</Label>
@@ -294,8 +475,8 @@ export function ExerciseLibrary() {
               <Input value={eName} onChange={(e) => setEName(e.target.value)} />
             </div>
             <div>
-              <Label>Lihasryhmät (pilkulla erotettuna)</Label>
-              <Input value={eMuscleGroups} onChange={(e) => setEMuscleGroups(e.target.value)} placeholder="chest, triceps" />
+              <Label>Lihasryhmät</Label>
+              <MuscleGroupPicker selected={eSelectedGroups} onChange={setESelectedGroups} tags={pickerTags} />
             </div>
             <div>
               <Label>Ohjeet</Label>
