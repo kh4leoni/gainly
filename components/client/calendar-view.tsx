@@ -5,7 +5,6 @@ import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { getMonthWorkouts } from "@/lib/queries/workouts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -50,28 +49,38 @@ export function CalendarView({
       <Card>
         <CardHeader className="flex-row items-center justify-between space-y-0">
           <CardTitle className="text-base">
-            {new Date(year, month - 1, 1).toLocaleString(undefined, { month: "long", year: "numeric" })}
+            {new Date(year, month - 1, 1).toLocaleString("fi-FI", { month: "long", year: "numeric" })}
           </CardTitle>
           <div className="flex gap-2">
-            <Button asChild size="icon" variant="ghost">
-              <Link href={`/client/calendar?y=${prev.y}&m=${prev.m}`} prefetch><ChevronLeft className="h-4 w-4" /></Link>
-            </Button>
-            <Button asChild size="icon" variant="ghost">
-              <Link href={`/client/calendar?y=${next.y}&m=${next.m}`} prefetch><ChevronRight className="h-4 w-4" /></Link>
-            </Button>
+            <Link
+              href={`/client/calendar?y=${prev.y}&m=${prev.m}`}
+              prefetch
+              className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-accent active:scale-90 transition-transform duration-150"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Link>
+            <Link
+              href={`/client/calendar?y=${next.y}&m=${next.m}`}
+              prefetch
+              className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-accent active:scale-90 transition-transform duration-150"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Link>
           </div>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-7 gap-1 text-center text-xs text-muted-foreground">
-            {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => <div key={d}>{d}</div>)}
+            {["Ma", "Ti", "Ke", "To", "Pe", "La", "Su"].map((d) => <div key={d}>{d}</div>)}
           </div>
           <div className="mt-1 grid grid-cols-7 gap-1">
             {cells.map((c, i) => {
               if (!c.date) return <div key={i} className="aspect-square rounded-md" />;
               const w = c.workout;
+              const today = new Date().toISOString().slice(0, 10);
+              const isToday = c.date === today;
               const dot = w
                 ? w.status === "completed"
-                  ? "bg-green-600"
+                  ? "bg-primary"
                   : "bg-amber-500"
                 : "";
               return (
@@ -81,14 +90,15 @@ export function CalendarView({
                   prefetch={!!w}
                   className={cn(
                     "aspect-square rounded-md border p-1 text-left text-xs",
-                    w ? "hover:bg-accent" : "text-muted-foreground"
+                    w ? "hover:bg-accent" : "text-muted-foreground",
+                    isToday && "ring-2 ring-primary"
                   )}
                 >
                   <div className="flex items-center justify-between">
                     <span>{c.day}</span>
                     {w && <span className={cn("h-2 w-2 rounded-full", dot)} />}
                   </div>
-                  {w && <div className="truncate text-[10px]">{w.program_days?.name ?? ""}</div>}
+                  {w && <div className="truncate text-[10px]">{w.program_days?.name?.replace(/^Day(\d+)/, "Päivä $1") ?? ""}</div>}
                 </Link>
               );
             })}

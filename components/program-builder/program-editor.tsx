@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { getProgramFull, type ProgramFull } from "@/lib/queries/programs";
@@ -10,6 +11,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, Trash2, GripVertical } from "lucide-react";
 import { AssignProgramButton } from "./assign-program-button";
+
+function getNextMonday(date: Date): string {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = day === 0 ? 1 : 8 - day;
+  d.setDate(d.getDate() + diff);
+  return d.toISOString().slice(0, 10);
+}
 
 export function ProgramEditor({ programId }: { programId: string }) {
   const supabase = createClient();
@@ -26,6 +35,43 @@ export function ProgramEditor({ programId }: { programId: string }) {
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["program", programId] });
 
+  const [saveLabel, setSaveLabel] = useState("Tallenna");
+
+  const rescheduleMutation = useMutation({
+    mutationFn: async () => {
+      if (!program?.client_id) return;
+      // Use the earliest existing scheduled_date as the anchor so the schedule stays aligned
+      const { data: existing } = await supabase
+        .from("scheduled_workouts")
+        .select("scheduled_date")
+        .eq("program_id", programId)
+        .eq("client_id", program.client_id)
+        .order("scheduled_date")
+        .limit(1)
+        .single();
+      const startDate = existing?.scheduled_date ?? getNextMonday(new Date());
+      const { error } = await supabase.rpc("schedule_program", {
+        _program: programId,
+        _client: program.client_id,
+        _start_date: startDate,
+      });
+      if (error) throw error;
+    },
+  });
+
+  async function handleSave() {
+    if (rescheduleMutation.isPending) return;
+    try {
+      await rescheduleMutation.mutateAsync();
+      setSaveLabel("Tallennettu!");
+    } catch (e) {
+      console.error(e);
+      setSaveLabel("Virhe!");
+    }
+    invalidate();
+    setTimeout(() => setSaveLabel("Tallenna"), 1500);
+  }
+
   const addWeek = useMutation({
     mutationFn: async () => {
       const next = (program?.program_weeks?.length ?? 0) + 1;
@@ -40,7 +86,7 @@ export function ProgramEditor({ programId }: { programId: string }) {
       const week = program?.program_weeks?.find((w) => w.id === weekId);
       const next = (week?.program_days?.length ?? 0) + 1;
       const { error } = await supabase.from("program_days").insert({
-        week_id: weekId, day_number: next, name: `Day ${next}`,
+        week_id: weekId, day_number: next, name: `Päivä ${next}`,
       });
       if (error) throw error;
     },
@@ -102,11 +148,18 @@ export function ProgramEditor({ programId }: { programId: string }) {
             <AssignProgramButton programId={programId} />
           ) : (
             <span className="text-sm text-muted-foreground">
-              Assigned
+              {(program as any).client_profile?.full_name
+                ? `Henkilökohtainen ohjelma: ${(program as any).client_profile.full_name}`
+                : "Henkilökohtainen ohjelma"}
             </span>
           )}
+          {!program.is_template && (
+            <Button variant="outline" onClick={handleSave}>
+              {saveLabel}
+            </Button>
+          )}
           <Button variant="outline" onClick={() => addWeek.mutate()}>
-            <Plus className="h-4 w-4" /> Add week
+            <Plus className="h-4 w-4" /> Lisää viikko
           </Button>
         </div>
       </header>
@@ -115,9 +168,9 @@ export function ProgramEditor({ programId }: { programId: string }) {
         {(program.program_weeks ?? []).map((w: ProgramFull["program_weeks"][number]) => (
           <Card key={w.id}>
             <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-base">Week {w.week_number}</CardTitle>
+              <CardTitle className="text-base">Viikko {w.week_number}</CardTitle>
               <Button size="sm" variant="ghost" onClick={() => addDay.mutate(w.id)}>
-                <Plus className="h-4 w-4" /> Day
+                <Plus className="h-4 w-4" /> Päivä
               </Button>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -125,7 +178,7 @@ export function ProgramEditor({ programId }: { programId: string }) {
                 <div key={d.id} className="rounded-md border p-3">
                   <div className="flex items-center justify-between">
                     <div className="text-sm font-medium">
-                      Day {d.day_number}{d.name ? ` · ${d.name}` : ""}
+                      Päivä {d.day_number}{d.name ? ` · ${d.name}` : ""}
                     </div>
                     <AddExerciseControl
                       exercises={exercises}
@@ -143,7 +196,7 @@ export function ProgramEditor({ programId }: { programId: string }) {
                         <input
                           className="h-8 w-14 rounded border px-2 text-sm"
                           defaultValue={pe.sets ?? ""}
-                          placeholder="sets"
+                          placeholder="sarjat"
                           type="number"
                           min={0}
                           onBlur={(e) => {
@@ -154,7 +207,7 @@ export function ProgramEditor({ programId }: { programId: string }) {
                         <input
                           className="h-8 w-20 rounded border px-2 text-sm"
                           defaultValue={pe.reps ?? ""}
-                          placeholder="reps"
+                          placeholder="toistot"
                           onBlur={(e) => {
                             const v = e.target.value || null;
                             if (v !== pe.reps) updateExercise.mutate({ id: pe.id, reps: v });
@@ -186,13 +239,13 @@ export function ProgramEditor({ programId }: { programId: string }) {
                       </li>
                     ))}
                     {(d.program_exercises ?? []).length === 0 && (
-                      <li className="text-sm text-muted-foreground">No exercises yet.</li>
+                      <li className="text-sm text-muted-foreground">Ei vielä harjoituksia.</li>
                     )}
                   </ul>
                 </div>
               ))}
               {(w.program_days ?? []).length === 0 && (
-                <p className="text-sm text-muted-foreground">No days yet.</p>
+                <p className="text-sm text-muted-foreground">Ei vielä päiviä.</p>
               )}
             </CardContent>
           </Card>
@@ -212,7 +265,7 @@ function AddExerciseControl({
   return (
     <Select onValueChange={(v) => onAdd(v)}>
       <SelectTrigger className="h-8 w-[220px]">
-        <SelectValue placeholder="Add exercise…" />
+        <SelectValue placeholder="Lisää harjoitus…" />
       </SelectTrigger>
       <SelectContent>
         {exercises.map((e) => (

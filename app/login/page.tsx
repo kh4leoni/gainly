@@ -12,15 +12,15 @@ export default async function LoginPage({
     <main className="mx-auto flex min-h-screen max-w-md items-center px-6">
       <Card className="w-full">
         <CardHeader>
-          <CardTitle>Log in to Gainly</CardTitle>
-          <CardDescription>Welcome back.</CardDescription>
+          <CardTitle>Kirjaudu Gainlyyn</CardTitle>
+          <CardDescription>Tervetuloa takaisin.</CardDescription>
         </CardHeader>
         <CardContent>
           <LoginForm next={sp.next} />
           <p className="mt-4 text-sm text-muted-foreground">
-            New here?{" "}
+            Uusi käyttäjä?{" "}
             <Link href="/signup" className="underline">
-              Create an account
+              Luo tili
             </Link>
           </p>
         </CardContent>

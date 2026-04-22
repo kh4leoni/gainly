@@ -34,13 +34,13 @@ export function LoginForm({ next }: { next?: string }) {
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <div>
-        <Label htmlFor="email">Email</Label>
+        <Label htmlFor="email">Sähköposti</Label>
         <Input id="email" type="email" autoComplete="email" {...register("email")} />
         {errors.email && <p className="mt-1 text-sm text-destructive">{errors.email.message}</p>}
       </div>
 
       <div>
-        <Label htmlFor="password">Password</Label>
+        <Label htmlFor="password">Salasana</Label>
         <Input id="password" type="password" autoComplete="current-password" {...register("password")} />
         {errors.password && <p className="mt-1 text-sm text-destructive">{errors.password.message}</p>}
       </div>
@@ -48,7 +48,7 @@ export function LoginForm({ next }: { next?: string }) {
       {serverError && <p className="text-sm text-destructive">{serverError}</p>}
 
       <Button type="submit" disabled={isSubmitting} className="w-full">
-        {isSubmitting ? "Logging in…" : "Log in"}
+        {isSubmitting ? "Kirjaudutaan…" : "Kirjaudu sisään"}
       </Button>
     </form>
   );

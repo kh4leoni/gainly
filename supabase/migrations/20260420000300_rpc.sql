@@ -57,6 +57,7 @@ returns table (day date, best_1rm numeric) language sql stable security invoker 
 $$;
 
 -- Generate scheduled_workouts from a program for a client starting on _start_date.
+-- Replaces all existing scheduled_workouts for this program/client pair.
 create or replace function public.schedule_program(_program uuid, _client uuid, _start_date date)
 returns int language plpgsql security invoker set search_path = public as $$
 declare
@@ -67,6 +68,9 @@ begin
   if _coach is null or _coach != auth.uid() then
     raise exception 'not authorized to schedule this program';
   end if;
+
+  -- Remove existing scheduled workouts so we can replace them cleanly
+  delete from public.scheduled_workouts where program_id = _program and client_id = _client;
 
   insert into public.scheduled_workouts (program_id, day_id, client_id, scheduled_date)
   select _program,

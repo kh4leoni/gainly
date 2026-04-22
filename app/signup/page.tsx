@@ -7,15 +7,15 @@ export default function SignupPage() {
     <main className="mx-auto flex min-h-screen max-w-md items-center px-6">
       <Card className="w-full">
         <CardHeader>
-          <CardTitle>Create your Gainly account</CardTitle>
-          <CardDescription>Pick whether you coach or train.</CardDescription>
+          <CardTitle>Luo Gainly-tili</CardTitle>
+          <CardDescription>Valitse, valmennatko vai treenaatko.</CardDescription>
         </CardHeader>
         <CardContent>
           <SignupForm />
           <p className="mt-4 text-sm text-muted-foreground">
-            Already have an account?{" "}
+            Onko sinulla jo tili?{" "}
             <Link href="/login" className="underline">
-              Log in
+              Kirjaudu sisään
             </Link>
           </p>
         </CardContent>

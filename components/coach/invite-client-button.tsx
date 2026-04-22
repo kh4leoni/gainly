@@ -25,16 +25,16 @@ export function InviteClientButton({ coachId }: { coachId: string }) {
     try {
       const result = await inviteClient(coachId, email, name || undefined);
       if (result.type === "invited") {
-        toast({ title: "Invitation sent", description: `An invite email was sent to ${email}.` });
+        toast({ title: "Kutsu lähetetty", description: `Kutsusähköposti lähetetty osoitteeseen ${email}.` });
       } else {
-        toast({ title: "Client linked", description: `${email} has been added to your clients.` });
+        toast({ title: "Asiakas linkitetty", description: `${email} on lisätty asiakkaaksesi.` });
       }
       setOpen(false);
       setEmail("");
       setName("");
       router.refresh();
     } catch (e: any) {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+      toast({ title: "Virhe", description: e.message, variant: "destructive" });
     } finally {
       setWorking(false);
     }
@@ -42,39 +42,39 @@ export function InviteClientButton({ coachId }: { coachId: string }) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <Button onClick={() => setOpen(true)}>Invite client</Button>
+      <Button onClick={() => setOpen(true)}>Kutsu asiakas</Button>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Invite a client</DialogTitle>
+          <DialogTitle>Kutsu asiakas</DialogTitle>
           <DialogDescription>
-            Enter the client&apos;s email. If they don&apos;t have an account yet, they&apos;ll receive an invitation email.
+            Anna asiakkaan sähköpostiosoite. Jos hänellä ei ole vielä tiliä, hän saa kutsusähköpostin.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">Sähköposti</Label>
             <Input
               id="email"
               type="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="client@example.com"
+              placeholder="asiakas@esimerkki.fi"
             />
           </div>
           <div>
-            <Label htmlFor="name">Name (optional)</Label>
+            <Label htmlFor="name">Nimi (valinnainen)</Label>
             <Input
               id="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Jane Doe"
+              placeholder="Matti Meikäläinen"
             />
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button type="button" variant="outline" onClick={() => setOpen(false)}>Peruuta</Button>
             <Button type="submit" disabled={!email || working}>
-              {working ? "Sending…" : "Send invite"}
+              {working ? "Lähetetään…" : "Lähetä kutsu"}
             </Button>
           </DialogFooter>
         </form>

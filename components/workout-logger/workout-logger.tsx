@@ -1,14 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLiveQuery } from "dexie-react-hooks";
 import { createClient } from "@/lib/supabase/client";
 import { getScheduledWorkout } from "@/lib/queries/workouts";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { uuid } from "@/lib/utils";
 import { enqueue } from "@/lib/offline/queue";
 import { db } from "@/lib/offline/db";
@@ -25,7 +23,6 @@ export function WorkoutLogger({ scheduledWorkoutId }: { scheduledWorkoutId: stri
     queryFn: () => getScheduledWorkout(supabase, scheduledWorkoutId),
   });
 
-  // Ensure we have a workout_log row for this session.
   const [workoutLogId, setWorkoutLogId] = useState<string | null>(null);
   useEffect(() => {
     if (!workout) return;
@@ -42,7 +39,6 @@ export function WorkoutLogger({ scheduledWorkoutId }: { scheduledWorkoutId: stri
         setWorkoutLogId(existing.id);
         return;
       }
-      // Create with a stable id so offline retry is idempotent.
       const id = uuid();
       await enqueue("workout_log.create", {
         id,
@@ -54,7 +50,6 @@ export function WorkoutLogger({ scheduledWorkoutId }: { scheduledWorkoutId: stri
     })();
   }, [workout, scheduledWorkoutId, supabase]);
 
-  // Listen to sync trigger from SW.
   useEffect(() => {
     const onMsg = (e: MessageEvent) => {
       if (e.data?.type === "gainly-sync") void replay();
@@ -72,7 +67,7 @@ export function WorkoutLogger({ scheduledWorkoutId }: { scheduledWorkoutId: stri
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["workout", scheduledWorkoutId] });
-      toast({ title: "Workout completed" });
+      toast({ title: "Treeni valmis" });
     },
   });
 
@@ -84,24 +79,30 @@ export function WorkoutLogger({ scheduledWorkoutId }: { scheduledWorkoutId: stri
 
   return (
     <div className="p-4 md:p-6">
-      <header className="flex flex-wrap items-center justify-between gap-3">
+      <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">{day?.name ?? "Workout"}</h1>
-          <p className="text-sm text-muted-foreground">
-            {new Date(workout.scheduled_date).toLocaleDateString()}
+          <h1 className="text-3xl font-bold">{day?.name?.replace(/^Day(\d+)/, "Päivä $1") ?? "Treeni"}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {new Date(workout.scheduled_date).toLocaleDateString("fi-FI")}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          {pending > 0 && (
-            <Badge variant="outline" className="gap-1"><WifiOff className="h-3 w-3" /> {pending} pending</Badge>
-          )}
-          <Button onClick={() => complete.mutate()} disabled={complete.isPending}>
-            <Check className="h-4 w-4" /> Mark complete
-          </Button>
-        </div>
+        {pending > 0 && (
+          <Badge variant="outline" className="gap-1.5 text-sm px-3 py-1.5">
+            <WifiOff className="h-4 w-4" /> {pending} odottaa synkronointia
+          </Badge>
+        )}
       </header>
 
-      <div className="mt-6 space-y-4">
+      <button
+        onClick={() => complete.mutate()}
+        disabled={complete.isPending}
+        className="mt-5 flex h-14 w-full items-center justify-center gap-2 rounded-lg bg-primary text-primary-foreground font-semibold text-base shadow-sm disabled:opacity-60 active:scale-[0.97] transition-transform duration-150"
+      >
+        <Check className="h-5 w-5" />
+        Merkitse valmiiksi
+      </button>
+
+      <div className="mt-6 space-y-6">
         {(day?.program_exercises ?? []).map((pe: any) => (
           <ExerciseBlock
             key={pe.id}
@@ -110,7 +111,7 @@ export function WorkoutLogger({ scheduledWorkoutId }: { scheduledWorkoutId: stri
           />
         ))}
         {(!day || (day.program_exercises ?? []).length === 0) && (
-          <p className="text-muted-foreground">No exercises in this session.</p>
+          <p className="text-muted-foreground">Ei harjoituksia tässä istunnossa.</p>
         )}
       </div>
     </div>
@@ -151,7 +152,6 @@ function ExerciseBlock({
       const last = sets.at(-1) as { set_number?: number | null } | undefined;
       const setNumber = (last?.set_number ?? 0) + 1;
       const optimistic = { id, set_number: setNumber, weight: input.weight, reps: input.reps, rpe: input.rpe, is_pr: false };
-      // Optimistic update
       qc.setQueryData<any[]>(["set_logs", workoutLogId, programExercise.id], (old = []) => [...old, optimistic]);
       await enqueue("set_log.create", {
         id,
@@ -169,28 +169,41 @@ function ExerciseBlock({
   });
 
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-base">
-          {programExercise.exercises?.name ?? "Exercise"}{" "}
-          <span className="text-sm font-normal text-muted-foreground">
-            · {targetSets}×{programExercise.reps ?? "—"}
-            {programExercise.intensity ? ` @ ${programExercise.intensity}${programExercise.intensity_type === "percent_1rm" ? "%" : "kg"}` : ""}
-          </span>
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-2">
-        <ul className="space-y-1 text-sm">
-          {sets.map((s: any) => (
-            <li key={s.id} className="flex items-center justify-between rounded-md border p-2">
-              <span>Set {s.set_number}: {s.weight ?? "—"}kg × {s.reps ?? "—"} {s.rpe != null && `@ RPE ${s.rpe}`}</span>
-              {s.is_pr && <Badge variant="success">PR</Badge>}
-            </li>
-          ))}
-        </ul>
-        <SetRow targetWeight={programExercise.intensity ?? null} targetReps={programExercise.reps ?? null} onLog={(v) => add.mutate(v)} />
-      </CardContent>
-    </Card>
+    <section className="border-l-4 border-primary pl-4">
+      <div className="mb-3">
+        <h2 className="text-lg font-semibold">
+          {programExercise.exercises?.name ?? "Exercise"}
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          {targetSets}×{programExercise.reps ?? "—"}
+          {programExercise.intensity
+            ? ` @ ${programExercise.intensity}${programExercise.intensity_type === "percent_1rm" ? "%" : "kg"}`
+            : ""}
+        </p>
+      </div>
+
+      <ul className="mb-3 space-y-1.5">
+        {sets.map((s: any) => (
+          <li
+            key={s.id}
+            className="flex items-center justify-between rounded-md border px-3 py-2 text-sm"
+          >
+            <span>Sarja {s.set_number}: {s.weight ?? "—"}kg × {s.reps ?? "—"}{s.rpe != null && ` @ RPE ${s.rpe}`}</span>
+            {s.is_pr && (
+              <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-xs font-bold text-primary-foreground">
+                Uusi ennätys! 🏆
+              </span>
+            )}
+          </li>
+        ))}
+      </ul>
+
+      <SetRow
+        targetWeight={programExercise.intensity ?? null}
+        targetReps={programExercise.reps ?? null}
+        onLog={(v) => add.mutate(v)}
+      />
+    </section>
   );
 }
 
@@ -208,20 +221,42 @@ function SetRow({
   const [rpe, setRpe] = useState<string>("");
 
   return (
-    <div className="flex flex-wrap items-end gap-2">
-      <div>
-        <label className="text-xs text-muted-foreground">Weight (kg)</label>
-        <Input className="w-24" type="number" step="0.5" value={weight} onChange={(e) => setWeight(e.target.value)} />
+    <div className="space-y-2">
+      <div className="grid grid-cols-3 gap-2 md:flex md:flex-wrap md:items-end md:gap-2">
+        <div>
+          <label className="text-xs text-muted-foreground">Paino (kg)</label>
+          <Input
+            className="h-14 text-xl text-center"
+            type="number"
+            step="0.5"
+            inputMode="decimal"
+            value={weight}
+            onChange={(e) => setWeight(e.target.value)}
+          />
+        </div>
+        <div>
+          <label className="text-xs text-muted-foreground">Toistot</label>
+          <Input
+            className="h-14 text-xl text-center"
+            type="number"
+            inputMode="numeric"
+            value={reps}
+            onChange={(e) => setReps(e.target.value)}
+          />
+        </div>
+        <div>
+          <label className="text-xs text-muted-foreground">RPE</label>
+          <Input
+            className="h-14 text-xl text-center"
+            type="number"
+            step="0.5"
+            inputMode="decimal"
+            value={rpe}
+            onChange={(e) => setRpe(e.target.value)}
+          />
+        </div>
       </div>
-      <div>
-        <label className="text-xs text-muted-foreground">Reps</label>
-        <Input className="w-20" type="number" value={reps} onChange={(e) => setReps(e.target.value)} />
-      </div>
-      <div>
-        <label className="text-xs text-muted-foreground">RPE</label>
-        <Input className="w-20" type="number" step="0.5" value={rpe} onChange={(e) => setRpe(e.target.value)} />
-      </div>
-      <Button
+      <button
         onClick={() =>
           onLog({
             weight: weight ? Number(weight) : null,
@@ -229,9 +264,10 @@ function SetRow({
             rpe: rpe ? Number(rpe) : null,
           })
         }
+        className="flex h-14 w-full items-center justify-center rounded-lg bg-primary text-primary-foreground font-semibold text-base active:scale-[0.97] transition-transform duration-150"
       >
-        Log set
-      </Button>
+        Kirjaa sarja
+      </button>
     </div>
   );
 }

@@ -25,7 +25,7 @@ export function usePrToast(clientId: string) {
           const pr: any = payload.new;
           toast({
             variant: "success",
-            title: "New PR!",
+            title: "Uusi ennätys!",
             description: `${pr.weight}kg × ${pr.reps} (${pr.rep_range})`,
           });
           qc.invalidateQueries({ queryKey: ["prs", clientId] });

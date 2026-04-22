@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { getThreads, getMessages } from "@/lib/queries/messages";
-import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn, relativeTime, uuid } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -92,7 +91,7 @@ export function MessagesView({ userId, initialThreadId }: { userId: string; init
             );
           })}
           {(threads.data ?? []).length === 0 && (
-            <li className="p-4 text-sm text-muted-foreground">No conversations yet.</li>
+            <li className="p-4 text-sm text-muted-foreground">Ei vielä keskusteluja.</li>
           )}
         </ul>
       </aside>
@@ -102,7 +101,7 @@ export function MessagesView({ userId, initialThreadId }: { userId: string; init
         {threadId ? (
           <ChatPane threadId={threadId} userId={userId} messages={messages.data ?? []} />
         ) : (
-          <div className="flex flex-1 items-center justify-center text-muted-foreground">Select a conversation</div>
+          <div className="flex flex-1 items-center justify-center text-muted-foreground">Valitse keskustelu</div>
         )}
       </section>
     </div>
@@ -144,17 +143,22 @@ function ChatPane({
     <>
       <div className="flex-1 overflow-y-auto px-4 py-3">
         <div className="mx-auto flex max-w-2xl flex-col gap-2">
-          {messages.map((m) => (
-            <Card
-              key={m.id}
-              className={cn(
-                "max-w-[80%] whitespace-pre-wrap p-2 text-sm shadow-none",
-                m.sender_id === userId ? "ml-auto bg-primary text-primary-foreground" : "mr-auto"
-              )}
-            >
-              {m.content}
-            </Card>
-          ))}
+          {messages.map((m) => {
+            const isOwn = m.sender_id === userId;
+            return (
+              <div
+                key={m.id}
+                className={cn(
+                  "max-w-[80%] whitespace-pre-wrap px-4 py-2 text-sm",
+                  isOwn
+                    ? "ml-auto rounded-2xl rounded-br-sm bg-primary text-primary-foreground"
+                    : "mr-auto rounded-2xl rounded-bl-sm bg-secondary text-secondary-foreground"
+                )}
+              >
+                {m.content}
+              </div>
+            );
+          })}
           <div ref={endRef} />
         </div>
       </div>
@@ -166,8 +170,8 @@ function ChatPane({
         className="border-t p-3"
       >
         <div className="mx-auto flex max-w-2xl gap-2">
-          <Input value={content} onChange={(e) => setContent(e.target.value)} placeholder="Type a message…" />
-          <Button type="submit" disabled={!content.trim()}>
+          <Input value={content} onChange={(e) => setContent(e.target.value)} placeholder="Kirjoita viesti…" className="flex-1" />
+          <Button type="submit" disabled={!content.trim()} className="bg-primary text-primary-foreground hover:bg-primary/90">
             <Send className="h-4 w-4" />
           </Button>
         </div>

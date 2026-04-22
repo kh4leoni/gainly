@@ -11,9 +11,7 @@ const withSerwist = withSerwistInit({
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  experimental: {
-    optimizePackageImports: ["lucide-react", "recharts", "date-fns"],
-  },
+  outputFileTracingRoot: __dirname,
   images: {
     remotePatterns: [
       {

@@ -11,7 +11,7 @@ export default async function AcceptInvitePage({
   if (!code || !token) {
     return (
       <div className="flex min-h-screen items-center justify-center p-4">
-        <p className="text-destructive">Invalid or expired invitation link.</p>
+        <p className="text-destructive">Virheellinen tai vanhentunut kutsulinkki.</p>
       </div>
     );
   }
@@ -22,7 +22,7 @@ export default async function AcceptInvitePage({
   if (sessionError) {
     return (
       <div className="flex min-h-screen items-center justify-center p-4">
-        <p className="text-destructive">Could not verify your session: {sessionError.message}</p>
+        <p className="text-destructive">Istuntoa ei voitu vahvistaa: {sessionError.message}</p>
       </div>
     );
   }
@@ -31,7 +31,7 @@ export default async function AcceptInvitePage({
   if (rpcError) {
     return (
       <div className="flex min-h-screen items-center justify-center p-4">
-        <p className="text-destructive">Invalid or expired invitation.</p>
+        <p className="text-destructive">Virheellinen tai vanhentunut kutsu.</p>
       </div>
     );
   }

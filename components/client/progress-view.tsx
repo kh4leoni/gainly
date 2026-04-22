@@ -41,10 +41,10 @@ export function ProgressView({
     <div className="space-y-4 p-4 md:p-6">
       <Card>
         <CardHeader className="flex-row items-center justify-between space-y-0">
-          <CardTitle className="text-base">Estimated 1RM</CardTitle>
+          <CardTitle className="text-base">Arvioitu 1RM</CardTitle>
           <Select value={exerciseId} onValueChange={setExerciseId}>
             <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Pick exercise" />
+              <SelectValue placeholder="Valitse harjoitus" />
             </SelectTrigger>
             <SelectContent>
               {exercises.map((e) => (
@@ -54,12 +54,12 @@ export function ProgressView({
           </Select>
         </CardHeader>
         <CardContent>
-          {exerciseId ? <Chart data={curve.data ?? []} /> : <p className="text-muted-foreground">No data yet.</p>}
+          {exerciseId ? <Chart data={curve.data ?? []} /> : <p className="text-muted-foreground">Ei vielä tietoja.</p>}
         </CardContent>
       </Card>
 
       <Card>
-        <CardHeader><CardTitle className="text-base">PR timeline</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-base">PR-aikajana</CardTitle></CardHeader>
         <CardContent className="space-y-2">
           {(prs.data ?? []).map((pr: any) => (
             <div key={pr.id} className="flex items-center justify-between border-b pb-2 last:border-0 text-sm">
@@ -67,7 +67,7 @@ export function ProgressView({
               <span className="text-xs text-muted-foreground">{relativeTime(pr.achieved_at)}</span>
             </div>
           ))}
-          {prs.data?.length === 0 && <p className="text-sm text-muted-foreground">No PRs yet.</p>}
+          {prs.data?.length === 0 && <p className="text-sm text-muted-foreground">Ei PR:ää vielä.</p>}
         </CardContent>
       </Card>
     </div>
