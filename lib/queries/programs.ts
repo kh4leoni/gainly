@@ -35,6 +35,7 @@ export type ProgramFull = {
     id: string;
     week_number: number;
     description: string | null;
+    is_active: boolean;
     program_days: Array<{
       id: string;
       day_number: number;
@@ -52,7 +53,7 @@ export async function getProgramFull(supabase: DB, programId: string): Promise<P
     .select(`
       id, title, description, coach_id, client_id, is_template,
       program_weeks (
-        id, week_number, description,
+        id, week_number, description, is_active,
         program_days (
           id, day_number, name, description,
           program_exercises (

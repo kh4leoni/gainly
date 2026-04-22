@@ -79,13 +79,17 @@ export async function getUpcomingWorkouts(supabase: DB, clientId: string, days =
   const to = new Date(Date.now() + days * 86400_000).toISOString().slice(0, 10);
   const { data, error } = await supabase
     .from("scheduled_workouts")
-    .select("id, scheduled_date, status, program_days(name, day_number)")
+    .select("id, scheduled_date, status, program_days(name, day_number, program_weeks(is_active))")
     .eq("client_id", clientId)
     .gte("scheduled_date", from)
     .lte("scheduled_date", to)
     .order("scheduled_date");
   if (error) throw error;
-  return data ?? [];
+  return (data ?? []).filter((w) => {
+    const pw = (w.program_days as any)?.program_weeks;
+    if (!pw) return true;
+    return pw.is_active === true;
+  });
 }
 
 export type MonthWorkout = {
