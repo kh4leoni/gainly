@@ -9,6 +9,8 @@ export type TodayWorkout = {
     id: string;
     day_number: number;
     name: string | null;
+    description: string | null;
+    program_weeks: { week_number: number; description: string | null } | null;
     program_exercises: Array<{
       id: string;
       order_idx: number;
@@ -31,7 +33,8 @@ export async function getTodayWorkout(supabase: DB, clientId: string): Promise<T
     .select(`
       id, scheduled_date, status, completed_at,
       program_days (
-        id, day_number, name,
+        id, day_number, name, description,
+        program_weeks ( week_number, description ),
         program_exercises (
           id, order_idx, sets, reps, intensity, intensity_type, rest_sec, notes,
           exercise_id,
@@ -55,7 +58,8 @@ export async function getScheduledWorkout(supabase: DB, id: string): Promise<Sch
     .select(`
       id, scheduled_date, status, completed_at, client_id,
       program_days (
-        id, day_number, name,
+        id, day_number, name, description,
+        program_weeks ( week_number, description ),
         program_exercises (
           id, order_idx, sets, reps, intensity, intensity_type, rest_sec, notes,
           exercise_id,

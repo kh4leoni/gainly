@@ -23,16 +23,26 @@ export function NavLink({
     <a
       href={href}
       className={cn(
-        "flex flex-1 flex-col items-center justify-center gap-0.5 text-xs font-medium transition-colors duration-150 md:flex-row md:justify-start md:gap-3 md:px-3 md:rounded-md md:text-sm",
-        "active:scale-95 transition-transform duration-150",
+        "group relative overflow-hidden",
+        "flex flex-1 flex-col items-center justify-center gap-0.5 text-xs font-medium md:flex-row md:justify-start md:gap-3 md:px-3 md:rounded-md md:text-sm",
+        "active:scale-95 md:hover:scale-[1.04]",
         isAthlete ? "py-4" : "py-2",
         active
           ? "text-primary border-b-2 border-primary md:border-b-0 md:border-l-2 md:bg-accent md:text-accent-foreground"
           : "text-muted-foreground hover:text-foreground md:border-l-2 md:border-transparent"
       )}
+      style={{ transition: "transform 280ms cubic-bezier(0.34, 1.56, 0.64, 1), color 150ms ease" }}
     >
-      {icon}
-      <span>{label}</span>
+      {/* pink gradient — desktop only */}
+      <span
+        className="pointer-events-none absolute inset-0 hidden rounded-md opacity-0 group-hover:opacity-100 md:block"
+        style={{
+          background: "linear-gradient(135deg, rgba(236,72,153,0.13) 0%, rgba(251,207,232,0.07) 100%)",
+          transition: "opacity 280ms cubic-bezier(0.34, 1.56, 0.64, 1)",
+        }}
+      />
+      <span className="relative">{icon}</span>
+      <span className="relative">{label}</span>
     </a>
   );
 }

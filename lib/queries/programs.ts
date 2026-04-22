@@ -17,6 +17,7 @@ export type ProgramExerciseRow = {
   reps: string | null;
   intensity: number | null;
   intensity_type: string | null;
+  target_rpe: number | null;
   rest_sec: number | null;
   notes: string | null;
   exercise_id: string | null;
@@ -33,10 +34,12 @@ export type ProgramFull = {
   program_weeks: Array<{
     id: string;
     week_number: number;
+    description: string | null;
     program_days: Array<{
       id: string;
       day_number: number;
       name: string | null;
+      description: string | null;
       program_exercises: ProgramExerciseRow[];
     }>;
   }>;
@@ -49,11 +52,11 @@ export async function getProgramFull(supabase: DB, programId: string): Promise<P
     .select(`
       id, title, description, coach_id, client_id, is_template,
       program_weeks (
-        id, week_number,
+        id, week_number, description,
         program_days (
-          id, day_number, name,
+          id, day_number, name, description,
           program_exercises (
-            id, order_idx, sets, reps, intensity, intensity_type, rest_sec, notes,
+            id, order_idx, sets, reps, intensity, intensity_type, target_rpe, rest_sec, notes,
             exercise_id,
             exercises ( id, name, video_path, instructions )
           )

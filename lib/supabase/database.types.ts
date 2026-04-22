@@ -77,13 +77,13 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["programs"]["Insert"]>;
       };
       program_weeks: {
-        Row: { id: string; program_id: string; week_number: number };
-        Insert: { id?: string; program_id: string; week_number: number };
+        Row: { id: string; program_id: string; week_number: number; description: string | null };
+        Insert: { id?: string; program_id: string; week_number: number; description?: string | null };
         Update: Partial<Database["public"]["Tables"]["program_weeks"]["Insert"]>;
       };
       program_days: {
-        Row: { id: string; week_id: string; day_number: number; name: string | null };
-        Insert: { id?: string; week_id: string; day_number: number; name?: string | null };
+        Row: { id: string; week_id: string; day_number: number; name: string | null; description: string | null };
+        Insert: { id?: string; week_id: string; day_number: number; name?: string | null; description?: string | null };
         Update: Partial<Database["public"]["Tables"]["program_days"]["Insert"]>;
       };
       program_exercises: {
@@ -96,6 +96,7 @@ export interface Database {
           reps: string | null;
           intensity: number | null;
           intensity_type: IntensityType | null;
+          target_rpe: number | null;
           rest_sec: number | null;
           notes: string | null;
         };

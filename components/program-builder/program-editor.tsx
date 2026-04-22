@@ -1,16 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { getProgramFull, type ProgramFull } from "@/lib/queries/programs";
 import { getExercises } from "@/lib/queries/exercises";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, Trash2, GripVertical } from "lucide-react";
 import { AssignProgramButton } from "./assign-program-button";
+
+function isAutoDayName(name: string | null | undefined): boolean {
+  if (!name) return true;
+  return /^(päivä|day|treeni)\s*\d*$/i.test(name.trim());
+}
 
 function getNextMonday(date: Date): string {
   const d = new Date(date);
@@ -81,16 +85,89 @@ export function ProgramEditor({ programId }: { programId: string }) {
     onSuccess: invalidate,
   });
 
+  const updateWeek = useMutation({
+    mutationFn: async (patch: { id: string; description: string | null }) => {
+      const { error } = await supabase.from("program_weeks").update({ description: patch.description }).eq("id", patch.id);
+      if (error) throw error;
+    },
+    onMutate: async (patch) => {
+      await qc.cancelQueries({ queryKey: ["program", programId] });
+      const prev = qc.getQueryData<ProgramFull>(["program", programId]);
+      qc.setQueryData(["program", programId], (old: ProgramFull) => {
+        if (!old) return old;
+        const next = structuredClone(old);
+        const w = next.program_weeks?.find((w) => w.id === patch.id);
+        if (w) w.description = patch.description;
+        return next;
+      });
+      return { prev };
+    },
+    onError: (_err, _patch, ctx) => {
+      if (ctx?.prev) qc.setQueryData(["program", programId], ctx.prev);
+    },
+    onSettled: invalidate,
+  });
+
   const addDay = useMutation({
     mutationFn: async (weekId: string) => {
       const week = program?.program_weeks?.find((w) => w.id === weekId);
       const next = (week?.program_days?.length ?? 0) + 1;
       const { error } = await supabase.from("program_days").insert({
-        week_id: weekId, day_number: next, name: `Päivä ${next}`,
+        week_id: weekId, day_number: next, name: null,
       });
       if (error) throw error;
     },
     onSuccess: invalidate,
+  });
+
+  const updateDay = useMutation({
+    mutationFn: async (patch: { id: string; name?: string | null; description?: string | null }) => {
+      const { id, ...rest } = patch;
+      const { error } = await supabase.from("program_days").update(rest).eq("id", id);
+      if (error) throw error;
+    },
+    onMutate: async (patch) => {
+      await qc.cancelQueries({ queryKey: ["program", programId] });
+      const prev = qc.getQueryData<ProgramFull>(["program", programId]);
+      qc.setQueryData(["program", programId], (old: ProgramFull) => {
+        if (!old) return old;
+        const next = structuredClone(old);
+        for (const w of next.program_weeks ?? []) {
+          const d = w.program_days?.find((d) => d.id === patch.id);
+          if (d) Object.assign(d, patch);
+        }
+        return next;
+      });
+      return { prev };
+    },
+    onError: (_err, _patch, ctx) => {
+      if (ctx?.prev) qc.setQueryData(["program", programId], ctx.prev);
+    },
+    onSettled: invalidate,
+  });
+
+  const deleteDay = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("program_days").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey: ["program", programId] });
+      const prev = qc.getQueryData<ProgramFull>(["program", programId]);
+      qc.setQueryData(["program", programId], (old: ProgramFull) => {
+        if (!old) return old;
+        const next = structuredClone(old);
+        for (const w of next.program_weeks ?? []) {
+          w.program_days = w.program_days?.filter((d) => d.id !== id);
+        }
+        return next;
+      });
+      return { prev };
+    },
+    onError: (_err, _patch, ctx) => {
+      if (ctx?.prev) qc.setQueryData(["program", programId], ctx.prev);
+    },
+    onSettled: invalidate,
   });
 
   const addExercise = useMutation({
@@ -107,6 +184,7 @@ export function ProgramEditor({ programId }: { programId: string }) {
         reps: "8",
         intensity: null,
         intensity_type: null,
+        target_rpe: null,
         rest_sec: null,
         notes: null,
       });
@@ -116,12 +194,31 @@ export function ProgramEditor({ programId }: { programId: string }) {
   });
 
   const updateExercise = useMutation({
-    mutationFn: async (patch: { id: string; sets?: number | null; reps?: string | null; rest_sec?: number | null; intensity?: number | null }) => {
+    mutationFn: async (patch: { id: string; sets?: number | null; reps?: string | null; rest_sec?: number | null; intensity?: number | null; target_rpe?: number | null; notes?: string | null }) => {
       const { id, ...rest } = patch;
       const { error } = await supabase.from("program_exercises").update(rest).eq("id", id);
       if (error) throw error;
     },
-    onSuccess: invalidate,
+    onMutate: async (patch) => {
+      await qc.cancelQueries({ queryKey: ["program", programId] });
+      const prev = qc.getQueryData<ProgramFull>(["program", programId]);
+      qc.setQueryData(["program", programId], (old: ProgramFull) => {
+        if (!old) return old;
+        const next = structuredClone(old);
+        for (const w of next.program_weeks ?? []) {
+          for (const d of w.program_days ?? []) {
+            const pe = d.program_exercises?.find((e) => e.id === patch.id);
+            if (pe) Object.assign(pe, patch);
+          }
+        }
+        return next;
+      });
+      return { prev };
+    },
+    onError: (_err, _patch, ctx) => {
+      if (ctx?.prev) qc.setQueryData(["program", programId], ctx.prev);
+    },
+    onSettled: invalidate,
   });
 
   const deleteExercise = useMutation({
@@ -167,75 +264,150 @@ export function ProgramEditor({ programId }: { programId: string }) {
       <div className="mt-6 space-y-6">
         {(program.program_weeks ?? []).map((w: ProgramFull["program_weeks"][number]) => (
           <Card key={w.id}>
-            <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-base">Viikko {w.week_number}</CardTitle>
-              <Button size="sm" variant="ghost" onClick={() => addDay.mutate(w.id)}>
-                <Plus className="h-4 w-4" /> Päivä
-              </Button>
+            <CardHeader className="space-y-0 pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base">Viikko {w.week_number}</CardTitle>
+                <Button size="sm" variant="ghost" onClick={() => addDay.mutate(w.id)}>
+                  <Plus className="h-4 w-4" /> Treeni
+                </Button>
+              </div>
+              <textarea
+                key={`week-desc:${w.id}:${w.description ?? ""}`}
+                className="mt-1.5 w-full resize-none rounded border bg-background px-2 py-1.5 text-sm text-muted-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring"
+                rows={2}
+                defaultValue={w.description ?? ""}
+                placeholder="Viikon kuvaus tai ohjeet asiakkaalle (valinnainen)…"
+                onBlur={(e) => {
+                  const v = e.target.value.trim() || null;
+                  if (v !== (w.description ?? null)) updateWeek.mutate({ id: w.id, description: v });
+                }}
+              />
             </CardHeader>
             <CardContent className="space-y-4">
-              {(w.program_days ?? []).map((d) => (
+              {(w.program_days ?? []).map((d) => {
+                const displayName = isAutoDayName(d.name) ? "" : (d.name ?? "");
+                return (
                 <div key={d.id} className="rounded-md border p-3">
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm font-medium">
-                      Päivä {d.day_number}{d.name ? ` · ${d.name}` : ""}
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">Treeni {d.day_number}</span>
+                      <Input
+                        key={`${d.id}:${d.name ?? ""}`}
+                        className="h-8 w-48"
+                        defaultValue={displayName}
+                        placeholder="Nimi (esim. Vetävät)"
+                        onBlur={(e) => {
+                          const v = e.target.value.trim() || null;
+                          if (v !== (displayName || null)) updateDay.mutate({ id: d.id, name: v });
+                        }}
+                      />
                     </div>
-                    <AddExerciseControl
-                      exercises={exercises}
-                      onAdd={(exId) => addExercise.mutate({ dayId: d.id, exerciseId: exId })}
-                    />
+                    <div className="flex items-center gap-2">
+                      <AddExerciseControl
+                        exercises={exercises}
+                        onAdd={(exId) => addExercise.mutate({ dayId: d.id, exerciseId: exId })}
+                      />
+                      <Button size="icon" variant="ghost" onClick={() => deleteDay.mutate(d.id)}>
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
                   </div>
+
+                  <textarea
+                    key={`day-desc:${d.id}:${d.description ?? ""}`}
+                    className="mt-2 w-full resize-none rounded border bg-background px-2 py-1.5 text-sm text-muted-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring"
+                    rows={2}
+                    defaultValue={d.description ?? ""}
+                    placeholder="Treenin kuvaus tai ohjeet asiakkaalle (valinnainen)…"
+                    onBlur={(e) => {
+                      const v = e.target.value.trim() || null;
+                      if (v !== (d.description ?? null)) updateDay.mutate({ id: d.id, description: v });
+                    }}
+                  />
 
                   <ul className="mt-3 space-y-2">
                     {(d.program_exercises ?? []).map((pe) => (
-                      <li key={pe.id} className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/30 p-2">
-                        <GripVertical className="h-4 w-4 text-muted-foreground" />
-                        <span className="flex-1 text-sm font-medium">
-                          {(pe.exercises as any)?.name ?? "—"}
-                        </span>
-                        <input
-                          className="h-8 w-14 rounded border px-2 text-sm"
-                          defaultValue={pe.sets ?? ""}
-                          placeholder="sarjat"
-                          type="number"
-                          min={0}
-                          onBlur={(e) => {
-                            const v = e.target.value ? Number(e.target.value) : null;
-                            if (v !== pe.sets) updateExercise.mutate({ id: pe.id, sets: v });
-                          }}
-                        />
-                        <input
-                          className="h-8 w-20 rounded border px-2 text-sm"
-                          defaultValue={pe.reps ?? ""}
-                          placeholder="toistot"
-                          onBlur={(e) => {
-                            const v = e.target.value || null;
-                            if (v !== pe.reps) updateExercise.mutate({ id: pe.id, reps: v });
-                          }}
-                        />
-                        <input
-                          className="h-8 w-20 rounded border px-2 text-sm"
-                          defaultValue={pe.intensity ?? ""}
-                          placeholder="kg/%"
-                          type="number"
-                          onBlur={(e) => {
-                            const v = e.target.value ? Number(e.target.value) : null;
-                            if (v !== pe.intensity) updateExercise.mutate({ id: pe.id, intensity: v });
-                          }}
-                        />
-                        <input
-                          className="h-8 w-20 rounded border px-2 text-sm"
-                          defaultValue={pe.rest_sec ?? ""}
-                          placeholder="rest s"
-                          type="number"
-                          onBlur={(e) => {
-                            const v = e.target.value ? Number(e.target.value) : null;
-                            if (v !== pe.rest_sec) updateExercise.mutate({ id: pe.id, rest_sec: v });
-                          }}
-                        />
-                        <Button size="icon" variant="ghost" onClick={() => deleteExercise.mutate(pe.id)}>
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
+                      <li key={pe.id} className="rounded-md border bg-muted/30 p-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <GripVertical className="h-4 w-4 text-muted-foreground" />
+                          <span className="w-32 shrink-0 text-sm font-medium">
+                            {(pe.exercises as any)?.name ?? "—"}
+                          </span>
+                          <input
+                            key={`pe-notes:${pe.id}:${pe.notes ?? ""}`}
+                            className="h-8 min-w-0 flex-1 rounded border bg-background px-2 text-sm text-muted-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring"
+                            defaultValue={pe.notes ?? ""}
+                            placeholder="Ohjeet…"
+                            onBlur={(e) => {
+                              const v = e.target.value.trim() || null;
+                              if (v !== pe.notes) updateExercise.mutate({ id: pe.id, notes: v });
+                            }}
+                          />
+                          <input
+                            className="h-8 w-14 rounded border px-2 text-sm"
+                            defaultValue={pe.sets ?? ""}
+                            placeholder="sarjat"
+                            type="number"
+                            min={0}
+                            onBlur={(e) => {
+                              const v = e.target.value ? Number(e.target.value) : null;
+                              if (v !== pe.sets) updateExercise.mutate({ id: pe.id, sets: v });
+                            }}
+                          />
+                          <input
+                            className="h-8 w-20 rounded border px-2 text-sm"
+                            defaultValue={pe.reps ?? ""}
+                            placeholder="toistot"
+                            onBlur={(e) => {
+                              const v = e.target.value || null;
+                              if (v !== pe.reps) updateExercise.mutate({ id: pe.id, reps: v });
+                            }}
+                          />
+                          <input
+                            className="h-8 w-20 rounded border px-2 text-sm"
+                            defaultValue={pe.intensity ?? ""}
+                            placeholder="kuorma"
+                            type="number"
+                            onBlur={(e) => {
+                              const v = e.target.value ? Number(e.target.value) : null;
+                              if (v !== pe.intensity) updateExercise.mutate({ id: pe.id, intensity: v });
+                            }}
+                          />
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              className="flex h-8 w-8 items-center justify-center rounded border text-sm font-medium hover:bg-muted"
+                              onClick={() => {
+                                const cur = pe.target_rpe;
+                                if (cur === null) return;
+                                if (cur === 0) updateExercise.mutate({ id: pe.id, target_rpe: null });
+                                else if (cur <= 6) updateExercise.mutate({ id: pe.id, target_rpe: 0 });
+                                else updateExercise.mutate({ id: pe.id, target_rpe: cur - 0.5 });
+                              }}
+                            >
+                              −
+                            </button>
+                            <span className="w-10 text-center text-sm">
+                              {pe.target_rpe === null ? "—" : pe.target_rpe === 0 ? "< 6" : pe.target_rpe}
+                            </span>
+                            <button
+                              type="button"
+                              className="flex h-8 w-8 items-center justify-center rounded border text-sm font-medium hover:bg-muted"
+                              onClick={() => {
+                                const cur = pe.target_rpe;
+                                if (cur === null) updateExercise.mutate({ id: pe.id, target_rpe: 6 });
+                                else if (cur === 0) updateExercise.mutate({ id: pe.id, target_rpe: 6 });
+                                else if (cur >= 10) return;
+                                else updateExercise.mutate({ id: pe.id, target_rpe: cur + 0.5 });
+                              }}
+                            >
+                              +
+                            </button>
+                          </div>
+                          <Button size="icon" variant="ghost" onClick={() => deleteExercise.mutate(pe.id)}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
                       </li>
                     ))}
                     {(d.program_exercises ?? []).length === 0 && (
@@ -243,7 +415,8 @@ export function ProgramEditor({ programId }: { programId: string }) {
                     )}
                   </ul>
                 </div>
-              ))}
+                );
+              })}
               {(w.program_days ?? []).length === 0 && (
                 <p className="text-sm text-muted-foreground">Ei vielä päiviä.</p>
               )}
@@ -262,16 +435,50 @@ function AddExerciseControl({
   exercises: Array<{ id: string; name: string }>;
   onAdd: (id: string) => void;
 }) {
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  const filtered = query.trim()
+    ? exercises.filter((e) => e.name.toLowerCase().includes(query.toLowerCase()))
+    : exercises;
+
+  useEffect(() => {
+    function onMouseDown(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onMouseDown);
+    return () => document.removeEventListener("mousedown", onMouseDown);
+  }, []);
+
+  function pick(id: string) {
+    onAdd(id);
+    setQuery("");
+    setOpen(false);
+  }
+
   return (
-    <Select onValueChange={(v) => onAdd(v)}>
-      <SelectTrigger className="h-8 w-[220px]">
-        <SelectValue placeholder="Lisää harjoitus…" />
-      </SelectTrigger>
-      <SelectContent>
-        {exercises.map((e) => (
-          <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <div ref={ref} className="relative">
+      <input
+        className="h-8 w-[200px] rounded border bg-background px-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+        placeholder="Lisää liike…"
+        value={query}
+        onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
+        onFocus={() => setOpen(true)}
+      />
+      {open && filtered.length > 0 && (
+        <ul className="absolute left-0 top-full z-50 mt-1 max-h-56 w-56 overflow-auto rounded-md border bg-background shadow-lg">
+          {filtered.map((e) => (
+            <li
+              key={e.id}
+              className="cursor-pointer px-3 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
+              onMouseDown={(ev) => { ev.preventDefault(); pick(e.id); }}
+            >
+              {e.name}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
