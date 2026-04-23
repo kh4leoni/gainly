@@ -28,8 +28,9 @@ export function AppShell({
       {/* Sidebar (md+) */}
       <aside className="hidden md:flex md:w-60 md:flex-col md:border-r md:bg-muted/20">
         <div className="flex h-14 items-center border-b px-4">
-          <Link href="/" prefetch className="flex items-baseline gap-1.5 font-semibold text-base">
-            Gainly x <span style={{ fontFamily: "var(--font-dancing)", fontSize: "1.5rem", fontWeight: 400 }}>Fanni Savela</span>
+          <Link href="/" prefetch className="flex items-baseline gap-1 font-semibold text-base" style={{ lineHeight: 1 }}>
+            <span style={{ fontWeight: 700, color: "var(--foreground)" }}>Gainly ×&nbsp;</span>
+            <span style={{ fontFamily: "var(--font-dancing)", fontSize: "1.4rem", fontWeight: 400, color: "#FF1D8C" }}>Fanni Savela</span>
           </Link>
         </div>
         <nav className="flex flex-col gap-1 p-2">

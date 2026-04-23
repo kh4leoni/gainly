@@ -2,6 +2,29 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Client-side app theme ─────────────────────────────────────────────── */
+.client-app {
+  --c-pink: #FF1D8C;
+  --c-pink-dim: rgba(255,29,140,0.12);
+  --c-pink-glow: rgba(255,29,140,0.4);
+  --c-green: #3ECF8E;
+  --c-bg: #070708;
+  --c-surface: #0f0f12;
+  --c-surface2: #161619;
+  --c-surface3: #1e1e23;
+  --c-border: rgba(255,255,255,0.07);
+  --c-border-hover: rgba(255,255,255,0.13);
+  --c-text: #f0eef5;
+  --c-text-muted: rgba(240,238,245,0.48);
+  --c-text-subtle: rgba(240,238,245,0.24);
+  color: var(--c-text);
+  background: var(--c-bg);
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+}
+@keyframes c-fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+@keyframes c-pulse  { 0%,100%{opacity:1} 50%{opacity:0.5} }
+.c-ani { animation: c-fadeUp 0.28s ease forwards; }
+
 @layer base {
   :root {
     --background: 0 0% 100%;

@@ -3,110 +3,177 @@
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
-import { getTodayWorkout, getRecentPRs, getUpcomingWorkouts } from "@/lib/queries/workouts";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { relativeTime } from "@/lib/utils";
+import { getTodayWorkout, getClientStreak, getClientCompliance } from "@/lib/queries/workouts";
 import { usePrToast } from "@/hooks/use-pr-toast";
+
+const FI_DAYS = ["sunnuntai","maanantai","tiistai","keskiviikko","torstai","perjantai","lauantai"];
 
 export function ClientDashboardView({ clientId }: { clientId: string }) {
   const supabase = createClient();
-
   usePrToast(clientId);
 
   const today = useQuery({
     queryKey: ["today", clientId],
     queryFn: () => getTodayWorkout(supabase, clientId),
     enabled: !!clientId,
+    staleTime: 60_000,
   });
-  const prs = useQuery({
-    queryKey: ["prs", clientId],
-    queryFn: () => getRecentPRs(supabase, clientId),
+  const streak = useQuery({
+    queryKey: ["streak", clientId],
+    queryFn: () => getClientStreak(supabase, clientId),
     enabled: !!clientId,
+    staleTime: 60_000,
   });
-  const upcoming = useQuery({
-    queryKey: ["upcoming", clientId],
-    queryFn: () => getUpcomingWorkouts(supabase, clientId),
+  const compliance = useQuery({
+    queryKey: ["compliance", clientId],
+    queryFn: () => getClientCompliance(supabase, clientId),
     enabled: !!clientId,
+    staleTime: 60_000,
   });
+
+  const now = new Date();
+  const dateLabel = `${FI_DAYS[now.getDay()] ?? ""} ${now.getDate()}.${now.getMonth() + 1}.${now.getFullYear()}`;
+
+  const workout = today.data;
+  const exercises = workout?.program_days?.program_exercises ?? [];
+  const exNames = exercises
+    .slice()
+    .sort((a, b) => a.order_idx - b.order_idx)
+    .map((e) => e.exercises?.name)
+    .filter(Boolean)
+    .slice(0, 4);
 
   return (
-    <div className="space-y-4 p-4 md:p-6">
-      {/* Hero today card */}
-      <div className="relative overflow-hidden rounded-xl border bg-gradient-to-br from-primary/10 to-transparent p-5 min-h-[160px] flex flex-col justify-between">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-primary">Tänään</p>
-          {today.data ? (
-            <h2 className="mt-1 text-2xl font-bold">
-              {today.data.program_days?.name ?? "Treeni"}
-            </h2>
-          ) : (
-            <p className="mt-2 text-muted-foreground text-sm">Ei treenejä tänään. Nauti levosta.</p>
-          )}
+    <div style={{ flex: 1, overflowY: "auto", padding: "24px 20px 20px" }}>
+      {/* Header */}
+      <div style={{ marginBottom: 24 }}>
+        <div style={{ fontSize: 12, color: "var(--c-text-muted)", marginBottom: 4, textTransform: "capitalize" }}>
+          {dateLabel}
         </div>
-        {today.data && (
-          <div className="mt-4 flex items-center gap-3">
-            <Badge variant={today.data.status === "completed" ? "success" : "secondary"}>
-              {today.data.status === "completed" ? "Valmis" : "Odottaa"}
-            </Badge>
-            <Link
-              href={`/client/workout/${today.data.id}`}
-              prefetch
-              className="flex h-14 flex-1 items-center justify-center rounded-lg bg-primary text-primary-foreground font-semibold text-lg"
-            >
-              {today.data.status === "completed" ? "Tarkastele" : "Aloita treeni"}
-            </Link>
+        <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: "-0.8px", lineHeight: 1.1 }}>
+          Hei! 👋
+        </div>
+      </div>
+
+      {/* Streak + compliance */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 20 }}>
+        <div style={{ background: "var(--c-surface)", border: "1px solid var(--c-border)", borderRadius: 14, padding: "14px 16px", display: "flex", gap: 10, alignItems: "center" }}>
+          <span style={{ fontSize: 20 }}>🔥</span>
+          <div>
+            <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.5px", color: "#F5A623" }}>
+              {streak.data ?? 0}
+            </div>
+            <div style={{ fontSize: 11, color: "var(--c-text-muted)" }}>päivän putki</div>
           </div>
-        )}
+        </div>
+        <div style={{ background: "var(--c-surface)", border: "1px solid var(--c-border)", borderRadius: 14, padding: "14px 16px", display: "flex", gap: 10, alignItems: "center" }}>
+          <span style={{ fontSize: 20 }}>⚡</span>
+          <div>
+            <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.5px", color: "var(--c-pink)" }}>
+              {compliance.data ?? 0}%
+            </div>
+            <div style={{ fontSize: 11, color: "var(--c-text-muted)" }}>noudatus</div>
+          </div>
+        </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Viimeisimmät ennätykset</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {(prs.data ?? []).map((pr: any) => (
-                <div key={pr.id} className="flex items-center justify-between border-b pb-2 last:border-0">
-                  <span className="text-sm">
-                    {pr.exercises?.name} — {pr.weight}kg × {pr.reps}{" "}
-                    <Badge variant="outline" className="ml-1">{pr.rep_range}</Badge>
-                  </span>
-                  <span className="text-xs text-muted-foreground">{relativeTime(pr.achieved_at)}</span>
-                </div>
-              ))}
-              {prs.data?.length === 0 && (
-                <p className="text-sm text-muted-foreground">Ei vielä. Mene asettamaan.</p>
-              )}
+      {/* Today's workout card */}
+      {workout ? (
+        <div style={{
+          background: "linear-gradient(135deg,rgba(255,29,140,0.15) 0%,rgba(155,77,202,0.10) 100%)",
+          border: "1px solid rgba(255,29,140,0.25)",
+          borderRadius: 18,
+          padding: 20,
+          marginBottom: 20,
+        }}>
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 10 }}>
+            <div>
+              <div style={{ fontSize: 11, color: "var(--c-pink)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 4 }}>
+                Tämän päivän treeni
+              </div>
+              <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-0.5px" }}>
+                {workout.program_days?.name ?? "Treeni"}
+              </div>
             </div>
-          </CardContent>
-        </Card>
+            {workout.status !== "completed" && (
+              <div style={{ background: "var(--c-pink)", borderRadius: 10, padding: "6px 12px", fontSize: 12, fontWeight: 700, color: "#fff", boxShadow: "0 0 16px var(--c-pink-glow)", whiteSpace: "nowrap" }}>
+                Nyt!
+              </div>
+            )}
+            {workout.status === "completed" && (
+              <div style={{ background: "rgba(62,207,142,0.15)", borderRadius: 10, padding: "6px 12px", fontSize: 12, fontWeight: 700, color: "#3ECF8E", border: "1px solid rgba(62,207,142,0.3)", whiteSpace: "nowrap" }}>
+                ✓ Tehty
+              </div>
+            )}
+          </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Tulevat</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {(upcoming.data ?? []).slice(0, 7).map((w: any) => (
-                <div key={w.id} className="flex items-center justify-between border-b pb-2 last:border-0">
-                  <span className="text-sm">
-                    {new Date(w.scheduled_date).toLocaleDateString("fi-FI")} —{" "}
-                    {w.program_days?.name?.replace(/^Day(\d+)/, "Päivä $1") ?? "Treeni"}
-                  </span>
-                  <Badge variant={w.status === "completed" ? "success" : "secondary"}>
-                    {w.status === "completed" ? "Valmis" : "Odottaa"}
-                  </Badge>
-                </div>
-              ))}
-              {upcoming.data?.length === 0 && (
-                <p className="text-sm text-muted-foreground">Ei suunnitelmia.</p>
-              )}
+          {workout.program_days?.description && (
+            <div style={{ fontSize: 13, color: "var(--c-text-muted)", fontStyle: "italic", lineHeight: 1.5, marginBottom: 14 }}>
+              {workout.program_days.description}
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          )}
+
+          {exNames.length > 0 && (
+            <div style={{ fontSize: 12, color: "var(--c-text-muted)", marginBottom: 16 }}>
+              {exNames.join(" · ")}{exercises.length > 4 ? ` +${exercises.length - 4}` : ""}
+            </div>
+          )}
+
+          <Link
+            href={`/client/workout/${workout.id}`}
+            style={{
+              display: "block",
+              width: "100%",
+              padding: "13px",
+              background: workout.status === "completed" ? "rgba(62,207,142,0.15)" : "var(--c-pink)",
+              border: workout.status === "completed" ? "1px solid rgba(62,207,142,0.3)" : "none",
+              borderRadius: 12,
+              color: workout.status === "completed" ? "#3ECF8E" : "#fff",
+              fontSize: 14,
+              fontWeight: 700,
+              textAlign: "center",
+              textDecoration: "none",
+              boxShadow: workout.status !== "completed" ? "0 0 20px var(--c-pink-glow)" : "none",
+              letterSpacing: "-0.2px",
+            }}
+          >
+            {workout.status === "completed" ? "Tarkastele treeeniä" : "🔥 Aloita treeni"}
+          </Link>
+        </div>
+      ) : (
+        <div style={{
+          background: "var(--c-surface)",
+          border: "1px solid var(--c-border)",
+          borderRadius: 18,
+          padding: 24,
+          marginBottom: 20,
+          textAlign: "center",
+        }}>
+          <div style={{ fontSize: 32, marginBottom: 8 }}>😴</div>
+          <div style={{ fontWeight: 700, fontSize: 15 }}>Lepopäivä</div>
+          <div style={{ fontSize: 13, color: "var(--c-text-muted)", marginTop: 4 }}>
+            Ei treenejä tänään. Nauti levosta!
+          </div>
+        </div>
+      )}
+
+      {/* Week description */}
+      {workout?.program_days?.program_weeks?.description && (
+        <div style={{
+          background: "var(--c-surface)",
+          border: "1px solid var(--c-border)",
+          borderRadius: 14,
+          padding: "14px 16px",
+          marginBottom: 16,
+        }}>
+          <div style={{ fontSize: 11, color: "var(--c-text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: 6 }}>
+            Viikkojen kuvaus
+          </div>
+          <div style={{ fontSize: 13, color: "var(--c-text-muted)", lineHeight: 1.5 }}>
+            {workout.program_days.program_weeks.description}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
