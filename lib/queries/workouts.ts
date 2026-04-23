@@ -18,6 +18,9 @@ export type TodayWorkout = {
       reps: string | null;
       intensity: number | null;
       intensity_type: string | null;
+      target_rpe: number | null;
+      target_rpes: (number | null)[] | null;
+      set_configs: Array<{ reps: string | null; weight: number | null; rpe: number | null }> | null;
       rest_sec: number | null;
       notes: string | null;
       exercise_id: string | null;
@@ -36,7 +39,7 @@ export async function getTodayWorkout(supabase: DB, clientId: string): Promise<T
         id, day_number, name, description,
         program_weeks ( week_number, description ),
         program_exercises (
-          id, order_idx, sets, reps, intensity, intensity_type, rest_sec, notes,
+          id, order_idx, sets, reps, intensity, intensity_type, target_rpe, target_rpes, set_configs, rest_sec, notes,
           exercise_id,
           exercises ( id, name, video_path, instructions )
         )
@@ -61,7 +64,7 @@ export async function getScheduledWorkout(supabase: DB, id: string): Promise<Sch
         id, day_number, name, description,
         program_weeks ( week_number, description ),
         program_exercises (
-          id, order_idx, sets, reps, intensity, intensity_type, rest_sec, notes,
+          id, order_idx, sets, reps, intensity, intensity_type, target_rpe, target_rpes, set_configs, rest_sec, notes,
           exercise_id,
           exercises ( id, name, video_path, instructions )
         )
@@ -131,6 +134,52 @@ export async function getRecentPRs(supabase: DB, clientId: string, limit = 5) {
     .limit(limit);
   if (error) throw error;
   return data ?? [];
+}
+
+export type PastWorkout = {
+  id: string;
+  scheduled_date: string;
+  completed_at: string | null;
+  program_days: {
+    name: string | null;
+    program_exercises: Array<{ order_idx: number; exercises: { name: string } | null }>;
+  } | null;
+  workout_logs: Array<{
+    notes: string | null;
+    set_logs: Array<{
+      set_number: number | null;
+      weight: number | null;
+      reps: number | null;
+      rpe: number | null;
+      is_pr: boolean;
+      exercises: { name: string } | null;
+    }>;
+  }>;
+};
+
+export async function getPastWorkouts(supabase: DB, clientId: string, limit = 60): Promise<PastWorkout[]> {
+  const { data, error } = await supabase
+    .from("scheduled_workouts")
+    .select(`
+      id, scheduled_date, completed_at,
+      program_days (
+        name,
+        program_exercises ( order_idx, exercises ( name ) )
+      ),
+      workout_logs (
+        notes,
+        set_logs (
+          set_number, weight, reps, rpe, is_pr,
+          exercises ( name )
+        )
+      )
+    `)
+    .eq("client_id", clientId)
+    .eq("status", "completed")
+    .order("scheduled_date", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data ?? []) as unknown as PastWorkout[];
 }
 
 export type ScheduleDay = {

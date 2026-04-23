@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { avatarColor } from "@/lib/utils";
 import { OhjelmoiButton } from "@/components/program-builder/ohjelmoi-button";
 import { ClientTrainingView } from "@/components/client-detail/client-training-view";
-import { PersonalRecordsSection, EstimatedBestSection } from "@/components/client-detail/pr-sections";
+import { RecordsSection } from "@/components/client-detail/pr-sections";
 import { MessageSquare, ChevronLeft, Check, Zap, LayoutGrid } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -50,9 +50,10 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
         id, scheduled_date, status,
         program_days (name, day_number),
         workout_logs (
-          logged_at,
+          id, logged_at, notes,
+          workout_exercise_notes ( notes, program_exercises ( exercises ( name ) ) ),
           set_logs (
-            weight, reps,
+            set_number, weight, reps, rpe, is_pr,
             exercises (name)
           )
         )
@@ -180,10 +181,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
           weekDescription={weekDescription}
         />
 
-        <div className="grid gap-4 md:grid-cols-2">
-          <PersonalRecordsSection clientId={id} exercises={exercises} />
-          <EstimatedBestSection clientId={id} exercises={exercises} />
-        </div>
+        <RecordsSection clientId={id} exercises={exercises} />
       </div>
     </div>
   );

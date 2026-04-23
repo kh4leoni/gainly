@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   description: "Digital coaching platform for strength training",
   manifest: "/manifest.json",
   applicationName: "Gainly",
-  appleWebApp: { capable: true, statusBarStyle: "default", title: "Gainly" },
+  appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "Gainly" },
   icons: {
     icon: [{ url: "/icons/icon-192.png", sizes: "192x192" }],
     apple: [{ url: "/icons/icon-192.png" }],

@@ -13,7 +13,8 @@ import { AssignProgramButton } from "./assign-program-button";
 type Block = ProgramFull["program_blocks"][number];
 type Week = Block["program_weeks"][number];
 type Day = Week["program_days"][number];
-type ExPatch = { id: string; sets?: number | null; reps?: string | null; intensity?: number | null; target_rpe?: number | null; notes?: string | null };
+type SetConfig = { reps: string | null; weight: number | null; rpe: number | null };
+type ExPatch = { id: string; sets?: number | null; reps?: string | null; intensity?: number | null; target_rpe?: number | null; target_rpes?: (number | null)[] | null; set_configs?: SetConfig[] | null; notes?: string | null };
 type ExList = Array<{ id: string; name: string }>;
 
 function isAutoDayName(name: string | null | undefined): boolean {
@@ -41,12 +42,13 @@ function RpeStepper({ value, onChange }: { value: number | null; onChange: (v: n
     if (value === null) onChange(6);
     else if (value < 10) onChange(+(value + 0.5).toFixed(1));
   }
+  const label = value === null ? "—" : value < 6 ? "<6" : String(value);
   return (
-    <div className="flex items-center gap-1.5">
+    <div className="flex items-center gap-1">
       <button type="button" onClick={dec}
         className="flex h-[22px] w-[22px] items-center justify-center rounded-full border border-border bg-background text-sm text-muted-foreground transition-colors hover:bg-muted">−</button>
-      <span className={cn("w-8 text-center text-[12.5px] font-medium", value !== null ? "text-foreground" : "text-muted-foreground")}>
-        {value === null ? "—" : value}
+      <span className={cn("w-8 text-center text-[12.5px] font-medium tabular-nums", value !== null ? "text-foreground" : "text-muted-foreground")}>
+        {label}
       </span>
       <button type="button" onClick={inc}
         className="flex h-[22px] w-[22px] items-center justify-center rounded-full border border-border bg-background text-sm text-muted-foreground transition-colors hover:bg-muted">+</button>
@@ -54,11 +56,58 @@ function RpeStepper({ value, onChange }: { value: number | null; onChange: (v: n
   );
 }
 
-function ExField({ label, children }: { label: string; children: React.ReactNode }) {
+// ── Per-set row inside ExerciseRow ────────────────────────────────────────────
+
+function SetRow({ idx, cfg, onChange, onDelete, canDelete }: {
+  idx: number; cfg: SetConfig;
+  onChange: (c: SetConfig) => void;
+  onDelete: () => void; canDelete: boolean;
+}) {
+  const repsNum = cfg.reps ? parseInt(cfg.reps, 10) : NaN;
+  const showLabels = idx === 0;
+  const inp = "h-[26px] w-10 rounded border border-border bg-muted/30 text-center text-[13px] font-medium outline-none focus:border-primary";
+  const circleBtn = "flex h-[20px] w-[20px] items-center justify-center rounded-full border border-border bg-background text-xs text-muted-foreground hover:bg-muted";
+
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-1">
-      <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{label}</span>
-      {children}
+    <div className="grid grid-cols-[20px_auto_auto_auto_20px] items-end gap-3 px-3 py-1 pl-9">
+      <span className="pb-[5px] text-[11px] font-bold text-muted-foreground/40">{idx + 1}</span>
+
+      {/* Toistot */}
+      <div className="flex flex-col gap-1">
+        {showLabels && <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Toistot</span>}
+        <div className="flex items-center gap-1">
+          <button type="button" onClick={() => { if (!isNaN(repsNum) && repsNum > 1) onChange({ ...cfg, reps: String(repsNum - 1) }); }} className={circleBtn}>−</button>
+          <input type="number" inputMode="numeric" placeholder="—"
+            defaultValue={cfg.reps ?? ""} key={`reps-${idx}-${cfg.reps ?? ""}`}
+            className={inp}
+            onBlur={(e) => { const v = e.target.value.trim() || null; if (v !== cfg.reps) onChange({ ...cfg, reps: v }); }} />
+          <button type="button" onClick={() => onChange({ ...cfg, reps: String(isNaN(repsNum) ? 1 : repsNum + 1) })} className={circleBtn}>+</button>
+        </div>
+      </div>
+
+      {/* Kuorma */}
+      <div className="flex flex-col gap-1">
+        {showLabels && <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Kuorma</span>}
+        <input type="number" inputMode="decimal" placeholder="—"
+          defaultValue={cfg.weight ?? ""} key={`w-${idx}-${cfg.weight ?? ""}`}
+          className="h-[26px] w-16 rounded border border-border bg-muted/30 px-1.5 text-center text-[13px] font-medium outline-none focus:border-primary"
+          onBlur={(e) => { const v = e.target.value ? Number(e.target.value) : null; if (v !== cfg.weight) onChange({ ...cfg, weight: v }); }} />
+      </div>
+
+      {/* RPE */}
+      <div className="flex flex-col gap-1">
+        {showLabels && <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">RPE</span>}
+        <RpeStepper value={cfg.rpe} onChange={(v) => onChange({ ...cfg, rpe: v })} />
+      </div>
+
+      {/* Delete set */}
+      <div className="pb-[3px]">
+        <button type="button" onClick={onDelete} disabled={!canDelete}
+          className={cn("flex items-center justify-center rounded p-0.5 transition-colors",
+            canDelete ? "text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10" : "invisible")}>
+          <Trash2 className="h-3 w-3" />
+        </button>
+      </div>
     </div>
   );
 }
@@ -88,40 +137,6 @@ function DescriptionField({ id, value, onSave, placeholder }: {
   );
 }
 
-// ── Stepper fields ────────────────────────────────────────────────────────────
-
-const stepperBtn = "flex h-[22px] w-[22px] items-center justify-center rounded-full border border-border bg-background text-sm text-muted-foreground transition-colors hover:bg-muted";
-const stepperInput = "h-[30px] w-9 rounded border border-border bg-muted/30 text-center text-sm outline-none focus:border-primary";
-
-function SetsField({ id, value, onUpdate }: { id: string; value: number | null; onUpdate: (p: ExPatch) => void }) {
-  const dec = () => onUpdate({ id, sets: value !== null && value > 1 ? value - 1 : null });
-  const inc = () => onUpdate({ id, sets: (value ?? 0) + 1 });
-  return (
-    <div className="flex items-center gap-1.5">
-      <button type="button" onClick={dec} className={stepperBtn}>−</button>
-      <input key={`s:${id}:${value ?? ""}`} type="number" defaultValue={value ?? ""} placeholder="—" min={1}
-        className={stepperInput}
-        onBlur={(e) => { const v = e.target.value ? Number(e.target.value) : null; if (v !== value) onUpdate({ id, sets: v }); }} />
-      <button type="button" onClick={inc} className={stepperBtn}>+</button>
-    </div>
-  );
-}
-
-function RepsField({ id, value, onUpdate }: { id: string; value: string | null; onUpdate: (p: ExPatch) => void }) {
-  const num = value ? parseInt(value, 10) : NaN;
-  const dec = () => { if (!isNaN(num) && num > 1) onUpdate({ id, reps: String(num - 1) }); };
-  const inc = () => onUpdate({ id, reps: String(isNaN(num) ? 1 : num + 1) });
-  return (
-    <div className="flex items-center gap-1.5">
-      <button type="button" onClick={dec} className={stepperBtn}>−</button>
-      <input key={`r:${id}:${value ?? ""}`} defaultValue={value ?? ""} placeholder="—"
-        className={stepperInput}
-        onBlur={(e) => { const v = e.target.value || null; if (v !== value) onUpdate({ id, reps: v }); }} />
-      <button type="button" onClick={inc} className={stepperBtn}>+</button>
-    </div>
-  );
-}
-
 // ── ExerciseRow ───────────────────────────────────────────────────────────────
 
 function ExerciseRow({ pe, exercises, onUpdate, onAssign, onDelete }: {
@@ -131,47 +146,86 @@ function ExerciseRow({ pe, exercises, onUpdate, onAssign, onDelete }: {
   const [showNotes, setShowNotes] = useState(!!pe.notes);
   const exerciseName = (pe.exercises as { name: string } | null)?.name ?? null;
 
+  // Initialise set_configs: prefer DB value, fall back to deriving from legacy fields
+  const [configs, setConfigs] = useState<SetConfig[]>(() => {
+    if (pe.set_configs && pe.set_configs.length > 0) return pe.set_configs;
+    const count = pe.sets ?? 1;
+    const rpes = pe.target_rpes ?? [];
+    return Array.from({ length: count }, (_, i) => ({
+      reps: pe.reps ?? null,
+      weight: pe.intensity ?? null,
+      rpe: rpes[i] ?? pe.target_rpe ?? null,
+    }));
+  });
+
+  function saveConfigs(next: SetConfig[]) {
+    setConfigs(next);
+    onUpdate({ id: pe.id, set_configs: next, sets: next.length });
+  }
+
+  function updateSet(i: number, c: SetConfig) {
+    saveConfigs(configs.map((r, idx) => idx === i ? c : r));
+  }
+
+  function addSet() {
+    const last = configs[configs.length - 1] ?? { reps: null, weight: null, rpe: null };
+    saveConfigs([...configs, { ...last }]);
+  }
+
+  function removeSet(i: number) {
+    if (configs.length <= 1) return;
+    saveConfigs(configs.filter((_, idx) => idx !== i));
+  }
+
   return (
-    <div className="rounded-[6px] border border-primary/20 bg-gradient-to-r from-primary/4 to-card transition-colors hover:border-primary/30 hover:from-primary/6">
-      <div className="grid grid-cols-[18px_1fr_88px_88px_60px_80px_28px] items-center gap-2 px-3 pt-4 pb-2.5">
-        <span className="cursor-grab text-muted-foreground opacity-40"><GripVertical className="h-3.5 w-3.5" /></span>
-        {exerciseName
-          ? <span className="overflow-hidden text-ellipsis whitespace-nowrap text-[13.5px] font-medium">{exerciseName}</span>
-          : <ExerciseNamePicker exercises={exercises} onPick={onAssign} />}
-        <ExField label="Sarjat">
-          <SetsField id={pe.id} value={pe.sets} onUpdate={onUpdate} />
-        </ExField>
-        <ExField label="Toistot">
-          <RepsField id={pe.id} value={pe.reps} onUpdate={onUpdate} />
-        </ExField>
-        <ExField label="Kuorma">
-          <input type="number" defaultValue={pe.intensity ?? ""} placeholder="—"
-            className="h-[30px] w-full rounded border border-border bg-muted/30 px-1.5 text-center text-sm outline-none focus:border-primary"
-            onBlur={(e) => { const v = e.target.value ? Number(e.target.value) : null; if (v !== pe.intensity) onUpdate({ id: pe.id, intensity: v }); }} />
-        </ExField>
-        <ExField label="RPE">
-          <RpeStepper value={pe.target_rpe} onChange={(v) => onUpdate({ id: pe.id, target_rpe: v })} />
-        </ExField>
+    <div className="rounded-[6px] border border-primary/20 bg-gradient-to-r from-primary/4 to-card">
+      {/* Header: grip + name + delete */}
+      <div className="flex items-center gap-2 px-3 pt-3 pb-1">
+        <span className="cursor-grab text-muted-foreground opacity-40 shrink-0"><GripVertical className="h-3.5 w-3.5" /></span>
+        <div className="flex-1 min-w-0">
+          {exerciseName
+            ? <span className="block overflow-hidden text-ellipsis whitespace-nowrap text-[13.5px] font-semibold">{exerciseName}</span>
+            : <ExerciseNamePicker exercises={exercises} onPick={onAssign} />}
+        </div>
         <button type="button" onClick={onDelete}
-          className="flex items-center justify-center rounded p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive">
+          className="shrink-0 flex items-center justify-center rounded p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive">
           <Trash2 className="h-[13px] w-[13px]" />
         </button>
       </div>
-      <div className="pb-2 pl-9 pr-2.5">
+
+      {/* Set rows */}
+      <div className="pb-1">
+        {configs.map((cfg, i) => (
+          <SetRow key={i} idx={i} cfg={cfg}
+            onChange={(c) => updateSet(i, c)}
+            onDelete={() => removeSet(i)}
+            canDelete={configs.length > 1}
+          />
+        ))}
+      </div>
+
+      {/* Add set + notes */}
+      <div className="flex items-center gap-3 border-t border-border/40 px-3 py-2 pl-9">
+        <button type="button" onClick={addSet}
+          className="inline-flex items-center gap-1 rounded px-2 py-1 text-[12px] font-semibold text-primary transition-colors hover:bg-primary/10">
+          <Plus className="h-3 w-3" /> Lisää sarja
+        </button>
         <button type="button" onClick={() => setShowNotes((o) => !o)}
-          className={cn("inline-flex items-center gap-1 text-[11.5px] font-medium transition-colors",
+          className={cn("ml-auto inline-flex items-center gap-1 text-[11.5px] font-medium transition-colors",
             showNotes ? "text-primary" : "text-muted-foreground hover:text-foreground")}>
           <AlignLeft className="h-2.5 w-2.5" />
-          {showNotes ? "Piilota ohje" : pe.notes ? "Näytä ohje" : "Lisää ohje liikkeelle"}
+          {showNotes ? "Piilota ohje" : pe.notes ? "Näytä ohje" : "Lisää ohje"}
           <ChevronDown className={cn("h-2 w-2 transition-transform", showNotes && "rotate-180")} />
         </button>
-        {showNotes && (
+      </div>
+      {showNotes && (
+        <div className="px-9 pb-2.5">
           <input key={`pe-notes:${pe.id}:${pe.notes ?? ""}`}
-            className="mt-1.5 block h-7 w-full rounded border border-border bg-muted/30 px-2 text-[12.5px] text-muted-foreground outline-none focus:border-primary"
+            className="block h-7 w-full rounded border border-border bg-muted/30 px-2 text-[12.5px] text-muted-foreground outline-none focus:border-primary"
             defaultValue={pe.notes ?? ""} placeholder="Ohje tai huomio valmentajalta…" autoFocus={!pe.notes}
             onBlur={(e) => { const v = e.target.value.trim() || null; if (v !== pe.notes) onUpdate({ id: pe.id, notes: v }); }} />
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -703,7 +757,8 @@ export function ProgramEditor({ programId }: { programId: string }) {
       const next = day?.program_exercises?.length ?? 0;
       const { error } = await supabase.from("program_exercises").insert({
         day_id: dayId, exercise_id: null, order_idx: next,
-        sets: 3, reps: "6", intensity: null, intensity_type: null, target_rpe: null, rest_sec: null, notes: null,
+        sets: 1, reps: null, intensity: null, intensity_type: null, target_rpe: null, rest_sec: null, notes: null,
+        set_configs: [{ reps: null, weight: null, rpe: null }],
       });
       if (error) throw error;
     },
