@@ -12,7 +12,7 @@ export async function getExercises(supabase: DB) {
 export async function updateExercise(
   supabase: DB,
   id: string,
-  patch: { name?: string; instructions?: string | null; video_path?: string | null }
+  patch: { name?: string; instructions?: string | null; video_path?: string | null; muscle_groups?: string[] }
 ) {
   const { error } = await supabase.from("exercises").update(patch).eq("id", id);
   if (error) throw error;

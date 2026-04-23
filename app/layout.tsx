@@ -1,7 +1,14 @@
 import type { Metadata, Viewport } from "next";
+import { Great_Vibes } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 import { Toaster } from "@/components/ui/toaster";
+
+const greatVibes = Great_Vibes({
+  subsets: ["latin"],
+  weight: ["400"],
+  variable: "--font-dancing",
+});
 
 export const metadata: Metadata = {
   title: "Gainly",
@@ -33,7 +40,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }}
         />
       </head>
-      <body className="antialiased">
+      <body className={`antialiased ${greatVibes.variable}`}>
         <Providers>
           {children}
           <Toaster />

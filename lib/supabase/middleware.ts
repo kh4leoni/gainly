@@ -24,9 +24,16 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // getUser() verifies the JWT with the auth server (secure but requires network).
+  // Fall back to getSession() (local cookie) if the auth server is unreachable.
+  let user: Awaited<ReturnType<typeof supabase.auth.getUser>>["data"]["user"] = null;
+  try {
+    const { data } = await supabase.auth.getUser();
+    user = data.user;
+  } catch {
+    const { data } = await supabase.auth.getSession();
+    user = data.session?.user ?? null;
+  }
 
   return { supabase, response, user };
 }

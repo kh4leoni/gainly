@@ -27,8 +27,10 @@ export function AppShell({
     <div className="min-h-dvh md:flex">
       {/* Sidebar (md+) */}
       <aside className="hidden md:flex md:w-60 md:flex-col md:border-r md:bg-muted/20">
-        <div className="flex h-14 items-center border-b px-4 font-semibold">
-          <Link href="/" prefetch>{title}</Link>
+        <div className="flex h-14 items-center border-b px-4">
+          <Link href="/" prefetch className="flex items-baseline gap-1.5 font-semibold text-base">
+            Gainly x <span style={{ fontFamily: "var(--font-dancing)", fontSize: "1.5rem", fontWeight: 400 }}>Fanni Savela</span>
+          </Link>
         </div>
         <nav className="flex flex-col gap-1 p-2">
           {nav.map((n) => (
@@ -47,7 +49,6 @@ export function AppShell({
       {/* Main */}
       <div className="flex min-h-dvh flex-1 flex-col">
         <header className="flex h-14 items-center justify-between border-b px-4 md:px-6">
-          <div className="font-semibold md:hidden">{title}</div>
           <div className="ml-auto flex items-center gap-1">
             {rightSlot}
             <ThemeToggle />

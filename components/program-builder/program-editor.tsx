@@ -303,19 +303,21 @@ export function ProgramEditor({ programId }: { programId: string }) {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <CardTitle className="text-base">Viikko {w.week_number}</CardTitle>
-                  <button
-                    type="button"
-                    onClick={() => { if (!w.is_active) setActiveWeek.mutate(w.id); }}
-                    className={`flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-medium transition-colors ${
-                      w.is_active
-                        ? "bg-emerald-500/15 text-emerald-500 cursor-default"
-                        : "bg-muted text-muted-foreground hover:bg-emerald-500/10 hover:text-emerald-500"
-                    }`}
-                    title={w.is_active ? "Aktiivinen viikko" : "Aseta aktiiviseksi"}
-                  >
-                    <span className={`h-1.5 w-1.5 rounded-full ${w.is_active ? "bg-emerald-500" : "bg-muted-foreground"}`} />
-                    {w.is_active ? "Aktiivinen" : "Ei aktiivinen"}
-                  </button>
+                  {!program.is_template && (
+                    <button
+                      type="button"
+                      onClick={() => { if (!w.is_active) setActiveWeek.mutate(w.id); }}
+                      className={`flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-medium transition-colors ${
+                        w.is_active
+                          ? "bg-emerald-500/15 text-emerald-500 cursor-default"
+                          : "bg-muted text-muted-foreground hover:bg-emerald-500/10 hover:text-emerald-500"
+                      }`}
+                      title={w.is_active ? "Aktiivinen viikko" : "Aseta aktiiviseksi"}
+                    >
+                      <span className={`h-1.5 w-1.5 rounded-full ${w.is_active ? "bg-emerald-500" : "bg-muted-foreground"}`} />
+                      {w.is_active ? "Aktiivinen" : "Ei aktiivinen"}
+                    </button>
+                  )}
                 </div>
                 <Button size="sm" variant="ghost" onClick={() => addDay.mutate(w.id)}>
                   <Plus className="h-4 w-4" /> Treeni
