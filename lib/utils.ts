@@ -5,6 +5,21 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+export const AVATAR_COLORS = [
+  "from-pink-500 to-rose-400",
+  "from-violet-500 to-purple-400",
+  "from-sky-500 to-blue-400",
+  "from-emerald-500 to-green-400",
+  "from-amber-500 to-orange-400",
+  "from-teal-500 to-cyan-400",
+];
+
+export function avatarColor(name: string): string {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length] as string;
+}
+
 export function formatDate(iso: string, opts: Intl.DateTimeFormatOptions = { dateStyle: "medium" }) {
   return new Intl.DateTimeFormat(undefined, opts).format(new Date(iso));
 }
