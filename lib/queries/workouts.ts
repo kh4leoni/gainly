@@ -133,6 +133,73 @@ export async function getRecentPRs(supabase: DB, clientId: string, limit = 5) {
   return data ?? [];
 }
 
+export type ScheduleDay = {
+  id: string;
+  scheduled_date: string;
+  status: string;
+  program_days: {
+    name: string | null;
+    day_number: number;
+    program_weeks: { id: string; week_number: number; description: string | null; is_active: boolean } | null;
+    program_exercises: Array<{ order_idx: number; exercises: { name: string } | null }>;
+  } | null;
+};
+
+export async function getClientSchedule(supabase: DB, clientId: string): Promise<ScheduleDay[]> {
+  const from = new Date(Date.now() - 28 * 86400000).toISOString().slice(0, 10);
+  const to   = new Date(Date.now() + 28 * 86400000).toISOString().slice(0, 10);
+  const { data, error } = await supabase
+    .from("scheduled_workouts")
+    .select(`
+      id, scheduled_date, status,
+      program_days(
+        name, day_number,
+        program_weeks(id, week_number, description, is_active),
+        program_exercises(order_idx, exercises(name))
+      )
+    `)
+    .eq("client_id", clientId)
+    .gte("scheduled_date", from)
+    .lte("scheduled_date", to)
+    .order("scheduled_date");
+  if (error) throw error;
+  return (data ?? []) as unknown as ScheduleDay[];
+}
+
+export async function getClientStreak(supabase: DB, clientId: string): Promise<number> {
+  const { data } = await supabase
+    .from("workout_logs")
+    .select("logged_at")
+    .eq("client_id", clientId)
+    .order("logged_at", { ascending: false })
+    .limit(100);
+  if (!data || data.length === 0) return 0;
+  const loggedDays = new Set(data.map((w) => w.logged_at.slice(0, 10)));
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const todayStr = today.toISOString().slice(0, 10);
+  const start = loggedDays.has(todayStr) ? 0 : 1;
+  let streak = 0;
+  for (let i = start; i <= 90; i++) {
+    const d = new Date(today); d.setDate(d.getDate() - i);
+    if (loggedDays.has(d.toISOString().slice(0, 10))) streak++;
+    else break;
+  }
+  return streak;
+}
+
+export async function getClientCompliance(supabase: DB, clientId: string): Promise<number> {
+  const from = new Date(Date.now() - 28 * 86400000).toISOString().slice(0, 10);
+  const to   = new Date().toISOString().slice(0, 10);
+  const { data } = await supabase
+    .from("scheduled_workouts")
+    .select("status")
+    .eq("client_id", clientId)
+    .gte("scheduled_date", from)
+    .lte("scheduled_date", to);
+  if (!data || data.length === 0) return 0;
+  return Math.round((data.filter((w) => w.status === "completed").length / data.length) * 100);
+}
+
 export async function getOneRmCurve(supabase: DB, clientId: string, exerciseId: string, days = 180) {
   const { data, error } = await supabase.rpc("one_rm_curve", {
     _client: clientId,

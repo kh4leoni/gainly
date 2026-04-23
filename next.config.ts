@@ -23,6 +23,10 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  // TÄMÄ LISÄTTY: Sallitaan localtunnelin osoite
+  experimental: {
+    allowedDevOrigins: ["flat-pots-act.loca.lt"],
+  },
 };
 
 export default withSerwist(nextConfig);
