@@ -60,6 +60,11 @@ export interface Database {
         };
         Update: Partial<Database["public"]["Tables"]["exercises"]["Insert"]>;
       };
+      program_blocks: {
+        Row: { id: string; program_id: string; block_number: number; name: string | null; description: string | null };
+        Insert: { id?: string; program_id: string; block_number: number; name?: string | null; description?: string | null };
+        Update: Partial<Database["public"]["Tables"]["program_blocks"]["Insert"]>;
+      };
       programs: {
         Row: {
           id: string;
@@ -77,8 +82,8 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["programs"]["Insert"]>;
       };
       program_weeks: {
-        Row: { id: string; program_id: string; week_number: number; description: string | null; is_active: boolean };
-        Insert: { id?: string; program_id: string; week_number: number; description?: string | null; is_active?: boolean };
+        Row: { id: string; program_id: string; block_id: string | null; week_number: number; name: string | null; description: string | null; is_active: boolean };
+        Insert: { id?: string; program_id: string; block_id?: string | null; week_number: number; name?: string | null; description?: string | null; is_active?: boolean };
         Update: Partial<Database["public"]["Tables"]["program_weeks"]["Insert"]>;
       };
       program_days: {

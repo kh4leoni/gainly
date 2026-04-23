@@ -45,6 +45,12 @@
     --input: 0 0% 90%;
     --ring: 330 100% 50%;
     --radius: 0.75rem;
+    --week: 330 40% 88%;
+    --week-foreground: 330 100% 35%;
+    --week-bg: 330 30% 96%;
+    --block: 330 60% 85%;
+    --block-foreground: 330 100% 28%;
+    --block-bg: 330 25% 94%;
   }
 
   .dark {
@@ -65,9 +71,23 @@
     --border: 0 0% 15%;
     --input: 0 0% 15%;
     --ring: 330 100% 58%;
+    --week: 330 35% 60%;
+    --week-foreground: 330 100% 90%;
+    --week-bg: 330 25% 12%;
+    --block: 330 55% 55%;
+    --block-foreground: 330 100% 90%;
+    --block-bg: 330 20% 9%;
   }
 
   * { @apply border-border; }
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type="number"] { -moz-appearance: textfield; }
   body { @apply bg-background text-foreground; font-feature-settings: "rlig" 1, "calt" 1; }
   html, body { @apply min-h-screen; }
+
+  @keyframes fade-in {
+    from { opacity: 0; transform: translateY(5px); }
+    to   { opacity: 1; transform: none; }
+  }
 }
