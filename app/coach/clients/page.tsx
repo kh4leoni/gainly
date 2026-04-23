@@ -3,23 +3,9 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { InviteClientButton } from "@/components/coach/invite-client-button";
 import { Calendar, CheckCircle2, UserRound } from "lucide-react";
+import { avatarColor } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
-
-const AVATAR_COLORS = [
-  "from-pink-500 to-rose-400",
-  "from-violet-500 to-purple-400",
-  "from-sky-500 to-blue-400",
-  "from-emerald-500 to-green-400",
-  "from-amber-500 to-orange-400",
-  "from-teal-500 to-cyan-400",
-];
-
-function avatarColor(name: string) {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length] ?? AVATAR_COLORS[0];
-}
 
 export default async function ClientsPage() {
   const supabase = await createClient();
