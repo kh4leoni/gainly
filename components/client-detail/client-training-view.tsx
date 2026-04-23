@@ -8,6 +8,28 @@ type ProgramExercise = {
   exercises: { name: string } | null;
 };
 
+type SetLog = {
+  set_number: number | null;
+  weight: number | null;
+  reps: number | null;
+  rpe: number | null;
+  is_pr: boolean;
+  exercises: { name: string } | null;
+};
+
+type ExerciseNote = {
+  notes: string;
+  program_exercises: { exercises: { name: string } | null } | null;
+};
+
+type WorkoutLog = {
+  id: string;
+  logged_at: string;
+  notes: string | null;
+  workout_exercise_notes: ExerciseNote[];
+  set_logs: SetLog[];
+};
+
 type WorkoutEntry = {
   id: string;
   scheduled_date: string;
@@ -18,14 +40,7 @@ type WorkoutEntry = {
     day_number?: number;
     program_exercises?: ProgramExercise[];
   } | null;
-  workout_logs?: Array<{
-    logged_at: string;
-    set_logs: Array<{
-      weight: number | null;
-      reps: number | null;
-      exercises: { name: string } | null;
-    }>;
-  }>;
+  workout_logs?: WorkoutLog[];
 };
 
 type WeekGroup = {
@@ -168,6 +183,11 @@ function WorkoutRow({ workout }: { workout: WorkoutEntry }) {
     .map((pe) => pe.exercises?.name)
     .filter((n): n is string => Boolean(n));
 
+  // Group set_logs by exercise name for display
+  const wl = workout.workout_logs?.[0];
+  const setsByExercise = groupSetsByExercise(wl?.set_logs ?? []);
+  const exNotesByName = buildExerciseNoteMap(wl?.workout_exercise_notes ?? []);
+
   return (
     <div className="py-3">
       <button
@@ -199,32 +219,62 @@ function WorkoutRow({ workout }: { workout: WorkoutEntry }) {
           </div>
           <span className="mt-0.5 shrink-0 text-xs text-muted-foreground">
             {isCompleted
-              ? expanded
-                ? "↑"
-                : "↓"
-              : workout.status === "pending"
-                ? "Odottaa"
-                : workout.status}
+              ? expanded ? "↑" : "↓"
+              : workout.status === "pending" ? "Odottaa" : workout.status}
           </span>
         </div>
       </button>
 
       {expanded && isCompleted && (
-        <div className="ml-5 mt-2 rounded-lg bg-muted/20 px-3 py-2">
-          {workout.workout_logs && workout.workout_logs.length > 0 ? (
-            <div className="space-y-0.5">
-              {workout.workout_logs.flatMap((wl) =>
-                (wl.set_logs ?? []).map((sl, i) => (
-                  <div key={i} className="flex items-center gap-4 py-0.5 text-xs">
-                    <span className="min-w-[120px] text-muted-foreground">
-                      {sl.exercises?.name ?? "—"}
-                    </span>
-                    <span>
-                      {sl.weight ?? 0}kg × {sl.reps ?? 0}
-                    </span>
+        <div className="ml-5 mt-2 space-y-2">
+          {/* Day note */}
+          {wl?.notes && (
+            <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2">
+              <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary/60">
+                Asiakkaan muistiinpano
+              </p>
+              <p className="text-xs text-foreground">{wl.notes}</p>
+            </div>
+          )}
+
+          {/* Sets grouped by exercise */}
+          {setsByExercise.length > 0 ? (
+            <div className="rounded-lg bg-muted/20 px-3 py-2 space-y-2">
+              {setsByExercise.map(({ name, sets }) => {
+                const exNote = exNotesByName[name];
+                return (
+                  <div key={name}>
+                    <p className="text-[11px] font-semibold text-muted-foreground mb-1">{name}</p>
+                    <div className="space-y-0.5">
+                      {sets.map((sl, i) => (
+                        <div key={i} className="flex items-center gap-3 text-xs">
+                          <span className="w-12 text-muted-foreground">
+                            Sarja {sl.set_number ?? i + 1}
+                          </span>
+                          <span className="font-medium">
+                            {sl.weight ?? 0} kg × {sl.reps ?? 0}
+                          </span>
+                          {sl.rpe != null && (
+                            <span className="rounded-full bg-pink-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-pink-400">
+                              RPE {sl.rpe}
+                            </span>
+                          )}
+                          {sl.is_pr && (
+                            <span className="rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-amber-500">
+                              PR
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    {exNote && (
+                      <p className="mt-1 text-[11px] italic text-muted-foreground border-l-2 border-primary/30 pl-2">
+                        {exNote}
+                      </p>
+                    )}
                   </div>
-                ))
-              )}
+                );
+              })}
             </div>
           ) : (
             <p className="text-xs text-muted-foreground">Ei kirjattuja sarjoja.</p>
@@ -233,6 +283,26 @@ function WorkoutRow({ workout }: { workout: WorkoutEntry }) {
       )}
     </div>
   );
+}
+
+function groupSetsByExercise(sets: SetLog[]): Array<{ name: string; sets: SetLog[] }> {
+  const order: string[] = [];
+  const map = new Map<string, SetLog[]>();
+  for (const s of [...sets].sort((a, b) => (a.set_number ?? 0) - (b.set_number ?? 0))) {
+    const name = s.exercises?.name ?? "—";
+    if (!map.has(name)) { map.set(name, []); order.push(name); }
+    map.get(name)!.push(s);
+  }
+  return order.map((name) => ({ name, sets: map.get(name)! }));
+}
+
+function buildExerciseNoteMap(notes: ExerciseNote[]): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const n of notes) {
+    const name = n.program_exercises?.exercises?.name;
+    if (name) out[name] = n.notes;
+  }
+  return out;
 }
 
 function groupWorkoutsByWeek(workouts: WorkoutEntry[]): WeekGroup[] {

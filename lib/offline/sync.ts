@@ -6,6 +6,9 @@ import type { PendingMutation } from "./db";
 
 let running = false;
 
+// Items that fail this many times are dropped so they can't block the queue forever.
+const MAX_ATTEMPTS = 10;
+
 export async function replay() {
   if (running) return;
   running = true;
@@ -13,6 +16,10 @@ export async function replay() {
     const supabase = createClient();
     const items = await peek();
     for (const item of items) {
+      if (item.attempts >= MAX_ATTEMPTS) {
+        await remove(item.id);
+        continue;
+      }
       try {
         await execute(supabase, item);
         await remove(item.id);
@@ -84,6 +91,30 @@ async function execute(
         content: p.content,
       });
       if (error && !isDuplicate(error)) throw error;
+      return;
+    }
+    case "workout_log.update_notes": {
+      const p = item.payload as { id: string; notes: string | null };
+      const { error } = await supabase.from("workout_logs").update({ notes: p.notes }).eq("id", p.id);
+      if (error) throw error;
+      return;
+    }
+    case "exercise_note.upsert": {
+      const p = item.payload as { workout_log_id: string; program_exercise_id: string; notes: string };
+      const { error } = await supabase.from("workout_exercise_notes").upsert({
+        workout_log_id: p.workout_log_id,
+        program_exercise_id: p.program_exercise_id,
+        notes: p.notes,
+      });
+      if (error && !isDuplicate(error)) throw error;
+      return;
+    }
+    case "exercise_note.delete": {
+      const p = item.payload as { workout_log_id: string; program_exercise_id: string };
+      await supabase.from("workout_exercise_notes")
+        .delete()
+        .eq("workout_log_id", p.workout_log_id)
+        .eq("program_exercise_id", p.program_exercise_id);
       return;
     }
   }

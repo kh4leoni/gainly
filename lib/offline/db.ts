@@ -4,9 +4,12 @@ import Dexie, { type Table } from "dexie";
 
 export type PendingMutationKind =
   | "workout_log.create"
+  | "workout_log.update_notes"
   | "set_log.create"
   | "workout.complete"
-  | "message.send";
+  | "message.send"
+  | "exercise_note.upsert"
+  | "exercise_note.delete";
 
 export interface PendingMutation {
   id: string;                 // client-generated UUID (also used as message/set id for dedupe)

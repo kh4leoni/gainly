@@ -23,6 +23,19 @@
 }
 @keyframes c-fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
 @keyframes c-pulse  { 0%,100%{opacity:1} 50%{opacity:0.5} }
+@keyframes spin     { to{transform:rotate(360deg)} }
+
+/* Lock the PWA shell — no document-level scroll or bounce on iOS */
+html:has(.client-app) {
+  height: 100%;
+  overflow: hidden;
+}
+body:has(.client-app) {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  overflow: hidden;
+  background: #070708;
+}
 .c-ani { animation: c-fadeUp 0.28s ease forwards; }
 
 @layer base {

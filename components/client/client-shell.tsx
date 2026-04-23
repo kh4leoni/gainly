@@ -28,18 +28,30 @@ export function ClientShell({ me, nav, children }: { me: Me; nav: NavItem[]; chi
     <div
       className="client-app"
       style={{
+        position: "fixed",
+        inset: 0,
         display: "flex",
         flexDirection: "column",
-        height: "100dvh",
+        alignItems: "center",
+        background: "var(--c-bg)",
+      }}
+    >
+    <div
+      style={{
+        width: "100%",
         maxWidth: 480,
-        margin: "0 auto",
-        position: "relative",
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
       }}
     >
       {/* ── Top header ── */}
       <header
         style={{
-          padding: "14px 20px 12px",
+          paddingTop: "calc(14px + env(safe-area-inset-top, 0px))",
+          paddingBottom: "12px",
+          paddingLeft: "20px",
+          paddingRight: "20px",
           borderBottom: "1px solid var(--c-border)",
           display: "flex",
           alignItems: "center",
@@ -112,7 +124,7 @@ export function ClientShell({ me, nav, children }: { me: Me; nav: NavItem[]; chi
       <main
         className="c-ani"
         key={pathname}
-        style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column" }}
+        style={{ flex: 1, minHeight: 0, overflowY: "auto", overscrollBehavior: "contain", display: "flex", flexDirection: "column" }}
       >
         {children}
       </main>
@@ -168,6 +180,7 @@ export function ClientShell({ me, nav, children }: { me: Me; nav: NavItem[]; chi
           );
         })}
       </nav>
+    </div>
     </div>
   );
 }
