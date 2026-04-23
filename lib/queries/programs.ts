@@ -31,9 +31,11 @@ export type ProgramFull = {
   coach_id: string;
   client_id: string | null;
   is_template: boolean;
-  program_weeks: Array<{
+  // Legacy flat weeks — kept for backward compat with client-detail page queries
+  program_weeks?: Array<{
     id: string;
     week_number: number;
+    name: string | null;
     description: string | null;
     is_active: boolean;
     program_days: Array<{
@@ -44,33 +46,65 @@ export type ProgramFull = {
       program_exercises: ProgramExerciseRow[];
     }>;
   }>;
+  program_blocks: Array<{
+    id: string;
+    block_number: number;
+    name: string | null;
+    description: string | null;
+    program_weeks: Array<{
+      id: string;
+      week_number: number;
+      name: string | null;
+      description: string | null;
+      is_active: boolean;
+      program_days: Array<{
+        id: string;
+        day_number: number;
+        name: string | null;
+        description: string | null;
+        program_exercises: ProgramExerciseRow[];
+      }>;
+    }>;
+  }>;
 };
 
-// Single-roundtrip full program load (weeks → days → exercises → exercise meta).
 export async function getProgramFull(supabase: DB, programId: string): Promise<ProgramFull> {
   const { data, error } = await supabase
     .from("programs")
     .select(`
       id, title, description, coach_id, client_id, is_template,
-      program_weeks (
-        id, week_number, description, is_active,
-        program_days (
-          id, day_number, name, description,
-          program_exercises (
-            id, order_idx, sets, reps, intensity, intensity_type, target_rpe, rest_sec, notes,
-            exercise_id,
-            exercises ( id, name, video_path, instructions )
+      program_blocks (
+        id, block_number, name, description,
+        program_weeks (
+          id, week_number, name, description, is_active,
+          program_days (
+            id, day_number, name, description,
+            program_exercises (
+              id, order_idx, sets, reps, intensity, intensity_type, target_rpe, rest_sec, notes,
+              exercise_id,
+              exercises ( id, name, video_path, instructions )
+            )
           )
         )
       )
     `)
     .eq("id", programId)
-    .order("week_number", { referencedTable: "program_weeks" })
-    .order("day_number", { referencedTable: "program_weeks.program_days" })
-    .order("order_idx", { referencedTable: "program_weeks.program_days.program_exercises" })
     .single();
   if (error) throw error;
-  return data as unknown as ProgramFull;
+
+  // Sort nested arrays in JS (Supabase nested ordering has limited depth support)
+  const raw = data as unknown as ProgramFull;
+  raw.program_blocks.sort((a, b) => a.block_number - b.block_number);
+  for (const block of raw.program_blocks) {
+    block.program_weeks.sort((a, b) => a.week_number - b.week_number);
+    for (const week of block.program_weeks) {
+      week.program_days.sort((a, b) => a.day_number - b.day_number);
+      for (const day of week.program_days) {
+        day.program_exercises.sort((a, b) => a.order_idx - b.order_idx);
+      }
+    }
+  }
+  return raw;
 }
 
 export async function createProgram(
@@ -89,14 +123,21 @@ export async function createProgram(
     .single();
   if (error) throw error;
 
-  // Seed with one week + one day so the builder is immediately useful.
-  const { data: week } = await supabase
-    .from("program_weeks")
-    .insert({ program_id: prog.id, week_number: 1 })
+  // Seed: block → week → day so the editor is immediately useful
+  const { data: block } = await supabase
+    .from("program_blocks")
+    .insert({ program_id: prog.id, block_number: 1 })
     .select()
     .single();
-  if (week) {
-    await supabase.from("program_days").insert({ week_id: week.id, day_number: 1, name: "Day 1" });
+  if (block) {
+    const { data: week } = await supabase
+      .from("program_weeks")
+      .insert({ program_id: prog.id, block_id: block.id, week_number: 1 })
+      .select()
+      .single();
+    if (week) {
+      await supabase.from("program_days").insert({ week_id: week.id, day_number: 1 });
+    }
   }
 
   return prog;
