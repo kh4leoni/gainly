@@ -9,9 +9,8 @@ import { derivedRepMax, roundKg } from "@/lib/calc/one-rm";
 type Exercise = { id: string; name: string };
 type PR = {
   id: string;
-  rep_range: string;
+  reps: number;
   weight: number | null;
-  reps: number | null;
   estimated_1rm: number | null;
   achieved_at: string;
   exercises: { id: string; name: string } | null;
@@ -25,39 +24,49 @@ function formatW(w: number | null) {
 export function ProgressView({ clientId, exercises }: { clientId: string; exercises: Exercise[] }) {
   const supabase = createClient();
   const [selId, setSelId] = useState(exercises[0]?.id ?? "");
-  const [rep, setRep] = useState(1);
 
   const prs = useQuery({
     queryKey: ["prs", clientId, "all"],
-    queryFn: () => getRecentPRs(supabase, clientId, 50),
+    queryFn: () => getRecentPRs(supabase, clientId, 250),
     staleTime: 60_000,
   }) as { data: PR[] | undefined };
 
   const selExName = exercises.find((e) => e.id === selId)?.name ?? "";
 
-  // Single "1RM" row per (client, exercise). All 1..5RM values are derived from it.
-  const oneRMByExercise = new Map<string, PR>();
+  // Group PRs by exercise id, then by reps. reps range: 1..5.
+  const byExercise = new Map<string, Map<number, PR>>();
+  let topE1rmByExercise = new Map<string, number>();
   for (const pr of prs.data ?? []) {
-    if (!pr.exercises?.id) continue;
-    if (pr.rep_range !== "1RM") continue;
-    if (!oneRMByExercise.has(pr.exercises.id)) oneRMByExercise.set(pr.exercises.id, pr);
+    const exId = pr.exercises?.id;
+    if (!exId) continue;
+    if (!byExercise.has(exId)) byExercise.set(exId, new Map());
+    byExercise.get(exId)!.set(pr.reps, pr);
+    if (pr.estimated_1rm != null) {
+      const prev = topE1rmByExercise.get(exId) ?? 0;
+      if (pr.estimated_1rm > prev) topE1rmByExercise.set(exId, pr.estimated_1rm);
+    }
   }
 
-  const matchedPR = selId ? oneRMByExercise.get(selId) ?? null : null;
-  const derived =
-    matchedPR && matchedPR.estimated_1rm != null
-      ? derivedRepMax(matchedPR.estimated_1rm, rep)
-      : null;
+  const selectedByReps = selId ? byExercise.get(selId) : undefined;
+  const selectedTop1RM = selId ? (topE1rmByExercise.get(selId) ?? null) : null;
 
-  const allBests = Array.from(oneRMByExercise.values());
+  // Sorted list of exercises with any PR, best first (by top e1RM).
+  const rankedBests = Array.from(topE1rmByExercise.entries())
+    .map(([exId, e1rm]) => {
+      const name = byExercise.get(exId)!.values().next().value?.exercises?.name ?? "—";
+      return { exId, e1rm, name };
+    })
+    .sort((a, b) => b.e1rm - a.e1rm);
 
   return (
     <div style={{ flex: 1, overflowY: "auto", padding: "24px 20px 20px" }}>
       <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-0.5px", marginBottom: 6 }}>Ennätykset</div>
-      <div style={{ fontSize: 12, color: "var(--c-text-muted)", marginBottom: 22 }}>Valitse harjoitus ja toistomäärä</div>
+      <div style={{ fontSize: 12, color: "var(--c-text-muted)", marginBottom: 22 }}>
+        Parhaat suoritukset 1–5 toiston välillä + arviot.
+      </div>
 
       {/* Exercise selector */}
-      <div style={{ position: "relative", marginBottom: 16 }}>
+      <div style={{ position: "relative", marginBottom: 20 }}>
         <select
           value={selId}
           onChange={(e) => setSelId(e.target.value)}
@@ -90,99 +99,93 @@ export function ProgressView({ clientId, exercises }: { clientId: string; exerci
         </span>
       </div>
 
-      {/* Rep picker */}
-      <div style={{ background: "var(--c-surface)", border: "1px solid var(--c-border)", borderRadius: 14, padding: 16, marginBottom: 20 }}>
-        <div style={{ fontSize: 12, color: "var(--c-text-muted)", marginBottom: 12, fontWeight: 500 }}>Toistomäärä</div>
-        <div style={{ display: "flex", gap: 8 }}>
-          {[1, 2, 3, 4, 5].map((r) => (
-            <button
-              key={r}
-              onClick={() => setRep(r)}
-              style={{
-                flex: 1,
-                padding: "10px 0",
-                borderRadius: 10,
-                border: `1px solid ${rep === r ? "var(--c-pink)" : "var(--c-border)"}`,
-                background: rep === r ? "var(--c-pink-dim)" : "var(--c-surface2)",
-                color: rep === r ? "var(--c-pink)" : "var(--c-text-muted)",
-                fontWeight: rep === r ? 700 : 400,
-                fontSize: 14,
-                cursor: "pointer",
-                transition: "all 0.15s",
-                fontFamily: "inherit",
-                boxShadow: rep === r ? "0 0 12px var(--c-pink-glow)" : "none",
-              }}
-            >
-              {r}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* PR display (derived N-RM + stored 1RM) */}
+      {/* Per-rep table */}
       {selId && (
-        matchedPR && derived != null && matchedPR.estimated_1rm != null ? (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 24 }}>
-            <div style={{
-              background: "var(--c-pink-dim)",
-              border: "1px solid rgba(255,29,140,0.35)",
-              borderRadius: 18,
-              padding: "24px 16px",
-              textAlign: "center",
-              boxShadow: "0 0 32px rgba(255,29,140,0.12)",
-            }}>
-              <div style={{ fontSize: 10, color: "var(--c-pink)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 8 }}>
-                Arvioitu {rep}RM
+        <div style={{
+          background: "var(--c-surface)",
+          border: "1px solid var(--c-border)",
+          borderRadius: 16,
+          padding: "14px 16px",
+          marginBottom: 22,
+        }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+            <div style={{ fontSize: 14, fontWeight: 700 }}>{selExName}</div>
+            {selectedTop1RM != null && (
+              <div style={{ fontSize: 12, color: "var(--c-pink)", fontWeight: 700 }}>
+                Paras e1RM {formatW(roundKg(selectedTop1RM))} kg
               </div>
-              <div style={{ fontSize: 44, fontWeight: 800, color: "var(--c-pink)", letterSpacing: "-2px", lineHeight: 1, textShadow: "0 0 30px rgba(255,29,140,0.6)" }}>
-                {formatW(roundKg(derived))}
-              </div>
-              <div style={{ fontSize: 14, color: "rgba(255,29,140,0.7)", marginTop: 4, fontWeight: 600 }}>kg</div>
-            </div>
-            <div style={{
-              background: "rgba(155,77,202,0.10)",
-              border: "1px solid rgba(155,77,202,0.30)",
-              borderRadius: 18,
-              padding: "24px 16px",
-              textAlign: "center",
-            }}>
-              <div style={{ fontSize: 10, color: "#9B4DCA", fontWeight: 700, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 8 }}>
-                Arvioitu 1RM
-              </div>
-              <div style={{ fontSize: 44, fontWeight: 800, color: "#9B4DCA", letterSpacing: "-2px", lineHeight: 1, textShadow: "0 0 30px rgba(155,77,202,0.5)" }}>
-                {formatW(roundKg(matchedPR.estimated_1rm))}
-              </div>
-              <div style={{ fontSize: 14, color: "rgba(155,77,202,0.7)", marginTop: 4, fontWeight: 600 }}>kg</div>
-            </div>
+            )}
           </div>
-        ) : (
-          <div style={{ textAlign: "center", padding: "24px", color: "var(--c-text-muted)", fontSize: 14, marginBottom: 16 }}>
-            Ei ennätystä {selExName || "tälle liikkeelle"}
+
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "40px 1fr 1fr",
+            gap: 8,
+            fontSize: 11,
+            color: "var(--c-text-subtle)",
+            fontWeight: 700,
+            textTransform: "uppercase",
+            letterSpacing: "0.6px",
+            padding: "0 4px 6px",
+            borderBottom: "1px solid var(--c-border)",
+          }}>
+            <span>Reps</span>
+            <span>Ennätys</span>
+            <span>Arvio @RPE 10</span>
           </div>
-        )
+
+          {[1, 2, 3, 4, 5].map((n) => {
+            const pr = selectedByReps?.get(n) ?? null;
+            const derivedVal = selectedTop1RM != null ? derivedRepMax(selectedTop1RM, n, 10) : null;
+            return (
+              <div key={n} style={{
+                display: "grid",
+                gridTemplateColumns: "40px 1fr 1fr",
+                gap: 8,
+                alignItems: "center",
+                padding: "10px 4px",
+                borderBottom: "1px solid var(--c-border)",
+                fontSize: 14,
+              }}>
+                <span style={{ fontWeight: 700 }}>{n}</span>
+                <span style={{ fontWeight: 600, color: pr ? "var(--c-text)" : "var(--c-text-subtle)" }}>
+                  {pr?.weight != null ? `${formatW(pr.weight)} kg` : "—"}
+                  {pr?.achieved_at && (
+                    <span style={{ display: "block", fontSize: 10, color: "var(--c-text-muted)", fontWeight: 500, marginTop: 2 }}>
+                      {new Date(pr.achieved_at).toLocaleDateString("fi-FI")}
+                    </span>
+                  )}
+                </span>
+                <span style={{ fontWeight: 600, color: derivedVal != null ? "var(--c-pink)" : "var(--c-text-subtle)" }}>
+                  {derivedVal != null ? `${formatW(roundKg(derivedVal))} kg` : "—"}
+                </span>
+              </div>
+            );
+          })}
+        </div>
       )}
 
       {/* All-time bests list */}
       <div style={{ fontSize: 12, color: "var(--c-text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 10 }}>
-        Kaikki ennätykset (1RM)
+        Parhaat liikkeet (e1RM)
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {allBests.length === 0 && (
+        {rankedBests.length === 0 && (
           <div style={{ textAlign: "center", padding: "24px", color: "var(--c-text-muted)", fontSize: 13 }}>
             Ei ennätyksiä vielä.
           </div>
         )}
-        {allBests.map((pr) => (
+        {rankedBests.map(({ exId, e1rm, name }) => (
           <button
-            key={pr.id}
-            onClick={() => setSelId(pr.exercises?.id ?? "")}
+            key={exId}
+            onClick={() => setSelId(exId)}
             style={{
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
               padding: "14px 16px",
-              background: selId === pr.exercises?.id ? "var(--c-pink-dim)" : "var(--c-surface)",
-              border: `1px solid ${selId === pr.exercises?.id ? "rgba(255,29,140,0.3)" : "var(--c-border)"}`,
+              background: selId === exId ? "var(--c-pink-dim)" : "var(--c-surface)",
+              border: `1px solid ${selId === exId ? "rgba(255,29,140,0.3)" : "var(--c-border)"}`,
               borderRadius: 14,
               cursor: "pointer",
               transition: "all 0.15s",
@@ -190,23 +193,11 @@ export function ProgressView({ clientId, exercises }: { clientId: string; exerci
               color: "var(--c-text)",
               textAlign: "left",
             }}
-            onMouseEnter={(e) => {
-              if (selId !== pr.exercises?.id) {
-                e.currentTarget.style.borderColor = "var(--c-border-hover)";
-                e.currentTarget.style.background = "var(--c-surface2)";
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (selId !== pr.exercises?.id) {
-                e.currentTarget.style.borderColor = "var(--c-border)";
-                e.currentTarget.style.background = "var(--c-surface)";
-              }
-            }}
           >
-            <span style={{ fontWeight: 600, fontSize: 14 }}>{pr.exercises?.name ?? "—"}</span>
+            <span style={{ fontWeight: 600, fontSize: 14 }}>{name}</span>
             <span style={{ fontWeight: 700, color: "var(--c-pink)", fontSize: 15 }}>
-              {formatW(pr.estimated_1rm != null ? roundKg(pr.estimated_1rm) : null)}{" "}
-              <span style={{ fontSize: 11, color: "var(--c-text-muted)", fontWeight: 400 }}>kg / 1RM</span>
+              {formatW(roundKg(e1rm))}{" "}
+              <span style={{ fontSize: 11, color: "var(--c-text-muted)", fontWeight: 400 }}>kg / e1RM</span>
             </span>
           </button>
         ))}

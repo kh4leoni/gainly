@@ -5,8 +5,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { getThreads, getMessages } from "@/lib/queries/messages";
 import { uuid } from "@/lib/utils";
-import { enqueue } from "@/lib/offline/queue";
-import { replay } from "@/lib/offline/sync";
 
 type Message = { id: string; thread_id: string; sender_id: string; content: string; created_at: string; read_at: string | null };
 
@@ -185,8 +183,13 @@ function ChatPane({
     };
     qc.setQueryData<Message[]>(["messages", threadId], (old = []) => [...old, optimistic]);
     setContent("");
-    await enqueue("message.send", { id, thread_id: threadId, sender_id: userId, content: text }, id);
-    if (navigator.onLine) await replay();
+    const { error } = await supabase.from("messages").insert({
+      id, thread_id: threadId, sender_id: userId, content: text,
+    });
+    if (error) {
+      // Roll back optimistic update on failure.
+      qc.setQueryData<Message[]>(["messages", threadId], (old = []) => old.filter((m) => m.id !== id));
+    }
   }
 
   if (!threadId) {

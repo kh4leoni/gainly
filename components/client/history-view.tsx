@@ -2,13 +2,9 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useLiveQuery } from "dexie-react-hooks";
 import { createClient } from "@/lib/supabase/client";
 import { getPastWorkouts, type PastWorkout } from "@/lib/queries/workouts";
-import { db } from "@/lib/offline/db";
 import Link from "next/link";
-
-type SetRow = PastWorkout["workout_logs"][number]["set_logs"][number];
 
 function groupByWeek(workouts: PastWorkout[]): Array<{ label: string; workouts: PastWorkout[] }> {
   const map = new Map<string, PastWorkout[]>();
@@ -51,15 +47,11 @@ function pickRichestLog(logs: PastWorkout["workout_logs"]): PastWorkout["workout
   return best;
 }
 
-function WorkoutCard({ w, pendingSets }: { w: PastWorkout; pendingSets: SetRow[] }) {
+function WorkoutCard({ w }: { w: PastWorkout }) {
   const [open, setOpen] = useState(false);
   const wl = pickRichestLog(w.workout_logs ?? []);
   const serverSets = wl?.set_logs ?? [];
-  // Merge server sets with any still-queued sets (dedup by set_number+exercise)
-  const serverKeys = new Set(serverSets.map((s) => `${s.exercises?.name}-${s.set_number}`));
-  const extraPending = pendingSets.filter((s) => !serverKeys.has(`${s.exercises?.name}-${s.set_number}`));
-  const allSets = [...serverSets, ...extraPending];
-  const grouped = groupSetsByExercise(allSets);
+  const grouped = groupSetsByExercise(serverSets);
   const exNames = (w.program_days?.program_exercises ?? [])
     .slice().sort((a, b) => a.order_idx - b.order_idx)
     .map((pe) => pe.exercises?.name).filter(Boolean);
@@ -108,7 +100,6 @@ function WorkoutCard({ w, pendingSets }: { w: PastWorkout; pendingSets: SetRow[]
 
       {open && (
         <div style={{ borderTop: "1px solid var(--c-border)", padding: "12px 16px 14px" }}>
-          {/* Day note */}
           {wl?.notes && (
             <div style={{
               background: "rgba(255,29,140,0.07)", border: "1px solid rgba(255,29,140,0.18)",
@@ -121,7 +112,6 @@ function WorkoutCard({ w, pendingSets }: { w: PastWorkout; pendingSets: SetRow[]
             </div>
           )}
 
-          {/* Sets */}
           {grouped.length > 0 ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {grouped.map(({ name, sets }) => (
@@ -194,31 +184,6 @@ export function HistoryView({ clientId }: { clientId: string }) {
     staleTime: 60_000,
   });
 
-  // Pending set_logs from offline queue, grouped by scheduled_workout_id
-  const pending = useLiveQuery(() => db?.pending_mutations.toArray() ?? [], []) ?? [];
-  const pendingByWorkout = new Map<string, SetRow[]>();
-  for (const m of pending) {
-    if (m.kind !== "set_log.create") continue;
-    const p = m.payload as {
-      scheduled_workout_id?: string;
-      exercise_name?: string | null;
-      set_number?: number | null;
-      weight?: number | null;
-      reps?: number | null;
-      rpe?: number | null;
-    };
-    if (!p.scheduled_workout_id) continue;
-    if (!pendingByWorkout.has(p.scheduled_workout_id)) pendingByWorkout.set(p.scheduled_workout_id, []);
-    pendingByWorkout.get(p.scheduled_workout_id)!.push({
-      set_number: p.set_number ?? null,
-      weight: p.weight ?? null,
-      reps: p.reps ?? null,
-      rpe: p.rpe ?? null,
-      is_pr: false,
-      exercises: p.exercise_name ? { name: p.exercise_name } : null,
-    });
-  }
-
   const weeks = groupByWeek(workouts);
 
   return (
@@ -250,7 +215,7 @@ export function HistoryView({ clientId }: { clientId: string }) {
             {label}
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {wws.map((w) => <WorkoutCard key={w.id} w={w} pendingSets={pendingByWorkout.get(w.id) ?? []} />)}
+            {wws.map((w) => <WorkoutCard key={w.id} w={w} />)}
           </div>
         </div>
       ))}

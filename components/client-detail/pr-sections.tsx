@@ -11,6 +11,13 @@ type Props = {
   exercises: Array<{ id: string; name: string }>;
 };
 
+type PRRow = {
+  reps: number;
+  weight: number | null;
+  estimated_1rm: number | null;
+  achieved_at: string;
+};
+
 function RecordCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div
@@ -64,110 +71,77 @@ function ExerciseSelect({
   );
 }
 
-type BestRow = {
-  weight: number;
-  reps: number;
-  estimated_1rm: number;
-  achieved_at: string;
-  rpe: number | null;
-};
-
 export function RecordsSection({ clientId, exercises }: Props) {
   const [exerciseId, setExerciseId] = useState("");
-  const [repRange, setRepRange] = useState(1);
-  const [row, setRow] = useState<BestRow | null>(null);
+  const [rows, setRows] = useState<PRRow[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!exerciseId) { setRow(null); return; }
+    if (!exerciseId) { setRows([]); return; }
     setLoading(true);
     const supabase = createClient();
     supabase
       .from("personal_records")
-      .select("weight, reps, estimated_1rm, achieved_at, set_logs ( rpe )")
+      .select("reps, weight, estimated_1rm, achieved_at")
       .eq("client_id", clientId)
       .eq("exercise_id", exerciseId)
-      .eq("rep_range", "1RM")
-      .maybeSingle()
+      .order("reps", { ascending: true })
       .then(({ data }) => {
-        if (!data || data.weight == null || data.reps == null || data.estimated_1rm == null) {
-          setRow(null); setLoading(false); return;
-        }
-        const d = data as any;
-        setRow({
-          weight: d.weight,
-          reps: d.reps,
-          estimated_1rm: d.estimated_1rm,
-          achieved_at: d.achieved_at,
-          rpe: d.set_logs?.rpe ?? null,
-        });
+        setRows((data ?? []) as PRRow[]);
         setLoading(false);
       });
-  }, [clientId, exerciseId, repRange]);
+  }, [clientId, exerciseId]);
 
-  const derived = row ? derivedRepMax(row.estimated_1rm, repRange) : null;
+  const topE1rm = rows.reduce<number | null>((max, r) => {
+    if (r.estimated_1rm == null) return max;
+    return max == null || r.estimated_1rm > max ? r.estimated_1rm : max;
+  }, null);
+  const latestAchieved = rows.reduce<string | null>((best, r) => {
+    if (!best) return r.achieved_at;
+    return r.achieved_at > best ? r.achieved_at : best;
+  }, null);
 
   return (
     <RecordCard title="Ennätykset">
-      <div className="flex gap-2">
-        <ExerciseSelect exercises={exercises} value={exerciseId} onChange={setExerciseId} />
-        <div className="flex flex-col items-center gap-1">
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => setRepRange((p) => Math.max(1, p - 1))}
-              className="flex h-9 w-8 items-center justify-center rounded-lg border bg-background text-sm font-medium transition-colors hover:bg-muted"
-            >
-              −
-            </button>
-            <span className="w-8 text-center text-base font-semibold tabular-nums">{repRange}</span>
-            <button
-              type="button"
-              onClick={() => setRepRange((p) => Math.min(5, p + 1))}
-              className="flex h-9 w-8 items-center justify-center rounded-lg border bg-background text-sm font-medium transition-colors hover:bg-muted"
-            >
-              +
-            </button>
-          </div>
-          <span className="text-[10px] text-muted-foreground">rep</span>
-        </div>
-      </div>
+      <ExerciseSelect exercises={exercises} value={exerciseId} onChange={setExerciseId} />
 
       {loading ? (
-        <div className="h-16 animate-pulse rounded-md bg-muted" />
-      ) : row && derived != null ? (
-        <div className="rounded-xl border bg-muted/30 px-4 py-3 space-y-2">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-2xl font-bold tabular-nums">
-                {roundKg(derived)}{" "}
-                <span className="text-base font-normal text-muted-foreground">kg</span>
-                <span className="ml-2 text-sm font-normal text-muted-foreground">
-                  × {repRange}
-                </span>
-              </div>
-              <div className="text-xs text-muted-foreground">
-                {relativeTime(row.achieved_at)}
-                <span className="ml-2">
-                  ({row.weight}kg × {row.reps}{row.rpe != null ? ` @RPE ${row.rpe}` : ""})
-                </span>
-              </div>
-            </div>
-            <span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-semibold text-amber-500">
-              {repRange}RM
-            </span>
-          </div>
-          <div className="border-t pt-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">Arvioitu 1RM</span>
-              <span className="text-sm font-bold tabular-nums text-primary">
-                {roundKg(row.estimated_1rm)} kg
-              </span>
-            </div>
-          </div>
-        </div>
+        <div className="h-24 animate-pulse rounded-md bg-muted" />
       ) : exerciseId ? (
-        <p className="text-sm text-muted-foreground">Ei ennätystä tälle harjoitukselle.</p>
+        rows.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Ei ennätystä tälle harjoitukselle.</p>
+        ) : (
+          <div className="rounded-xl border bg-muted/30 px-4 py-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Reps</span>
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Ennätys</span>
+              <span className="text-xs font-semibold uppercase tracking-wider text-primary">Arvio @RPE 10</span>
+            </div>
+            {[1, 2, 3, 4, 5].map((n) => {
+              const row = rows.find((r) => r.reps === n) ?? null;
+              const derived = topE1rm != null ? derivedRepMax(topE1rm, n, 10) : null;
+              return (
+                <div key={n} className="flex items-center justify-between border-t pt-2 text-sm">
+                  <span className="w-10 font-bold tabular-nums">{n}</span>
+                  <span className="flex-1 text-center tabular-nums">
+                    {row?.weight != null ? `${roundKg(row.weight)} kg` : "—"}
+                  </span>
+                  <span className="flex-1 text-right font-semibold text-primary tabular-nums">
+                    {derived != null ? `${roundKg(derived)} kg` : "—"}
+                  </span>
+                </div>
+              );
+            })}
+            {topE1rm != null && (
+              <div className="border-t pt-2 flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">Paras e1RM{latestAchieved ? ` · ${relativeTime(latestAchieved)}` : ""}</span>
+                <span className="text-sm font-bold tabular-nums text-primary">
+                  {roundKg(topE1rm)} kg
+                </span>
+              </div>
+            )}
+          </div>
+        )
       ) : (
         <p className="text-sm text-muted-foreground">Valitse harjoitus nähdäksesi ennätyksen.</p>
       )}

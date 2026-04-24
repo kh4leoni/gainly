@@ -198,8 +198,7 @@ export type Database = {
           estimated_1rm: number | null
           exercise_id: string
           id: string
-          rep_range: string
-          reps: number | null
+          reps: number
           set_log_id: string | null
           weight: number | null
         }
@@ -209,8 +208,7 @@ export type Database = {
           estimated_1rm?: number | null
           exercise_id: string
           id?: string
-          rep_range: string
-          reps?: number | null
+          reps: number
           set_log_id?: string | null
           weight?: number | null
         }
@@ -220,8 +218,7 @@ export type Database = {
           estimated_1rm?: number | null
           exercise_id?: string
           id?: string
-          rep_range?: string
-          reps?: number | null
+          reps?: number
           set_log_id?: string | null
           weight?: number | null
         }
@@ -783,6 +780,21 @@ export type Database = {
           day: string
           best_1rm: number
         }[]
+      }
+      recompute_pr_bucket: {
+        Args: {
+          p_client: string
+          p_exercise: string
+          p_reps: number
+        }
+        Returns: undefined
+      }
+      rts_intensity: {
+        Args: {
+          p_reps: number
+          p_rpe: number
+        }
+        Returns: number
       }
       schedule_program: {
         Args: {

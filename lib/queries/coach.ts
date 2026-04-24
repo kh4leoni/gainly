@@ -41,9 +41,8 @@ export type AttentionClient = {
 export type RecentPR = {
   id: string;
   client_id: string;
-  rep_range: string;
+  reps: number;
   weight: number | null;
-  reps: number | null;
   estimated_1rm: number | null;
   achieved_at: string;
   exercise_name: string | null;
@@ -138,7 +137,7 @@ export async function getCoachFullDashboard(
       .gte("logged_at", weekAgo),
     supabase
       .from("personal_records")
-      .select("id, client_id, rep_range, weight, reps, estimated_1rm, achieved_at, exercises:exercise_id(name), profiles:client_id(full_name)")
+      .select("id, client_id, reps, weight, estimated_1rm, achieved_at, exercises:exercise_id(name), profiles:client_id(full_name)")
       .in("client_id", clientIds)
       .order("achieved_at", { ascending: false })
       .limit(6),
@@ -209,8 +208,8 @@ export async function getCoachFullDashboard(
 
   // Recent PRs
   type RawPR = {
-    id: string; client_id: string; rep_range: string;
-    weight: number | null; reps: number | null; estimated_1rm: number | null;
+    id: string; client_id: string;
+    weight: number | null; reps: number; estimated_1rm: number | null;
     achieved_at: string;
     exercises: { name: string } | null;
     profiles: { full_name: string | null } | null;
@@ -218,9 +217,8 @@ export async function getCoachFullDashboard(
   const recentPRs: RecentPR[] = ((recentPRsRaw ?? []) as unknown as RawPR[]).map((r) => ({
     id: r.id,
     client_id: r.client_id,
-    rep_range: r.rep_range,
-    weight: r.weight,
     reps: r.reps,
+    weight: r.weight,
     estimated_1rm: r.estimated_1rm,
     achieved_at: r.achieved_at,
     exercise_name: r.exercises?.name ?? null,

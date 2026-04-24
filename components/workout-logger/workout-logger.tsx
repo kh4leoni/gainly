@@ -2,19 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useLiveQuery } from "dexie-react-hooks";
 import { createClient } from "@/lib/supabase/client";
 import { getScheduledWorkout } from "@/lib/queries/workouts";
-import { uuid } from "@/lib/utils";
-import { enqueue } from "@/lib/offline/queue";
-import { db } from "@/lib/offline/db";
-import { replay } from "@/lib/offline/sync";
 import { toast } from "@/components/ui/use-toast";
 
 // ── RPE ───────────────────────────────────────────────────────────────────────
-// Stored as numeric. "<6" is stored as 5 (midpoint of RPE 1..5 range) so the
-// DB formula (coalesce rpe,10) yields meaningful RIR=5 instead of treating
-// null as "max effort". null in set_logs means "no RPE recorded".
+// Stored as numeric. "<6" is stored as 5 so the DB formula (coalesce rpe,10)
+// yields meaningful effort instead of treating null as "max effort".
 const RPE_STEPS = [5, 6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10] as const;
 
 function rpeLabel(v: number | null | undefined): string {
@@ -24,8 +18,8 @@ function rpeLabel(v: number | null | undefined): string {
 }
 
 function targetRpeIdx(t: number | null): number {
-  if (t === null) return 0;                 // not set → default to <6
-  if (t === 0 || t === 5) return 0;         // legacy 0 OR new 5 encode "<6"
+  if (t === null) return 0;
+  if (t === 0 || t === 5) return 0;
   const i = (RPE_STEPS as readonly number[]).indexOf(t);
   return i >= 0 ? i : 0;
 }
@@ -43,72 +37,52 @@ export function WorkoutLogger({ scheduledWorkoutId }: { scheduledWorkoutId: stri
   const [workoutLogId, setWorkoutLogId] = useState<string | null>(null);
   const [dayNote, setDayNote] = useState("");
 
+  // Ensure a workout_log row exists for (scheduled_workout, client). The
+  // unique partial index lets us upsert idempotently.
   useEffect(() => {
-    if (!workoutLogId) return;
-    // Try DB first (for returning to a previously synced workout); fall back gracefully
-    supabase.from("workout_logs").select("notes").eq("id", workoutLogId).maybeSingle()
-      .then(({ data }) => { if (data?.notes) setDayNote(data.notes); });
-  }, [workoutLogId, supabase]);
+    if (!workout) return;
+    let cancelled = false;
+    (async () => {
+      const { data: me } = await supabase.auth.getUser();
+      if (!me.user || cancelled) return;
+      const clientId = me.user.id;
+
+      const { data: existing } = await supabase
+        .from("workout_logs")
+        .select("id, notes")
+        .eq("scheduled_workout_id", scheduledWorkoutId)
+        .eq("client_id", clientId)
+        .order("logged_at", { ascending: true })
+        .limit(1);
+
+      if (cancelled) return;
+
+      if (existing && existing[0]) {
+        setWorkoutLogId(existing[0].id);
+        if (existing[0].notes) setDayNote(existing[0].notes);
+        return;
+      }
+
+      const { data: inserted, error } = await supabase
+        .from("workout_logs")
+        .insert({ client_id: clientId, scheduled_workout_id: scheduledWorkoutId })
+        .select("id")
+        .single();
+      if (error || !inserted) return;
+      if (!cancelled) setWorkoutLogId(inserted.id);
+    })();
+    return () => { cancelled = true; };
+  }, [workout, scheduledWorkoutId, supabase]);
 
   async function saveDayNote(text: string) {
     if (!workoutLogId) return;
     const notes = text.trim() || null;
-    await enqueue("workout_log.update_notes", { id: workoutLogId, notes });
-    if (navigator.onLine) void replay();
-  }
-
-  useEffect(() => {
-    if (!workout) return;
-    (async () => {
-      const { data: me } = await supabase.auth.getUser();
-      if (!me.user) return;
-      // Use limit(1) rather than maybeSingle(): legacy rows sometimes had
-      // more than one workout_log per (scheduled_workout, client), and
-      // maybeSingle() errors in that case. Dedup migration cleans them up;
-      // this guard stays defensive for fresh installs.
-      const { data: existing } = await supabase
-        .from("workout_logs").select("id")
-        .eq("scheduled_workout_id", scheduledWorkoutId)
-        .eq("client_id", me.user.id)
-        .order("logged_at", { ascending: true })
-        .limit(1);
-      const existingId = existing?.[0]?.id;
-      if (existingId) { setWorkoutLogId(existingId); return; }
-      const id = uuid();
-      await enqueue("workout_log.create", { id, client_id: me.user.id, scheduled_workout_id: scheduledWorkoutId }, id);
-      setWorkoutLogId(id);
-      if (navigator.onLine) void replay();
-    })();
-  }, [workout, scheduledWorkoutId, supabase]);
-
-  useEffect(() => {
-    const onMsg = (e: MessageEvent) => { if (e.data?.type === "gainly-sync") void replay(); };
-    navigator.serviceWorker?.addEventListener("message", onMsg);
-    return () => navigator.serviceWorker?.removeEventListener("message", onMsg);
-  }, []);
-
-  const pending = useLiveQuery(() => db?.pending_mutations.count() ?? 0, []) ?? 0;
-  const [syncing, setSyncing] = useState(false);
-
-  async function syncNow() {
-    if (syncing) return;
-    setSyncing(true);
-    try {
-      await replay();
-      qc.invalidateQueries({ queryKey: ["set_logs"] });
-    } finally {
-      setSyncing(false);
-    }
+    await supabase.from("workout_logs").update({ notes }).eq("id", workoutLogId);
   }
 
   const complete = useMutation({
     mutationFn: async () => {
-      // Flush any queued set_logs/notes first — the PR trigger needs the sets
-      // in the DB before the workout flips to completed, and the refetch below
-      // expects them on read.
-      await replay();
-      const sb = createClient();
-      const { error } = await sb
+      const { error } = await supabase
         .from("scheduled_workouts")
         .update({ status: "completed", completed_at: new Date().toISOString() })
         .eq("id", scheduledWorkoutId);
@@ -124,6 +98,7 @@ export function WorkoutLogger({ scheduledWorkoutId }: { scheduledWorkoutId: stri
         qc.invalidateQueries({ queryKey: ["compliance", clientId] });
         qc.invalidateQueries({ queryKey: ["streak", clientId] });
         qc.invalidateQueries({ queryKey: ["prs", clientId] });
+        qc.invalidateQueries({ queryKey: ["past-workouts", clientId] });
       }
       qc.invalidateQueries({ queryKey: ["coach-dashboard"] });
       qc.invalidateQueries({ queryKey: ["client-workouts"] });
@@ -136,7 +111,7 @@ export function WorkoutLogger({ scheduledWorkoutId }: { scheduledWorkoutId: stri
 
   const isCompleted = workout?.status === "completed";
 
-  // All confirmed set_logs for this workout — used to gate the complete button.
+  // All confirmed set_logs for this workout — gates the complete button.
   const { data: loggedSets = [] } = useQuery({
     queryKey: ["set_logs", workoutLogId],
     enabled: !!workoutLogId,
@@ -149,17 +124,6 @@ export function WorkoutLogger({ scheduledWorkoutId }: { scheduledWorkoutId: stri
       return data ?? [];
     },
   });
-
-  // Include still-queued set_log.create mutations for immediate feedback.
-  const pendingSetLogs = useLiveQuery(async () => {
-    if (!db || !workoutLogId) return [] as { program_exercise_id: string | null }[];
-    const all = await db.pending_mutations.toArray();
-    return all
-      .filter((m) => m.kind === "set_log.create")
-      .map((m) => (m.payload as { workout_log_id?: string; program_exercise_id?: string | null }))
-      .filter((p) => p.workout_log_id === workoutLogId)
-      .map((p) => ({ program_exercise_id: p.program_exercise_id ?? null }));
-  }, [workoutLogId]) ?? [];
 
   if (!workout) {
     return (
@@ -174,14 +138,10 @@ export function WorkoutLogger({ scheduledWorkoutId }: { scheduledWorkoutId: stri
   const day = workout.program_days;
   const exercises = (day?.program_exercises ?? []).slice().sort((a: any, b: any) => a.order_idx - b.order_idx);
 
-  // Ready = every exercise has at least its target-sets worth of confirmed sets.
   const setCountByPe = new Map<string, number>();
   for (const s of loggedSets) {
     const id = s.program_exercise_id as string | null;
     if (id) setCountByPe.set(id, (setCountByPe.get(id) ?? 0) + 1);
-  }
-  for (const p of pendingSetLogs) {
-    if (p.program_exercise_id) setCountByPe.set(p.program_exercise_id, (setCountByPe.get(p.program_exercise_id) ?? 0) + 1);
   }
   const targetsByPe = exercises.map((pe: any) => {
     const target = pe.set_configs?.length ?? pe.sets ?? 3;
@@ -209,26 +169,6 @@ export function WorkoutLogger({ scheduledWorkoutId }: { scheduledWorkoutId: stri
             {day.description}
           </div>
         )}
-        {pending > 0 && (
-          <button
-            type="button"
-            onClick={syncNow}
-            disabled={syncing}
-            style={{
-              display: "inline-flex", alignItems: "center", gap: 6, marginTop: 8,
-              fontSize: 11, color: syncing ? "var(--c-pink)" : "var(--c-text-muted)",
-              background: "var(--c-surface)", border: `1px solid ${syncing ? "rgba(255,29,140,0.3)" : "var(--c-border)"}`,
-              borderRadius: 20, padding: "4px 12px", cursor: "pointer", fontFamily: "inherit",
-              transition: "all 0.2s",
-            }}
-          >
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"
-              style={{ animation: syncing ? "spin 1s linear infinite" : "none" }}>
-              <path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/>
-            </svg>
-            {syncing ? "Synkronoidaan…" : `${pending} synkronoimatta — synkronoi`}
-          </button>
-        )}
       </div>
 
       {isCompleted && (
@@ -252,13 +192,20 @@ export function WorkoutLogger({ scheduledWorkoutId }: { scheduledWorkoutId: stri
                 {new Date(workout.completed_at).toLocaleDateString("fi-FI")}
               </span>
             )}
+            <span style={{ fontWeight: 400, color: "var(--c-text-muted)", marginLeft: 6, fontSize: 12 }}>
+              — voit muokata sarjoja
+            </span>
           </div>
         </div>
       )}
 
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {exercises.map((pe: any) => (
-          <ExerciseBlock key={pe.id} programExercise={pe} workoutLogId={workoutLogId} scheduledWorkoutId={scheduledWorkoutId} locked={isCompleted} />
+          <ExerciseBlock
+            key={pe.id}
+            programExercise={pe}
+            workoutLogId={workoutLogId}
+          />
         ))}
         {exercises.length === 0 && (
           <div style={{ textAlign: "center", padding: "48px 0", color: "var(--c-text-muted)", fontSize: 14 }}>
@@ -275,19 +222,17 @@ export function WorkoutLogger({ scheduledWorkoutId }: { scheduledWorkoutId: stri
           onBlur={(e) => saveDayNote(e.target.value)}
           placeholder="Muistiinpanoja treenistä…"
           rows={3}
-          readOnly={isCompleted}
           style={{
             width: "100%", resize: "none",
-            background: isCompleted ? "var(--c-surface2)" : "var(--c-surface)",
+            background: "var(--c-surface)",
             border: "1px solid var(--c-border)", borderRadius: 14,
             padding: "12px 14px", fontSize: 14, color: "var(--c-text)",
             fontFamily: "inherit", outline: "none", boxSizing: "border-box",
-            opacity: isCompleted ? 0.8 : 1,
           }}
         />
       </div>
 
-      {/* Complete (hidden when already completed, disabled until every set is confirmed) */}
+      {/* Complete button — hidden once completed */}
       {!isCompleted && (
         <>
           <button
@@ -339,27 +284,12 @@ type RowState = {
   reps: string;
   rpeIdx: number;   // index into RPE_STEPS, -1 = not picked
   confirmed: boolean;
+  setLogId: string | null;
   isPr: boolean;
 };
 
-function makeRows(
-  count: number,
-  targetWeight: number | null,
-  targetReps: string | null,
-  rpeIdxes: number[],   // per-set
-): RowState[] {
-  return Array.from({ length: count }, (_, i) => ({
-    weight: targetWeight != null ? String(targetWeight) : "",
-    reps: targetReps ?? "",
-    rpeIdx: rpeIdxes[i] ?? 0,
-    confirmed: false,
-    isPr: false,
-  }));
-}
-
 type SetConfig = { reps: string | null; weight: number | null; rpe: number | null };
 
-/** Build initial RowState array from programExercise, honouring set_configs first */
 function resolveInitialRows(pe: any): RowState[] {
   const cfgs: SetConfig[] | null = pe.set_configs ?? null;
   if (cfgs && cfgs.length > 0) {
@@ -368,10 +298,10 @@ function resolveInitialRows(pe: any): RowState[] {
       reps: c.reps ?? pe.reps ?? "",
       rpeIdx: targetRpeIdx(c.rpe ?? null),
       confirmed: false,
+      setLogId: null,
       isPr: false,
     }));
   }
-  // Legacy fallback
   const sets: number = pe.sets ?? 3;
   const perSetRpe: (number | null)[] | null = pe.target_rpes ?? null;
   return Array.from({ length: sets }, (_, i) => ({
@@ -379,12 +309,13 @@ function resolveInitialRows(pe: any): RowState[] {
     reps: pe.reps ?? "",
     rpeIdx: targetRpeIdx(perSetRpe ? (perSetRpe[i] ?? null) : (pe.target_rpe ?? null)),
     confirmed: false,
+    setLogId: null,
     isPr: false,
   }));
 }
 
 // ── Exercise block ────────────────────────────────────────────────────────────
-function ExerciseBlock({ programExercise, workoutLogId, scheduledWorkoutId, locked = false }: { programExercise: any; workoutLogId: string | null; scheduledWorkoutId: string; locked?: boolean }) {
+function ExerciseBlock({ programExercise, workoutLogId }: { programExercise: any; workoutLogId: string | null }) {
   const supabase = createClient();
   const qc = useQueryClient();
 
@@ -417,16 +348,21 @@ function ExerciseBlock({ programExercise, workoutLogId, scheduledWorkoutId, lock
   const saveNote = useMutation({
     mutationFn: async (text: string) => {
       if (!workoutLogId) return;
-      if (!text.trim()) {
-        await enqueue("exercise_note.delete", {
-          workout_log_id: workoutLogId, program_exercise_id: programExercise.id,
-        });
+      const trimmed = text.trim();
+      if (!trimmed) {
+        await supabase
+          .from("workout_exercise_notes")
+          .delete()
+          .eq("workout_log_id", workoutLogId)
+          .eq("program_exercise_id", programExercise.id);
       } else {
-        await enqueue("exercise_note.upsert", {
-          workout_log_id: workoutLogId, program_exercise_id: programExercise.id, notes: text.trim(),
-        });
+        await supabase
+          .from("workout_exercise_notes")
+          .upsert(
+            { workout_log_id: workoutLogId, program_exercise_id: programExercise.id, notes: trimmed },
+            { onConflict: "workout_log_id,program_exercise_id" },
+          );
       }
-      if (navigator.onLine) void replay();
     },
   });
 
@@ -444,65 +380,78 @@ function ExerciseBlock({ programExercise, workoutLogId, scheduledWorkoutId, lock
     },
   });
 
-  // Merge DB sets into row state. Runs whenever sets data changes so returning
-  // to a completed workout always shows the persisted values.
+  // Merge DB sets into row state by set_number (not array position) so that
+  // deleting a middle set doesn't misalign remaining confirmed rows.
   useEffect(() => {
-    if (sets.length === 0) return;
-    setRows((prev) =>
-      prev.map((r, i) => {
-        const s = sets[i] as any;
-        if (!s) return r;
-        const dbRpeIdx = s.rpe === null
-          ? -1
-          : (RPE_STEPS as readonly number[]).indexOf(s.rpe as number);
-        return {
-          weight: s.weight != null ? String(s.weight) : r.weight,
-          reps: s.reps != null ? String(s.reps) : r.reps,
-          rpeIdx: dbRpeIdx >= 0 ? dbRpeIdx : r.rpeIdx,
-          confirmed: true,
-          isPr: !!s.is_pr,
-        };
-      })
-    );
+    setRows((prev) => prev.map((r, i) => {
+      const setNumber = i + 1;
+      const match = (sets as any[]).find((s) => s.set_number === setNumber);
+      if (!match) {
+        // No DB row at this position → ensure row is marked unconfirmed.
+        if (!r.confirmed && r.setLogId === null) return r;
+        return { ...r, confirmed: false, setLogId: null, isPr: false };
+      }
+      const dbRpeIdx = match.rpe === null
+        ? -1
+        : (RPE_STEPS as readonly number[]).indexOf(match.rpe as number);
+      return {
+        ...r,
+        weight: match.weight != null ? String(match.weight) : r.weight,
+        reps: match.reps != null ? String(match.reps) : r.reps,
+        rpeIdx: dbRpeIdx >= 0 ? dbRpeIdx : r.rpeIdx,
+        confirmed: true,
+        setLogId: match.id,
+        isPr: !!match.is_pr,
+      };
+    }));
   }, [sets]);
 
   const add = useMutation({
     mutationFn: async ({ rowIdx, row }: { rowIdx: number; row: RowState }) => {
       if (!workoutLogId) throw new Error("no workout log");
-      const id = uuid();
       const setNumber = rowIdx + 1;
       const rpe: number | null = row.rpeIdx >= 0 ? RPE_STEPS[row.rpeIdx] ?? null : null;
-      await enqueue("set_log.create", {
-        id, workout_log_id: workoutLogId,
-        scheduled_workout_id: scheduledWorkoutId,
-        exercise_id: programExercise.exercise_id,
-        exercise_name: programExercise.exercises?.name ?? null,
-        program_exercise_id: programExercise.id,
-        set_number: setNumber,
-        weight: row.weight ? Number(row.weight) : null,
-        reps: row.reps ? Number(row.reps) : null,
-        rpe,
-      }, id);
-      if (navigator.onLine) await replay();
+      const { data, error } = await supabase
+        .from("set_logs")
+        .insert({
+          workout_log_id: workoutLogId,
+          exercise_id: programExercise.exercise_id,
+          program_exercise_id: programExercise.id,
+          set_number: setNumber,
+          weight: row.weight ? Number(row.weight) : null,
+          reps: row.reps ? Number(row.reps) : null,
+          rpe,
+        })
+        .select("id")
+        .single();
+      if (error) throw error;
+      return { rowIdx, id: data.id };
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: ["set_logs", workoutLogId] }),
+    onSuccess: ({ rowIdx, id }) => {
+      setRows((prev) => prev.map((r, i) => i === rowIdx ? { ...r, confirmed: true, setLogId: id } : r));
+      qc.invalidateQueries({ queryKey: ["set_logs"] });
+    },
+    onError: (e: any, { rowIdx }) => {
+      setRows((prev) => prev.map((r, i) => i === rowIdx ? { ...r, confirmed: false } : r));
+      toast({ title: "Sarjan tallennus epäonnistui", description: e?.message ?? "Yritä uudelleen." });
+    },
   });
 
   const unconfirm = useMutation({
     mutationFn: async (rowIdx: number) => {
-      const existing = sets.find((s: any) => s.set_number === rowIdx + 1);
-      if (!existing) return;
-      const { error } = await supabase.from("set_logs").delete().eq("id", existing.id);
+      const row = rows[rowIdx];
+      const id = row?.setLogId;
+      if (!id) return;
+      const { error } = await supabase.from("set_logs").delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: (_d, rowIdx) => {
-      setRows((prev) => prev.map((r, i) => i === rowIdx ? { ...r, confirmed: false } : r));
-      qc.invalidateQueries({ queryKey: ["set_logs", workoutLogId] });
+      setRows((prev) => prev.map((r, i) => i === rowIdx ? { ...r, confirmed: false, setLogId: null, isPr: false } : r));
+      qc.invalidateQueries({ queryKey: ["set_logs"] });
     },
   });
 
   function confirmRow(i: number) {
-    if (locked) return;
     const row = rows[i];
     if (!row || row.confirmed) return;
     setRows((prev) => prev.map((r, idx) => idx === i ? { ...r, confirmed: true } : r));
@@ -510,12 +459,28 @@ function ExerciseBlock({ programExercise, workoutLogId, scheduledWorkoutId, lock
   }
 
   function updateRow(i: number, patch: Partial<RowState>) {
-    if (locked) return;
     setRows((prev) => prev.map((r, idx) => idx === i ? { ...r, ...patch } : r));
   }
 
   const confirmedCount = rows.filter((r) => r.confirmed).length;
   const allDone = confirmedCount === targetSets;
+
+  // Active set = first incomplete. Highlighted in-place; no row re-ordering.
+  const firstOpenIdx = rows.findIndex((r) => !r.confirmed);
+
+  // Resolve per-set target list for the header summary. Labels stay fixed;
+  // only styling of the active row changes.
+  const headerCfgs: SetConfig[] = (() => {
+    const cfgs: SetConfig[] | null = programExercise.set_configs?.length > 0 ? programExercise.set_configs : null;
+    if (cfgs) return cfgs;
+    const rpeVals: (number | null)[] = programExercise.target_rpes
+      ?? (programExercise.target_rpe != null ? Array(targetSets).fill(programExercise.target_rpe) : Array(targetSets).fill(null));
+    return Array.from({ length: targetSets }, (_, i) => ({
+      reps: programExercise.reps ?? null,
+      weight: programExercise.intensity ?? null,
+      rpe: rpeVals[i] ?? null,
+    }));
+  })();
 
   return (
     <div style={{
@@ -563,48 +528,43 @@ function ExerciseBlock({ programExercise, workoutLogId, scheduledWorkoutId, lock
               </svg>
             </button>
           </div>
-          <div style={{ marginTop: 4, display: "flex", flexDirection: "column", gap: 1 }}>
-            {(() => {
-              const cfgs: SetConfig[] | null = programExercise.set_configs?.length > 0 ? programExercise.set_configs : null;
-              if (cfgs) {
-                return cfgs.map((c, i) => {
-                  const repsLabel = c.reps ? `${c.reps} toistoa` : "— toistoa";
-                  const rpeLabel = c.rpe != null ? `, rpe ${c.rpe}` : "";
-                  return (
-                    <span key={i} style={{ fontSize: 12, color: "var(--c-text-muted)" }}>
-                      sarja {i + 1}: {repsLabel}{rpeLabel}
-                    </span>
-                  );
-                });
-              }
-              const rpeVals: (number | null)[] = programExercise.target_rpes
-                ?? (programExercise.target_rpe != null ? Array(targetSets).fill(programExercise.target_rpe) : []);
+
+          {/* Static per-set target list. Active row highlighted in place. */}
+          <div style={{ marginTop: 4, display: "flex", flexDirection: "column", gap: 2 }}>
+            {headerCfgs.map((c, i) => {
+              const repsLbl = c.reps ? `${c.reps} toistoa` : "— toistoa";
+              const weightLbl = c.weight != null ? `, ${c.weight} kg` : "";
+              const rpeLbl = c.rpe != null ? `, rpe ${c.rpe === 5 ? "<6" : c.rpe}` : "";
+              const isActive = i === firstOpenIdx;
+              const isDone = rows[i]?.confirmed ?? false;
               return (
-                <span style={{ fontSize: 12, color: "var(--c-text-muted)" }}>
-                  {targetSets} × {programExercise.reps ?? "—"} toistoa
-                  {rpeVals.length > 0 && !rpeVals.every((v) => v === null) && (
-                    <span style={{ marginLeft: 6 }}>
-                      {rpeVals.map((v, i) => (
-                        <span key={i} style={{
-                          fontSize: 10, fontWeight: 700, padding: "2px 6px", borderRadius: 12, marginLeft: 3,
-                          background: "rgba(255,29,140,0.12)", color: "var(--c-pink)",
-                          border: "1px solid rgba(255,29,140,0.25)",
-                        }}>
-                          {v === null ? "<6" : String(v)}
-                        </span>
-                      ))}
-                    </span>
-                  )}
-                </span>
+                <div key={i} style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  fontSize: 12,
+                  fontWeight: isActive ? 700 : 500,
+                  color: isActive ? "var(--c-pink)" : isDone ? "var(--c-text-subtle)" : "var(--c-text-muted)",
+                  textDecoration: isDone ? "line-through" : "none",
+                  letterSpacing: isActive ? "-0.1px" : 0,
+                }}>
+                  <span style={{
+                    display: "inline-block",
+                    width: 6, height: 6, borderRadius: "50%",
+                    background: isActive ? "var(--c-pink)" : "transparent",
+                    boxShadow: isActive ? "0 0 8px var(--c-pink-glow)" : "none",
+                    flexShrink: 0,
+                  }} />
+                  <span>sarja {i + 1}: {repsLbl}{weightLbl}{rpeLbl}</span>
+                </div>
               );
-            })()}
+            })}
           </div>
         </div>
       </div>
 
       {/* ── Table ── */}
       <div style={{ paddingBottom: 4 }}>
-        {/* Column headers */}
         <div style={{
           display: "grid", gridTemplateColumns: "20px 1fr 1fr 1fr 30px",
           gap: 3, padding: "0 8px 6px",
@@ -617,16 +577,14 @@ function ExerciseBlock({ programExercise, workoutLogId, scheduledWorkoutId, lock
           <span />
         </div>
 
-        {/* Rows */}
         {rows.map((row, i) => (
           <SetTableRow
             key={i}
             rowNum={i + 1}
             row={row}
-            locked={locked}
             onChange={(patch) => updateRow(i, patch)}
             onConfirm={() => confirmRow(i)}
-            onUnconfirm={() => { if (!locked) unconfirm.mutate(i); }}
+            onUnconfirm={() => unconfirm.mutate(i)}
           />
         ))}
       </div>
@@ -672,7 +630,6 @@ function StepperCell({
   onInc: () => void;
   canDec: boolean;
   canInc: boolean;
-  // if provided the center becomes an editable input
   rawValue?: string;
   onRawChange?: (v: string) => void;
   inputMode?: "decimal" | "numeric";
@@ -736,17 +693,15 @@ function StepperCell({
 
 // ── Set table row ─────────────────────────────────────────────────────────────
 function SetTableRow({
-  rowNum, row, onChange, onConfirm, onUnconfirm, locked = false,
+  rowNum, row, onChange, onConfirm, onUnconfirm,
 }: {
   rowNum: number;
   row: RowState;
   onChange: (patch: Partial<RowState>) => void;
   onConfirm: () => void;
   onUnconfirm: () => void;
-  locked?: boolean;
 }) {
-  const inputsDisabled = row.confirmed || locked;
-  // Weight helpers (step 2.5 kg, min 0, empty = not set)
+  const inputsDisabled = row.confirmed;
   const weightNum = row.weight !== "" ? parseFloat(row.weight) : null;
   function decWeight() {
     if (weightNum === null || weightNum <= 0) return;
@@ -758,7 +713,6 @@ function SetTableRow({
     onChange({ weight: String(weightNum + 2.5) });
   }
 
-  // Reps helpers (step 1, min 1, empty = not set)
   const repsNum = row.reps !== "" ? parseInt(row.reps, 10) : null;
   function decReps() {
     if (repsNum === null || repsNum <= 1) return;
@@ -769,7 +723,6 @@ function SetTableRow({
     onChange({ reps: String(repsNum + 1) });
   }
 
-  // RPE helpers
   const currentRpe = row.rpeIdx >= 0 ? RPE_STEPS[row.rpeIdx] : undefined;
 
   return (
@@ -781,14 +734,12 @@ function SetTableRow({
       opacity: row.confirmed ? 0.7 : 1,
       transition: "opacity 0.2s",
     }}>
-      {/* # */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
         <span style={{ fontSize: 12, fontWeight: 600, color: row.isPr ? "#F5A623" : "var(--c-text-subtle)" }}>
           {row.isPr ? "🏆" : rowNum}
         </span>
       </div>
 
-      {/* Weight */}
       <StepperCell
         display={row.weight !== "" ? row.weight : "–"}
         disabled={inputsDisabled}
@@ -802,7 +753,6 @@ function SetTableRow({
         inputStep="0.5"
       />
 
-      {/* Reps */}
       <StepperCell
         display={row.reps !== "" ? row.reps : "–"}
         disabled={inputsDisabled}
@@ -816,7 +766,6 @@ function SetTableRow({
         inputStep="1"
       />
 
-      {/* RPE */}
       <StepperCell
         display={currentRpe !== undefined ? rpeLabel(currentRpe) : "–"}
         disabled={inputsDisabled}
@@ -826,19 +775,16 @@ function SetTableRow({
         onInc={() => onChange({ rpeIdx: row.rpeIdx < 0 ? 0 : Math.min(RPE_STEPS.length - 1, row.rpeIdx + 1) })}
       />
 
-      {/* Confirm / Unconfirm */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
         <button
           type="button"
           onClick={row.confirmed ? onUnconfirm : onConfirm}
-          disabled={locked}
-          title={locked ? "Lukittu" : row.confirmed ? "Peru sarja" : "Merkitse tehdyksi"}
+          title={row.confirmed ? "Peru sarja" : "Merkitse tehdyksi"}
           style={{
             width: 30, height: 30, borderRadius: "50%", padding: 0, flexShrink: 0,
             background: row.confirmed ? "rgba(62,207,142,0.15)" : "var(--c-surface2)",
             border: `1px solid ${row.confirmed ? "rgba(62,207,142,0.4)" : "var(--c-border)"}`,
-            cursor: locked ? "default" : "pointer",
-            opacity: locked ? 0.6 : 1,
+            cursor: "pointer",
             display: "flex", alignItems: "center", justifyContent: "center",
             transition: "all 0.2s",
           } as React.CSSProperties}
