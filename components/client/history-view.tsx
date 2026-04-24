@@ -42,9 +42,18 @@ function groupSetsByExercise(sets: PastWorkout["workout_logs"][number]["set_logs
   return order.map((name) => ({ name, sets: map.get(name)! }));
 }
 
+function pickRichestLog(logs: PastWorkout["workout_logs"]): PastWorkout["workout_logs"][number] | null {
+  if (!logs || logs.length === 0) return null;
+  let best = logs[0]!;
+  for (const l of logs) {
+    if ((l.set_logs?.length ?? 0) > (best.set_logs?.length ?? 0)) best = l;
+  }
+  return best;
+}
+
 function WorkoutCard({ w, pendingSets }: { w: PastWorkout; pendingSets: SetRow[] }) {
   const [open, setOpen] = useState(false);
-  const wl = w.workout_logs?.[0];
+  const wl = pickRichestLog(w.workout_logs ?? []);
   const serverSets = wl?.set_logs ?? [];
   // Merge server sets with any still-queued sets (dedup by set_number+exercise)
   const serverKeys = new Set(serverSets.map((s) => `${s.exercises?.name}-${s.set_number}`));
