@@ -122,15 +122,15 @@ export async function getMonthWorkouts(
   return (data ?? []) as unknown as MonthWorkout[];
 }
 
-export async function getRecentPRs(supabase: DB, clientId: string, limit = 5) {
+export async function getRecentPRs(supabase: DB, clientId: string, limit = 250) {
   const { data, error } = await supabase
     .from("personal_records")
     .select(`
-      id, rep_range, weight, reps, estimated_1rm, achieved_at,
+      id, reps, weight, estimated_1rm, achieved_at,
       exercises ( id, name )
     `)
     .eq("client_id", clientId)
-    .order("achieved_at", { ascending: false })
+    .order("reps", { ascending: true })
     .limit(limit);
   if (error) throw error;
   return data ?? [];

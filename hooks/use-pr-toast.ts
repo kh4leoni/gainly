@@ -24,11 +24,13 @@ export function usePrToast(clientId: string) {
         },
         (payload) => {
           const pr: any = payload.new;
-          const e1rm = pr.estimated_1rm != null ? `${roundKg(pr.estimated_1rm)}kg 1RM` : null;
-          const source = pr.weight != null && pr.reps != null ? `${pr.weight}kg × ${pr.reps}` : null;
+          const reps: number | null = pr.reps ?? null;
+          const weight: number | null = pr.weight ?? null;
+          const e1rm = pr.estimated_1rm != null ? `${roundKg(pr.estimated_1rm)}kg e1RM` : null;
+          const source = weight != null && reps != null ? `${weight}kg × ${reps}` : null;
           toast({
             variant: "success",
-            title: "Uusi ennätys!",
+            title: reps != null ? `Uusi ${reps}RM-ennätys!` : "Uusi ennätys!",
             description: [e1rm, source && `(${source})`].filter(Boolean).join(" "),
           });
           qc.invalidateQueries({ queryKey: ["prs", clientId] });
