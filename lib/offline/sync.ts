@@ -4,33 +4,35 @@ import { createClient } from "@/lib/supabase/client";
 import { peek, remove, bumpError } from "./queue";
 import type { PendingMutation } from "./db";
 
-let running = false;
-
 // Items that fail this many times are dropped so they can't block the queue forever.
 const MAX_ATTEMPTS = 10;
 
-export async function replay() {
-  if (running) return;
-  running = true;
-  try {
-    const supabase = createClient();
-    const items = await peek();
-    for (const item of items) {
-      if (item.attempts >= MAX_ATTEMPTS) {
-        await remove(item.id);
-        continue;
-      }
-      try {
-        await execute(supabase, item);
-        await remove(item.id);
-      } catch (e: any) {
-        await bumpError(item.id, e?.message ?? String(e));
-        // Stop on first failure to preserve FIFO semantics for the same client.
-        break;
-      }
+let replayPromise: Promise<void> | null = null;
+
+// Returns the in-progress replay promise if one is running, so callers can
+// await the same run rather than bailing out silently.
+export function replay(): Promise<void> {
+  if (replayPromise) return replayPromise;
+  replayPromise = doReplay().finally(() => { replayPromise = null; });
+  return replayPromise;
+}
+
+async function doReplay() {
+  const supabase = createClient();
+  const items = await peek();
+  for (const item of items) {
+    if (item.attempts >= MAX_ATTEMPTS) {
+      await remove(item.id);
+      continue;
     }
-  } finally {
-    running = false;
+    try {
+      await execute(supabase, item);
+      await remove(item.id);
+    } catch (e: any) {
+      await bumpError(item.id, e?.message ?? String(e));
+      // Stop on first failure to preserve FIFO semantics for the same client.
+      break;
+    }
   }
 }
 

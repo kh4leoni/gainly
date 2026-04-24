@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { getCoachFullDashboard } from "@/lib/queries/coach";
 import { getMe } from "@/lib/queries/profile";
 import { Users, Trophy, Dumbbell, MessageCircle } from "lucide-react";
+import { roundKg } from "@/lib/calc/one-rm";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -290,17 +291,18 @@ export function CoachDashboardView() {
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-sm font-medium">
                         {pr.exercise_name ?? "—"}{" "}
-                        <span className="text-xs text-muted-foreground">
-                          ({pr.rep_range.toUpperCase()})
-                        </span>
+                        <span className="text-xs text-muted-foreground">(1RM)</span>
                       </div>
                       <div className="text-xs text-muted-foreground">
                         {pr.client_name ?? "—"} · {relativeDate(pr.achieved_at)}
+                        {pr.weight != null && pr.reps != null && (
+                          <span className="ml-1">· {pr.weight}kg × {pr.reps}</span>
+                        )}
                       </div>
                     </div>
                     <div className="shrink-0 text-right">
                       <div className="text-sm font-bold" style={{ color: "#ec4899" }}>
-                        {formatWeight(pr.weight)}
+                        {formatWeight(pr.estimated_1rm != null ? roundKg(pr.estimated_1rm) : null)}
                       </div>
                       <div className="text-xs text-muted-foreground">UUSI ENNÄTYS</div>
                     </div>

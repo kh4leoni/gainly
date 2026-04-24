@@ -68,39 +68,44 @@ function statusDotStyle(status: string): React.CSSProperties {
   };
 }
 
+// Pick the workout_log row with the most set_logs — handles legacy cases
+// where a scheduled_workout has multiple workout_logs and only one holds data.
+function pickRichestLog(logs: WorkoutLog[] | undefined): WorkoutLog | null {
+  if (!logs || logs.length === 0) return null;
+  let best = logs[0]!;
+  for (const l of logs) {
+    if ((l.set_logs?.length ?? 0) > (best.set_logs?.length ?? 0)) best = l;
+  }
+  return best;
+}
+
 export function ClientTrainingView({ upcomingWorkouts, pastWorkouts, weekDescription }: Props) {
-  const [pastOpen, setPastOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(true);
 
-  const today = new Date();
-  const currentWeekStart = getWeekStart(today);
+  const todayStr = new Date().toISOString().slice(0, 10);
 
-  const pastByWeek = groupWorkoutsByWeek(pastWorkouts as WorkoutEntry[]);
-  const currentWeek = pastByWeek.find((w) => w.weekStart === currentWeekStart);
-  const currentWeekWorkouts = currentWeek?.workouts ?? [];
+  const allPast = (pastWorkouts as WorkoutEntry[]).filter((w) => w.status === "completed");
+  const historyByWeek = groupWorkoutsByWeek(allPast);
 
-  const upcoming = (upcomingWorkouts as WorkoutEntry[]).filter(
-    (w) => w.scheduled_date >= currentWeekStart
-  );
-  const currentWeekAll = [...currentWeekWorkouts, ...upcoming].sort((a, b) =>
-    a.scheduled_date.localeCompare(b.scheduled_date)
-  );
-
-  const pastWeeks = pastByWeek.filter((w) => w.weekStart !== currentWeekStart);
+  const upcoming = (upcomingWorkouts as WorkoutEntry[])
+    .filter((w) => w.status !== "completed" && w.scheduled_date >= todayStr)
+    .slice()
+    .sort((a, b) => a.scheduled_date.localeCompare(b.scheduled_date));
 
   return (
     <div className="space-y-4">
-      {/* Current Week */}
+      {/* Tulevat treenit */}
       <div className="rounded-2xl border bg-card">
         <div className="px-5 pt-5 pb-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <h2 className="text-base font-semibold">Tämä viikko</h2>
-              <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-400">
+              <h2 className="text-base font-semibold">Tulevat treenit</h2>
+              <span className="rounded-full bg-pink-500/15 px-2 py-0.5 text-xs font-medium text-pink-400">
                 Aktiivinen
               </span>
             </div>
             <span className="text-sm text-muted-foreground">
-              {currentWeekAll.length} treeni{currentWeekAll.length !== 1 ? "ä" : ""}
+              {upcoming.length} treeni{upcoming.length !== 1 ? "ä" : ""}
             </span>
           </div>
           {weekDescription && (
@@ -108,11 +113,11 @@ export function ClientTrainingView({ upcomingWorkouts, pastWorkouts, weekDescrip
           )}
         </div>
         <div className="px-5 pb-5">
-          {currentWeekAll.length === 0 ? (
-            <p className="py-2 text-sm text-muted-foreground">Ei treenejä tällä viikolla.</p>
+          {upcoming.length === 0 ? (
+            <p className="py-2 text-sm text-muted-foreground">Ei tulevia treenejä.</p>
           ) : (
             <div className="divide-y divide-border/50">
-              {currentWeekAll.map((w) => (
+              {upcoming.map((w) => (
                 <WorkoutRow key={w.id} workout={w} />
               ))}
             </div>
@@ -120,33 +125,33 @@ export function ClientTrainingView({ upcomingWorkouts, pastWorkouts, weekDescrip
         </div>
       </div>
 
-      {/* Past Weeks */}
+      {/* Historia */}
       <div className="rounded-2xl border bg-card">
         <div className="px-5 py-4">
           <button
-            onClick={() => setPastOpen(!pastOpen)}
+            onClick={() => setHistoryOpen(!historyOpen)}
             className="flex w-full items-center justify-between text-left"
           >
             <div className="flex items-center gap-2">
-              {pastOpen ? (
+              {historyOpen ? (
                 <ChevronDown className="h-4 w-4 text-muted-foreground" />
               ) : (
                 <ChevronRight className="h-4 w-4 text-muted-foreground" />
               )}
-              <span className="text-base font-semibold">Menneet viikot</span>
+              <span className="text-base font-semibold">Historia</span>
             </div>
             <span className="text-sm text-muted-foreground">
-              {pastWeeks.length} viikko{pastWeeks.length !== 1 ? "a" : ""}
+              {allPast.length} treeni{allPast.length !== 1 ? "ä" : ""}
             </span>
           </button>
         </div>
-        {pastOpen && (
+        {historyOpen && (
           <div className="border-t px-5 pb-5 pt-4">
-            {pastWeeks.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Ei menneitä treenejä.</p>
+            {historyByWeek.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Ei suoritettuja treenejä.</p>
             ) : (
               <div className="space-y-3">
-                {pastWeeks.map((wg) => (
+                {historyByWeek.map((wg) => (
                   <div key={wg.weekStart} className="overflow-hidden rounded-xl border">
                     <div className="flex items-center justify-between bg-muted/30 px-3 py-2">
                       <span className="text-sm font-medium">{wg.weekLabel}</span>
@@ -183,8 +188,7 @@ function WorkoutRow({ workout }: { workout: WorkoutEntry }) {
     .map((pe) => pe.exercises?.name)
     .filter((n): n is string => Boolean(n));
 
-  // Group set_logs by exercise name for display
-  const wl = workout.workout_logs?.[0];
+  const wl = pickRichestLog(workout.workout_logs);
   const setsByExercise = groupSetsByExercise(wl?.set_logs ?? []);
   const exNotesByName = buildExerciseNoteMap(wl?.workout_exercise_notes ?? []);
 
@@ -202,9 +206,17 @@ function WorkoutRow({ workout }: { workout: WorkoutEntry }) {
               style={statusDotStyle(workout.status)}
             />
             <div className="min-w-0">
-              <p className="text-sm font-semibold">
-                {workout.program_days?.name ?? "Treeni"}
-              </p>
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-semibold">
+                  {workout.program_days?.name ?? "Treeni"}
+                </p>
+                <span className="text-xs text-muted-foreground">
+                  {new Date(workout.scheduled_date).toLocaleDateString("fi-FI", {
+                    day: "numeric",
+                    month: "numeric",
+                  })}
+                </span>
+              </div>
               {workout.program_days?.description && (
                 <p className="mt-0.5 text-xs italic text-muted-foreground">
                   {workout.program_days.description}
@@ -227,7 +239,6 @@ function WorkoutRow({ workout }: { workout: WorkoutEntry }) {
 
       {expanded && isCompleted && (
         <div className="ml-5 mt-2 space-y-2">
-          {/* Day note */}
           {wl?.notes && (
             <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2">
               <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary/60">
@@ -237,7 +248,6 @@ function WorkoutRow({ workout }: { workout: WorkoutEntry }) {
             </div>
           )}
 
-          {/* Sets grouped by exercise */}
           {setsByExercise.length > 0 ? (
             <div className="rounded-lg bg-muted/20 px-3 py-2 space-y-2">
               {setsByExercise.map(({ name, sets }) => {
@@ -256,7 +266,7 @@ function WorkoutRow({ workout }: { workout: WorkoutEntry }) {
                           </span>
                           {sl.rpe != null && (
                             <span className="rounded-full bg-pink-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-pink-400">
-                              RPE {sl.rpe}
+                              RPE {sl.rpe === 5 ? "<6" : sl.rpe}
                             </span>
                           )}
                           {sl.is_pr && (

@@ -4,22 +4,12 @@ import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { relativeTime } from "@/lib/utils";
+import { derivedRepMax, roundKg } from "@/lib/calc/one-rm";
 
 type Props = {
   clientId: string;
   exercises: Array<{ id: string; name: string }>;
 };
-
-// RPE-based estimated 1RM (Tuchscherer)
-function rpeE1rm(weight: number, reps: number, rpe: number): number {
-  if (rpe >= 10) return weight;
-  return weight * (1 + reps / (10 - rpe));
-}
-
-// Epley estimated 1RM (fallback, no RPE)
-function epleyE1rm(weight: number, reps: number): number {
-  return weight * (1 + reps / 30.0);
-}
 
 function RecordCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -74,20 +64,18 @@ function ExerciseSelect({
   );
 }
 
-type PRRow = {
-  rep_range: string;
+type BestRow = {
   weight: number;
   reps: number;
-  estimated_1rm: number | null;
+  estimated_1rm: number;
   achieved_at: string;
-  // RPE from the actual set that produced this PR
   rpe: number | null;
 };
 
 export function RecordsSection({ clientId, exercises }: Props) {
   const [exerciseId, setExerciseId] = useState("");
-  const [repRange, setRepRange] = useState("1");
-  const [row, setRow] = useState<PRRow | null>(null);
+  const [repRange, setRepRange] = useState(1);
+  const [row, setRow] = useState<BestRow | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -96,34 +84,28 @@ export function RecordsSection({ clientId, exercises }: Props) {
     const supabase = createClient();
     supabase
       .from("personal_records")
-      .select("rep_range, weight, reps, estimated_1rm, achieved_at, set_logs ( rpe )")
+      .select("weight, reps, estimated_1rm, achieved_at, set_logs ( rpe )")
       .eq("client_id", clientId)
       .eq("exercise_id", exerciseId)
-      .eq("rep_range", `${repRange}RM`)
+      .eq("rep_range", "1RM")
       .maybeSingle()
       .then(({ data }) => {
-        if (!data) { setRow(null); setLoading(false); return; }
+        if (!data || data.weight == null || data.reps == null || data.estimated_1rm == null) {
+          setRow(null); setLoading(false); return;
+        }
         const d = data as any;
-        const rpe: number | null = d.set_logs?.rpe ?? null;
         setRow({
-          rep_range: d.rep_range,
           weight: d.weight,
           reps: d.reps,
           estimated_1rm: d.estimated_1rm,
           achieved_at: d.achieved_at,
-          rpe,
+          rpe: d.set_logs?.rpe ?? null,
         });
         setLoading(false);
       });
   }, [clientId, exerciseId, repRange]);
 
-  const e1rm = row
-    ? row.rpe != null
-      ? rpeE1rm(row.weight, row.reps, row.rpe)
-      : row.estimated_1rm ?? epleyE1rm(row.weight, row.reps)
-    : null;
-
-  const e1rmLabel = row?.rpe != null ? "RPE-arvioitu 1RM" : "Epley 1RM";
+  const derived = row ? derivedRepMax(row.estimated_1rm, repRange) : null;
 
   return (
     <RecordCard title="Ennätykset">
@@ -133,7 +115,7 @@ export function RecordsSection({ clientId, exercises }: Props) {
           <div className="flex items-center gap-1">
             <button
               type="button"
-              onClick={() => setRepRange((p) => String(Math.max(1, parseInt(p) - 1)))}
+              onClick={() => setRepRange((p) => Math.max(1, p - 1))}
               className="flex h-9 w-8 items-center justify-center rounded-lg border bg-background text-sm font-medium transition-colors hover:bg-muted"
             >
               −
@@ -141,7 +123,7 @@ export function RecordsSection({ clientId, exercises }: Props) {
             <span className="w-8 text-center text-base font-semibold tabular-nums">{repRange}</span>
             <button
               type="button"
-              onClick={() => setRepRange((p) => String(Math.min(5, parseInt(p) + 1)))}
+              onClick={() => setRepRange((p) => Math.min(5, p + 1))}
               className="flex h-9 w-8 items-center justify-center rounded-lg border bg-background text-sm font-medium transition-colors hover:bg-muted"
             >
               +
@@ -153,40 +135,36 @@ export function RecordsSection({ clientId, exercises }: Props) {
 
       {loading ? (
         <div className="h-16 animate-pulse rounded-md bg-muted" />
-      ) : row ? (
+      ) : row && derived != null ? (
         <div className="rounded-xl border bg-muted/30 px-4 py-3 space-y-2">
           <div className="flex items-center justify-between">
             <div>
               <div className="text-2xl font-bold tabular-nums">
-                {row.weight}{" "}
+                {roundKg(derived)}{" "}
                 <span className="text-base font-normal text-muted-foreground">kg</span>
                 <span className="ml-2 text-sm font-normal text-muted-foreground">
-                  × {row.reps}
+                  × {repRange}
                 </span>
               </div>
               <div className="text-xs text-muted-foreground">
                 {relativeTime(row.achieved_at)}
-                {row.rpe != null && (
-                  <span className="ml-2 rounded-full bg-pink-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-pink-400">
-                    RPE {row.rpe}
-                  </span>
-                )}
-              </div>
-            </div>
-            <span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-semibold text-amber-500">
-              PR
-            </span>
-          </div>
-          {e1rm != null && (
-            <div className="border-t pt-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">{e1rmLabel}</span>
-                <span className="text-sm font-bold tabular-nums text-primary">
-                  {e1rm.toFixed(1)} kg
+                <span className="ml-2">
+                  ({row.weight}kg × {row.reps}{row.rpe != null ? ` @RPE ${row.rpe}` : ""})
                 </span>
               </div>
             </div>
-          )}
+            <span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-semibold text-amber-500">
+              {repRange}RM
+            </span>
+          </div>
+          <div className="border-t pt-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">Arvioitu 1RM</span>
+              <span className="text-sm font-bold tabular-nums text-primary">
+                {roundKg(row.estimated_1rm)} kg
+              </span>
+            </div>
+          </div>
         </div>
       ) : exerciseId ? (
         <p className="text-sm text-muted-foreground">Ei ennätystä tälle harjoitukselle.</p>

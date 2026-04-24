@@ -4,9 +4,18 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { getRecentPRs } from "@/lib/queries/workouts";
+import { derivedRepMax, roundKg } from "@/lib/calc/one-rm";
 
 type Exercise = { id: string; name: string };
-type PR = { id: string; rep_range: string; weight: number | null; reps: number | null; estimated_1rm: number | null; achieved_at: string; exercises: { id: string; name: string } | null };
+type PR = {
+  id: string;
+  rep_range: string;
+  weight: number | null;
+  reps: number | null;
+  estimated_1rm: number | null;
+  achieved_at: string;
+  exercises: { id: string; name: string } | null;
+};
 
 function formatW(w: number | null) {
   if (w === null) return "—";
@@ -26,20 +35,21 @@ export function ProgressView({ clientId, exercises }: { clientId: string; exerci
 
   const selExName = exercises.find((e) => e.id === selId)?.name ?? "";
 
-  // Find PR for selected exercise + rep range
-  const repRangeKey = `${rep}rm`;
-  const matchedPR = prs.data?.find(
-    (pr) => pr.exercises?.id === selId && pr.rep_range.toLowerCase() === repRangeKey
-  );
-
-  // PRs with 1RM grouped by exercise (best per exercise)
-  const bestByExercise = new Map<string, PR>();
+  // Single "1RM" row per (client, exercise). All 1..5RM values are derived from it.
+  const oneRMByExercise = new Map<string, PR>();
   for (const pr of prs.data ?? []) {
     if (!pr.exercises?.id) continue;
-    if (pr.rep_range.toLowerCase() !== "1rm") continue;
-    if (!bestByExercise.has(pr.exercises.id)) bestByExercise.set(pr.exercises.id, pr);
+    if (pr.rep_range !== "1RM") continue;
+    if (!oneRMByExercise.has(pr.exercises.id)) oneRMByExercise.set(pr.exercises.id, pr);
   }
-  const allBests = Array.from(bestByExercise.values());
+
+  const matchedPR = selId ? oneRMByExercise.get(selId) ?? null : null;
+  const derived =
+    matchedPR && matchedPR.estimated_1rm != null
+      ? derivedRepMax(matchedPR.estimated_1rm, rep)
+      : null;
+
+  const allBests = Array.from(oneRMByExercise.values());
 
   return (
     <div style={{ flex: 1, overflowY: "auto", padding: "24px 20px 20px" }}>
@@ -109,9 +119,9 @@ export function ProgressView({ clientId, exercises }: { clientId: string; exerci
         </div>
       </div>
 
-      {/* PR display */}
+      {/* PR display (derived N-RM + stored 1RM) */}
       {selId && (
-        matchedPR && matchedPR.weight !== null && matchedPR.weight > 0 ? (
+        matchedPR && derived != null && matchedPR.estimated_1rm != null ? (
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 24 }}>
             <div style={{
               background: "var(--c-pink-dim)",
@@ -122,34 +132,32 @@ export function ProgressView({ clientId, exercises }: { clientId: string; exerci
               boxShadow: "0 0 32px rgba(255,29,140,0.12)",
             }}>
               <div style={{ fontSize: 10, color: "var(--c-pink)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 8 }}>
-                {rep}RM Ennätys
+                Arvioitu {rep}RM
               </div>
               <div style={{ fontSize: 44, fontWeight: 800, color: "var(--c-pink)", letterSpacing: "-2px", lineHeight: 1, textShadow: "0 0 30px rgba(255,29,140,0.6)" }}>
-                {formatW(matchedPR.weight)}
+                {formatW(roundKg(derived))}
               </div>
               <div style={{ fontSize: 14, color: "rgba(255,29,140,0.7)", marginTop: 4, fontWeight: 600 }}>kg</div>
             </div>
-            {matchedPR.estimated_1rm != null && matchedPR.estimated_1rm > 0 && (
-              <div style={{
-                background: "rgba(155,77,202,0.10)",
-                border: "1px solid rgba(155,77,202,0.30)",
-                borderRadius: 18,
-                padding: "24px 16px",
-                textAlign: "center",
-              }}>
-                <div style={{ fontSize: 10, color: "#9B4DCA", fontWeight: 700, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 8 }}>
-                  Arvioitu 1RM
-                </div>
-                <div style={{ fontSize: 44, fontWeight: 800, color: "#9B4DCA", letterSpacing: "-2px", lineHeight: 1, textShadow: "0 0 30px rgba(155,77,202,0.5)" }}>
-                  {formatW(matchedPR.estimated_1rm)}
-                </div>
-                <div style={{ fontSize: 14, color: "rgba(155,77,202,0.7)", marginTop: 4, fontWeight: 600 }}>kg</div>
+            <div style={{
+              background: "rgba(155,77,202,0.10)",
+              border: "1px solid rgba(155,77,202,0.30)",
+              borderRadius: 18,
+              padding: "24px 16px",
+              textAlign: "center",
+            }}>
+              <div style={{ fontSize: 10, color: "#9B4DCA", fontWeight: 700, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 8 }}>
+                Arvioitu 1RM
               </div>
-            )}
+              <div style={{ fontSize: 44, fontWeight: 800, color: "#9B4DCA", letterSpacing: "-2px", lineHeight: 1, textShadow: "0 0 30px rgba(155,77,202,0.5)" }}>
+                {formatW(roundKg(matchedPR.estimated_1rm))}
+              </div>
+              <div style={{ fontSize: 14, color: "rgba(155,77,202,0.7)", marginTop: 4, fontWeight: 600 }}>kg</div>
+            </div>
           </div>
         ) : (
           <div style={{ textAlign: "center", padding: "24px", color: "var(--c-text-muted)", fontSize: 14, marginBottom: 16 }}>
-            Ei ennätystä {rep}RM:lle{selExName ? ` — ${selExName}` : ""}
+            Ei ennätystä {selExName || "tälle liikkeelle"}
           </div>
         )
       )}
@@ -197,7 +205,7 @@ export function ProgressView({ clientId, exercises }: { clientId: string; exerci
           >
             <span style={{ fontWeight: 600, fontSize: 14 }}>{pr.exercises?.name ?? "—"}</span>
             <span style={{ fontWeight: 700, color: "var(--c-pink)", fontSize: 15 }}>
-              {formatW(pr.weight)}{" "}
+              {formatW(pr.estimated_1rm != null ? roundKg(pr.estimated_1rm) : null)}{" "}
               <span style={{ fontSize: 11, color: "var(--c-text-muted)", fontWeight: 400 }}>kg / 1RM</span>
             </span>
           </button>
