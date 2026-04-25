@@ -144,6 +144,7 @@ function ExerciseRow({ pe, exercises, onUpdate, onAssign, onDelete }: {
   onUpdate: (patch: ExPatch) => void; onAssign: (exerciseId: string) => void; onDelete: () => void;
 }) {
   const [showNotes, setShowNotes] = useState(!!pe.notes);
+  const [picking, setPicking] = useState(false);
   const exerciseName = (pe.exercises as { name: string } | null)?.name ?? null;
 
   // Initialise set_configs: prefer DB value, fall back to deriving from legacy fields
@@ -183,9 +184,12 @@ function ExerciseRow({ pe, exercises, onUpdate, onAssign, onDelete }: {
       <div className="flex items-center gap-2 px-3 pt-3 pb-1">
         <span className="cursor-grab text-muted-foreground opacity-40 shrink-0"><GripVertical className="h-3.5 w-3.5" /></span>
         <div className="flex-1 min-w-0">
-          {exerciseName
-            ? <span className="block overflow-hidden text-ellipsis whitespace-nowrap text-[13.5px] font-semibold">{exerciseName}</span>
-            : <ExerciseNamePicker exercises={exercises} onPick={onAssign} />}
+          {exerciseName && !picking
+            ? <button type="button" onClick={() => setPicking(true)}
+                className="block overflow-hidden text-ellipsis whitespace-nowrap text-[13.5px] font-semibold text-left hover:text-primary transition-colors cursor-pointer">
+                {exerciseName}
+              </button>
+            : <ExerciseNamePicker exercises={exercises} onPick={(id) => { onAssign(id); setPicking(false); }} />}
         </div>
         <button type="button" onClick={onDelete}
           className="shrink-0 flex items-center justify-center rounded p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive">
@@ -223,6 +227,7 @@ function ExerciseRow({ pe, exercises, onUpdate, onAssign, onDelete }: {
           <input key={`pe-notes:${pe.id}:${pe.notes ?? ""}`}
             className="block h-7 w-full rounded border border-border bg-muted/30 px-2 text-[12.5px] text-muted-foreground outline-none focus:border-primary"
             defaultValue={pe.notes ?? ""} placeholder="Ohje tai huomio valmentajalta…" autoFocus={!pe.notes}
+            onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
             onBlur={(e) => { const v = e.target.value.trim() || null; if (v !== pe.notes) onUpdate({ id: pe.id, notes: v }); }} />
         </div>
       )}
@@ -307,6 +312,7 @@ function WorkoutBlock({ day, exercises, onUpdate, onDelete, onAddExercise, onAss
           key={`day-name:${day.id}:${day.name ?? ""}`}
           defaultValue={displayName} placeholder="Nimeä tämä treeni…"
           className="h-[30px] flex-1 rounded border border-transparent bg-transparent px-2 text-[13.5px] font-medium text-foreground outline-none focus:border-border focus:bg-background"
+          onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
           onBlur={(e) => { const v = e.target.value.trim() || null; if (v !== (displayName || null)) onUpdate({ name: v }); }}
         />
         <div className="ml-auto flex shrink-0 items-center gap-1.5">
@@ -372,6 +378,7 @@ function WeekCard({ week, exercises, onUpdate, onSetActive, onAddWorkout, onDele
           key={`week-name:${week.id}:${week.name ?? ""}`}
           defaultValue={week.name ?? ""} placeholder="Viikon nimi (valinnainen)…"
           className="h-[28px] flex-1 rounded border border-transparent bg-transparent px-2 text-[13.5px] text-foreground outline-none focus:border-border focus:bg-background"
+          onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
           onBlur={(e) => { const v = e.target.value.trim() || null; if (v !== week.name) onUpdate({ name: v }); }}
         />
         <div className="ml-auto flex shrink-0 items-center gap-2">
@@ -469,6 +476,7 @@ function BlockCard({ block, exercises, onUpdate, onDelete, onAddWeek,
                 "focus:border-border focus:bg-background focus:text-foreground",
                 hasActiveWeek ? "text-primary/80" : "text-foreground"
               )}
+              onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
               onBlur={(e) => { const v = e.target.value.trim() || null; if (v !== block.name) onUpdate({ name: v }); }}
             />
           </div>
