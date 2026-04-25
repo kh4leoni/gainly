@@ -21,9 +21,14 @@
   background: var(--c-bg);
   font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
 }
-@keyframes c-fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
-@keyframes c-pulse  { 0%,100%{opacity:1} 50%{opacity:0.5} }
-@keyframes spin     { to{transform:rotate(360deg)} }
+@keyframes c-fadeUp        { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:none} }
+@keyframes c-pulse         { 0%,100%{opacity:1} 50%{opacity:0.5} }
+@keyframes spin            { to{transform:rotate(360deg)} }
+@keyframes quote-in-right  { from{opacity:0;transform:translateX(64px)}  to{opacity:1;transform:none} }
+@keyframes quote-in-left   { from{opacity:0;transform:translateX(-64px)} to{opacity:1;transform:none} }
+@keyframes quote-out-right { from{opacity:1;transform:none} to{opacity:0;transform:translateX(64px)}  }
+@keyframes quote-out-left  { from{opacity:1;transform:none} to{opacity:0;transform:translateX(-64px)} }
+@keyframes quote-progress  { from{width:0%} to{width:100%} }
 
 /* Lock the PWA shell — no document-level scroll or bounce on iOS */
 html:has(.client-app) {

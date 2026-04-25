@@ -53,6 +53,35 @@ export async function getTodayWorkout(supabase: DB, clientId: string): Promise<T
   return data as unknown as TodayWorkout | null;
 }
 
+export async function getNextWorkout(supabase: DB, clientId: string): Promise<TodayWorkout | null> {
+  const today = new Date().toISOString().slice(0, 10);
+  const limit = new Date(Date.now() + 60 * 86400_000).toISOString().slice(0, 10);
+  const { data, error } = await supabase
+    .from("scheduled_workouts")
+    .select(`
+      id, scheduled_date, status, completed_at,
+      program_days (
+        id, day_number, name, description,
+        program_weeks ( week_number, description ),
+        program_exercises (
+          id, order_idx, sets, reps, intensity, intensity_type, target_rpe, target_rpes, set_configs, rest_sec, notes,
+          exercise_id,
+          exercises ( id, name, video_path, instructions )
+        )
+      )
+    `)
+    .eq("client_id", clientId)
+    .neq("status", "completed")
+    .gte("scheduled_date", today)
+    .lte("scheduled_date", limit)
+    .order("scheduled_date")
+    .order("order_idx", { referencedTable: "program_days.program_exercises" })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data as unknown as TodayWorkout | null;
+}
+
 export type ScheduledWorkoutFull = TodayWorkout & { client_id: string };
 
 export async function getScheduledWorkout(supabase: DB, id: string): Promise<ScheduledWorkoutFull> {
@@ -247,6 +276,50 @@ export async function getClientCompliance(supabase: DB, clientId: string): Promi
     .lte("scheduled_date", to);
   if (!data || data.length === 0) return 0;
   return Math.round((data.filter((w) => w.status === "completed").length / data.length) * 100);
+}
+
+export async function getWeeklyCompletion(supabase: DB, clientId: string): Promise<{ completed: number; total: number }> {
+  const now = new Date();
+  const day = now.getDay();
+  const daysToMonday = day === 0 ? 6 : day - 1;
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - daysToMonday);
+  const mondayStr = monday.toISOString().slice(0, 10);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  const sundayStr = sunday.toISOString().slice(0, 10);
+  const { data, error } = await supabase
+    .from("scheduled_workouts")
+    .select("status")
+    .eq("client_id", clientId)
+    .gte("scheduled_date", mondayStr)
+    .lte("scheduled_date", sundayStr);
+  if (error) throw error;
+  const total = data?.length ?? 0;
+  const completed = data?.filter((w) => w.status === "completed").length ?? 0;
+  return { completed, total };
+}
+
+export async function getWeeklyVolume(supabase: DB, clientId: string): Promise<number> {
+  const now = new Date();
+  const day = now.getDay();
+  const daysToMonday = day === 0 ? 6 : day - 1;
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - daysToMonday);
+  monday.setHours(0, 0, 0, 0);
+  const { data, error } = await supabase
+    .from("workout_logs")
+    .select("set_logs(weight, reps)")
+    .eq("client_id", clientId)
+    .gte("logged_at", monday.toISOString());
+  if (error) throw error;
+  let total = 0;
+  for (const log of data ?? []) {
+    for (const set of (log.set_logs as Array<{ weight: number | null; reps: number | null }>) ?? []) {
+      if (set.weight != null && set.reps != null) total += set.weight * set.reps;
+    }
+  }
+  return Math.round(total);
 }
 
 export async function getOneRmCurve(supabase: DB, clientId: string, exerciseId: string, days = 180) {

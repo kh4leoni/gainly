@@ -2,9 +2,17 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Home, CalendarDays, Trophy, History, MessageCircle } from "lucide-react";
 import type { ReactNode } from "react";
 
-type NavItem = { href: string; label: string; icon: ReactNode };
+const NAV = [
+  { href: "/client/dashboard", label: "Koti",       Icon: Home },
+  { href: "/client/ohjelma",   label: "Ohjelma",    Icon: CalendarDays },
+  { href: "/client/progress",  label: "Ennätykset", Icon: Trophy },
+  { href: "/client/history",   label: "Historia",   Icon: History },
+  { href: "/client/messages",  label: "Viestit",    Icon: MessageCircle },
+] as const;
+
 type Me = { id: string; full_name: string | null } | null;
 
 function initials(name: string | null) {
@@ -20,7 +28,7 @@ function avatarColor(seed: string) {
   return palette[h % palette.length] ?? "#ec4899";
 }
 
-export function ClientShell({ me, nav, children }: { me: Me; nav: NavItem[]; children: ReactNode }) {
+export function ClientShell({ me, children }: { me: Me; children: ReactNode }) {
   const pathname = usePathname();
   const color = avatarColor(me?.full_name ?? "?");
 
@@ -139,12 +147,12 @@ export function ClientShell({ me, nav, children }: { me: Me; nav: NavItem[]; chi
           paddingBottom: "env(safe-area-inset-bottom, 0px)",
         }}
       >
-        {nav.map((item) => {
-          const active = pathname.startsWith(item.href);
+        {NAV.map(({ href, label, Icon }) => {
+          const active = pathname.startsWith(href);
           return (
             <Link
-              key={item.href}
-              href={item.href}
+              key={href}
+              href={href}
               style={{
                 flex: 1,
                 display: "flex",
@@ -153,9 +161,7 @@ export function ClientShell({ me, nav, children }: { me: Me; nav: NavItem[]; chi
                 gap: 4,
                 padding: "10px 0 8px",
                 textDecoration: "none",
-                color: active ? "var(--c-pink)" : "var(--c-text-subtle)",
                 position: "relative",
-                transition: "color 0.15s",
               }}
             >
               {active && (
@@ -172,9 +178,13 @@ export function ClientShell({ me, nav, children }: { me: Me; nav: NavItem[]; chi
                   }}
                 />
               )}
-              {item.icon}
-              <span style={{ fontSize: 10, fontWeight: active ? 700 : 400, letterSpacing: "0.2px" }}>
-                {item.label}
+              <Icon
+                size={24}
+                strokeWidth={2}
+                color={active ? "var(--c-pink)" : "rgba(240,238,245,0.65)"}
+              />
+              <span style={{ fontSize: 10, fontWeight: active ? 700 : 400, letterSpacing: "0.2px", color: active ? "var(--c-pink)" : "rgba(240,238,245,0.4)" }}>
+                {label}
               </span>
             </Link>
           );
