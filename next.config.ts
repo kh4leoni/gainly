@@ -1,16 +1,22 @@
 import type { NextConfig } from "next";
 
-const supabaseHostname = process.env.NEXT_PUBLIC_SUPABASE_URL
-  ? new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).hostname
-  : "*.supabase.co";
+const isDev = process.env.NODE_ENV === "development";
+
+// Preserve full origin (protocol + host + port) so local Supabase on
+// http://127.0.0.1:54321 isn't blocked by a hardcoded https:// prefix.
+const supabaseOrigin = process.env.NEXT_PUBLIC_SUPABASE_URL
+  ? new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).origin
+  : "https://*.supabase.co";
+const supabaseWsOrigin = supabaseOrigin.replace(/^http/, "ws");
+const supabaseStorageOrigin = supabaseOrigin; // storage lives on same origin
 
 const csp = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'",
+  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com",
-  `img-src 'self' data: blob: https://${supabaseHostname}`,
-  `connect-src 'self' https://${supabaseHostname} wss://${supabaseHostname}`,
+  `img-src 'self' data: blob: ${supabaseStorageOrigin}`,
+  `connect-src 'self' ${supabaseOrigin} ${supabaseWsOrigin}`,
   "worker-src 'self' blob:",
   "manifest-src 'self'",
   "frame-src 'none'",
@@ -18,7 +24,7 @@ const csp = [
   "base-uri 'self'",
   "form-action 'self'",
   "object-src 'none'",
-  "upgrade-insecure-requests",
+  ...(isDev ? [] : ["upgrade-insecure-requests"]),
 ].join("; ");
 
 const nextConfig: NextConfig = {
