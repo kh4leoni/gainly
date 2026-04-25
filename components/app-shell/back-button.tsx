@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 
 export function BackButton({ rootPaths }: { rootPaths: string[] }) {
@@ -19,7 +19,7 @@ export function BackButton({ rootPaths }: { rootPaths: string[] }) {
         isRoot ? "pointer-events-none opacity-30" : "text-foreground"
       )}
     >
-      <ArrowLeft className="h-5 w-5" />
+      <ArrowLeft size={20} weight="bold" />
       <span>Takaisin</span>
     </button>
   );
