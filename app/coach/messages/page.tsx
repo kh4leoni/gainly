@@ -32,7 +32,7 @@ export default async function CoachMessages({
 
   return (
     <HydrationBoundary state={dehydrate(qc)}>
-      <MessagesView userId={user.user.id} initialThreadId={threadId} />
+      <MessagesView userId={user.user.id} initialThreadId={threadId} layout="coach" />
     </HydrationBoundary>
   );
 }

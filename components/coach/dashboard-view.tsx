@@ -6,7 +6,6 @@ import { createClient } from "@/lib/supabase/client";
 import { getCoachFullDashboard } from "@/lib/queries/coach";
 import { getMe } from "@/lib/queries/profile";
 import { Users, Trophy, Dumbbell, MessageCircle } from "lucide-react";
-import { roundKg } from "@/lib/calc/one-rm";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -30,26 +29,7 @@ function initials(name: string | null): string {
 }
 
 const FI_DAYS_FULL = ["sunnuntai", "maanantai", "tiistai", "keskiviikko", "torstai", "perjantai", "lauantai"];
-const FI_DAYS_SHORT = ["su", "ma", "ti", "ke", "to", "pe", "la"];
 
-function formatShortDate(dateStr: string): string {
-  const parts = dateStr.split("-").map(Number);
-  const y = parts[0] ?? 2000;
-  const m = parts[1] ?? 1;
-  const d = parts[2] ?? 1;
-  const date = new Date(y, m - 1, d);
-  return `${FI_DAYS_SHORT[date.getDay()] ?? ""} ${d}.${m}.`;
-}
-
-function daysUntilLabel(dateStr: string): string {
-  const parts = dateStr.split("-").map(Number);
-  const target = new Date(parts[0] ?? 2000, (parts[1] ?? 1) - 1, parts[2] ?? 1);
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  const diff = Math.round((target.getTime() - today.getTime()) / 86400000);
-  if (diff === 0) return "tänään";
-  if (diff === 1) return "huomenna";
-  return `${diff}pv`;
-}
 
 function lastWorkoutStatus(lastWorkout: string | null): { text: string; color: string } {
   if (!lastWorkout) return { text: "Ei treenannut", color: "#ef4444" };
@@ -290,19 +270,15 @@ export function CoachDashboardView() {
                     <ClientAvatar name={pr.client_name} size={34} />
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-sm font-medium">
-                        {pr.exercise_name ?? "—"}{" "}
-                        <span className="text-xs text-muted-foreground">(1RM)</span>
+                        {pr.exercise_name ?? "—"}
                       </div>
                       <div className="text-xs text-muted-foreground">
                         {pr.client_name ?? "—"} · {relativeDate(pr.achieved_at)}
-                        {pr.weight != null && pr.reps != null && (
-                          <span className="ml-1">· {pr.weight}kg × {pr.reps}</span>
-                        )}
                       </div>
                     </div>
                     <div className="shrink-0 text-right">
                       <div className="text-sm font-bold" style={{ color: "#ec4899" }}>
-                        {formatWeight(pr.estimated_1rm != null ? roundKg(pr.estimated_1rm) : null)}
+                        {pr.weight != null ? formatWeight(pr.weight) : "—"}
                       </div>
                       <div className="text-xs text-muted-foreground">UUSI ENNÄTYS</div>
                     </div>
@@ -358,20 +334,17 @@ export function CoachDashboardView() {
           </SectionCard>
         </div>
 
-        {/* Tulevan viikon treenit */}
+        {/* Aktiivinen viikko — odottavat treenit */}
         <div className="lg:col-span-2">
-          <SectionCard title="Tulevan viikon treenit">
+          <SectionCard title="Aktiivinen viikko">
             {data.upcomingWorkouts.length === 0 ? (
               <div className="px-5 py-10 text-center text-sm text-muted-foreground">
-                Ei aikataulutettuja treenejä.
+                Ei odottavia treenejä aktiivisella viikolla.
               </div>
             ) : (
               <ul>
                 {data.upcomingWorkouts.map((w) => {
-                  const dotC =
-                    w.status === "completed"
-                      ? "#22c55e"
-                      : avatarColor(w.client_name ?? w.client_id);
+                  const dotC = avatarColor(w.client_name ?? w.client_id);
                   return (
                     <li
                       key={w.id}
@@ -385,13 +358,8 @@ export function CoachDashboardView() {
                         <div className="truncate text-sm font-medium">
                           {w.client_name ?? "—"}
                         </div>
-                        <div className="text-xs text-muted-foreground">
-                          {formatShortDate(w.scheduled_date)}
-                        </div>
+                        <div className="text-xs text-muted-foreground">Odottaa</div>
                       </div>
-                      <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                        {daysUntilLabel(w.scheduled_date)}
-                      </span>
                     </li>
                   );
                 })}

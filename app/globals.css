@@ -2,8 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── Client-side app theme ─────────────────────────────────────────────── */
-.client-app {
+/* ── Client-side app theme (shared dark vars) ──────────────────────────── */
+.dark {
   --c-pink: #FF1D8C;
   --c-pink-dim: rgba(255,29,140,0.12);
   --c-pink-glow: rgba(255,29,140,0.4);
@@ -17,6 +17,9 @@
   --c-text: #f0eef5;
   --c-text-muted: rgba(240,238,245,0.48);
   --c-text-subtle: rgba(240,238,245,0.24);
+}
+
+.client-app {
   color: var(--c-text);
   background: var(--c-bg);
   font-family: 'Plus Jakarta Sans', system-ui, sans-serif;

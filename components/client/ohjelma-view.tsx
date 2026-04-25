@@ -28,10 +28,7 @@ function groupByWeek(workouts: ScheduleDay[]): WeekGroup[] {
 }
 
 function workoutStatus(w: ScheduleDay) {
-  const today = new Date().toISOString().slice(0, 10);
   if (w.status === "completed") return { label: "Tehty", bg: "rgba(62,207,142,0.10)", color: "#3ECF8E" };
-  if (w.scheduled_date === today) return { label: "Tänään", bg: "var(--c-pink-dim)", color: "var(--c-pink)" };
-  if (w.scheduled_date < today) return { label: "Myöhässä", bg: "rgba(255,74,74,0.10)", color: "#ff4a4a" };
   return { label: "Odottaa", bg: "var(--c-surface3)", color: "var(--c-text-muted)" };
 }
 

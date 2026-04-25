@@ -2,7 +2,6 @@ import type { DB } from "./types";
 
 export type TodayWorkout = {
   id: string;
-  scheduled_date: string;
   status: string;
   completed_at: string | null;
   program_days: {
@@ -29,40 +28,14 @@ export type TodayWorkout = {
   } | null;
 };
 
-export async function getTodayWorkout(supabase: DB, clientId: string): Promise<TodayWorkout | null> {
-  const today = new Date().toISOString().slice(0, 10);
-  const { data, error } = await supabase
-    .from("scheduled_workouts")
-    .select(`
-      id, scheduled_date, status, completed_at,
-      program_days (
-        id, day_number, name, description,
-        program_weeks ( week_number, description ),
-        program_exercises (
-          id, order_idx, sets, reps, intensity, intensity_type, target_rpe, target_rpes, set_configs, rest_sec, notes,
-          exercise_id,
-          exercises ( id, name, video_path, instructions )
-        )
-      )
-    `)
-    .eq("client_id", clientId)
-    .eq("scheduled_date", today)
-    .order("order_idx", { referencedTable: "program_days.program_exercises" })
-    .maybeSingle();
-  if (error) throw error;
-  return data as unknown as TodayWorkout | null;
-}
-
 export async function getNextWorkout(supabase: DB, clientId: string): Promise<TodayWorkout | null> {
-  const today = new Date().toISOString().slice(0, 10);
-  const limit = new Date(Date.now() + 60 * 86400_000).toISOString().slice(0, 10);
   const { data, error } = await supabase
     .from("scheduled_workouts")
     .select(`
-      id, scheduled_date, status, completed_at,
+      id, status, completed_at,
       program_days (
         id, day_number, name, description,
-        program_weeks ( week_number, description ),
+        program_weeks ( week_number, description, is_active ),
         program_exercises (
           id, order_idx, sets, reps, intensity, intensity_type, target_rpe, target_rpes, set_configs, rest_sec, notes,
           exercise_id,
@@ -72,14 +45,12 @@ export async function getNextWorkout(supabase: DB, clientId: string): Promise<To
     `)
     .eq("client_id", clientId)
     .neq("status", "completed")
-    .gte("scheduled_date", today)
-    .lte("scheduled_date", limit)
-    .order("scheduled_date")
-    .order("order_idx", { referencedTable: "program_days.program_exercises" })
-    .limit(1)
-    .maybeSingle();
+    .order("day_number", { referencedTable: "program_days" });
   if (error) throw error;
-  return data as unknown as TodayWorkout | null;
+  const activeWeekWorkouts = (data ?? []).filter(
+    (w) => (w.program_days as any)?.program_weeks?.is_active === true
+  );
+  return (activeWeekWorkouts[0] ?? null) as unknown as TodayWorkout | null;
 }
 
 export type ScheduledWorkoutFull = TodayWorkout & { client_id: string };
@@ -88,7 +59,7 @@ export async function getScheduledWorkout(supabase: DB, id: string): Promise<Sch
   const { data, error } = await supabase
     .from("scheduled_workouts")
     .select(`
-      id, scheduled_date, status, completed_at, client_id,
+      id, status, completed_at, client_id,
       program_days (
         id, day_number, name, description,
         program_weeks ( week_number, description ),
@@ -106,68 +77,8 @@ export async function getScheduledWorkout(supabase: DB, id: string): Promise<Sch
   return data as unknown as ScheduledWorkoutFull;
 }
 
-export async function getUpcomingWorkouts(supabase: DB, clientId: string, days = 14) {
-  const from = new Date().toISOString().slice(0, 10);
-  const to = new Date(Date.now() + days * 86400_000).toISOString().slice(0, 10);
-  const { data, error } = await supabase
-    .from("scheduled_workouts")
-    .select("id, scheduled_date, status, program_days(name, day_number, program_weeks(is_active))")
-    .eq("client_id", clientId)
-    .gte("scheduled_date", from)
-    .lte("scheduled_date", to)
-    .order("scheduled_date");
-  if (error) throw error;
-  return (data ?? []).filter((w) => {
-    const pw = (w.program_days as any)?.program_weeks;
-    if (!pw) return true;
-    return pw.is_active === true;
-  });
-}
-
-export type MonthWorkout = {
-  id: string;
-  scheduled_date: string;
-  status: string;
-  program_days: { name: string | null } | null;
-};
-
-export async function getMonthWorkouts(
-  supabase: DB,
-  clientId: string,
-  year: number,
-  month /* 1-12 */: number
-): Promise<MonthWorkout[]> {
-  const from = `${year}-${String(month).padStart(2, "0")}-01`;
-  const last = new Date(year, month, 0).getDate();
-  const to = `${year}-${String(month).padStart(2, "0")}-${String(last).padStart(2, "0")}`;
-  const { data, error } = await supabase
-    .from("scheduled_workouts")
-    .select("id, scheduled_date, status, program_days(name)")
-    .eq("client_id", clientId)
-    .gte("scheduled_date", from)
-    .lte("scheduled_date", to)
-    .order("scheduled_date");
-  if (error) throw error;
-  return (data ?? []) as unknown as MonthWorkout[];
-}
-
-export async function getRecentPRs(supabase: DB, clientId: string, limit = 250) {
-  const { data, error } = await supabase
-    .from("personal_records")
-    .select(`
-      id, reps, weight, estimated_1rm, achieved_at,
-      exercises ( id, name )
-    `)
-    .eq("client_id", clientId)
-    .order("reps", { ascending: true })
-    .limit(limit);
-  if (error) throw error;
-  return data ?? [];
-}
-
 export type PastWorkout = {
   id: string;
-  scheduled_date: string;
   completed_at: string | null;
   program_days: {
     name: string | null;
@@ -190,7 +101,7 @@ export async function getPastWorkouts(supabase: DB, clientId: string, limit = 60
   const { data, error } = await supabase
     .from("scheduled_workouts")
     .select(`
-      id, scheduled_date, completed_at,
+      id, completed_at,
       program_days (
         name,
         program_exercises ( order_idx, exercises ( name ) )
@@ -205,7 +116,7 @@ export async function getPastWorkouts(supabase: DB, clientId: string, limit = 60
     `)
     .eq("client_id", clientId)
     .eq("status", "completed")
-    .order("scheduled_date", { ascending: false })
+    .order("completed_at", { ascending: false })
     .limit(limit);
   if (error) throw error;
   return (data ?? []) as unknown as PastWorkout[];
@@ -213,7 +124,6 @@ export async function getPastWorkouts(supabase: DB, clientId: string, limit = 60
 
 export type ScheduleDay = {
   id: string;
-  scheduled_date: string;
   status: string;
   program_days: {
     name: string | null;
@@ -224,12 +134,10 @@ export type ScheduleDay = {
 };
 
 export async function getClientSchedule(supabase: DB, clientId: string): Promise<ScheduleDay[]> {
-  const from = new Date(Date.now() - 28 * 86400000).toISOString().slice(0, 10);
-  const to   = new Date(Date.now() + 28 * 86400000).toISOString().slice(0, 10);
   const { data, error } = await supabase
     .from("scheduled_workouts")
     .select(`
-      id, scheduled_date, status,
+      id, status,
       program_days(
         name, day_number,
         program_weeks(id, week_number, description, is_active),
@@ -237,11 +145,23 @@ export async function getClientSchedule(supabase: DB, clientId: string): Promise
       )
     `)
     .eq("client_id", clientId)
-    .gte("scheduled_date", from)
-    .lte("scheduled_date", to)
-    .order("scheduled_date");
+    .order("day_number", { referencedTable: "program_days" });
   if (error) throw error;
   return (data ?? []) as unknown as ScheduleDay[];
+}
+
+export async function getRecentPRs(supabase: DB, clientId: string, limit = 250) {
+  const { data, error } = await supabase
+    .from("personal_records")
+    .select(`
+      id, reps, weight, estimated_1rm, achieved_at,
+      exercises ( id, name )
+    `)
+    .eq("client_id", clientId)
+    .order("reps", { ascending: true })
+    .limit(limit);
+  if (error) throw error;
+  return data ?? [];
 }
 
 export async function getClientStreak(supabase: DB, clientId: string): Promise<number> {
@@ -266,37 +186,27 @@ export async function getClientStreak(supabase: DB, clientId: string): Promise<n
 }
 
 export async function getClientCompliance(supabase: DB, clientId: string): Promise<number> {
-  const from = new Date(Date.now() - 28 * 86400000).toISOString().slice(0, 10);
-  const to   = new Date().toISOString().slice(0, 10);
   const { data } = await supabase
     .from("scheduled_workouts")
-    .select("status")
-    .eq("client_id", clientId)
-    .gte("scheduled_date", from)
-    .lte("scheduled_date", to);
+    .select("status, program_days(program_weeks(is_active))")
+    .eq("client_id", clientId);
   if (!data || data.length === 0) return 0;
-  return Math.round((data.filter((w) => w.status === "completed").length / data.length) * 100);
+  const activeWeek = data.filter((w) => (w.program_days as any)?.program_weeks?.is_active === true);
+  if (activeWeek.length === 0) return 0;
+  return Math.round((activeWeek.filter((w) => w.status === "completed").length / activeWeek.length) * 100);
 }
 
 export async function getWeeklyCompletion(supabase: DB, clientId: string): Promise<{ completed: number; total: number }> {
-  const now = new Date();
-  const day = now.getDay();
-  const daysToMonday = day === 0 ? 6 : day - 1;
-  const monday = new Date(now);
-  monday.setDate(now.getDate() - daysToMonday);
-  const mondayStr = monday.toISOString().slice(0, 10);
-  const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() + 6);
-  const sundayStr = sunday.toISOString().slice(0, 10);
   const { data, error } = await supabase
     .from("scheduled_workouts")
-    .select("status")
-    .eq("client_id", clientId)
-    .gte("scheduled_date", mondayStr)
-    .lte("scheduled_date", sundayStr);
+    .select("status, program_days(program_weeks(is_active))")
+    .eq("client_id", clientId);
   if (error) throw error;
-  const total = data?.length ?? 0;
-  const completed = data?.filter((w) => w.status === "completed").length ?? 0;
+  const activeWeek = (data ?? []).filter(
+    (w) => (w.program_days as any)?.program_weeks?.is_active === true
+  );
+  const total = activeWeek.length;
+  const completed = activeWeek.filter((w) => w.status === "completed").length;
   return { completed, total };
 }
 

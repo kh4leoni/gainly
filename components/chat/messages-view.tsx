@@ -12,7 +12,7 @@ function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString("fi-FI", { hour: "2-digit", minute: "2-digit" });
 }
 
-export function MessagesView({ userId, initialThreadId }: { userId: string; initialThreadId: string | null }) {
+export function MessagesView({ userId, initialThreadId, layout = "client" }: { userId: string; initialThreadId: string | null; layout?: "coach" | "client" }) {
   const supabase = createClient();
   const qc = useQueryClient();
   const [threadId, setThreadId] = useState<string | null>(initialThreadId);
@@ -60,9 +60,110 @@ export function MessagesView({ userId, initialThreadId }: { userId: string; init
     ? ((activeThread.coach_id === userId ? activeThread.client : activeThread.coach) as Profile)
     : null;
 
+  // Coach layout: sidebar (thread list) + chat side-by-side
+  if (layout === "coach") {
+    return (
+      <div style={{ flex: 1, display: "flex", overflow: "hidden", height: "100%" }}>
+        {/* Thread list sidebar */}
+        <div style={{
+          width: 240,
+          borderRight: "1px solid var(--c-border)",
+          display: "flex",
+          flexDirection: "column",
+          flexShrink: 0,
+          background: "var(--c-surface)",
+          overflow: "hidden",
+        }}>
+          <div style={{ padding: "16px 16px 12px", borderBottom: "1px solid var(--c-border)", flexShrink: 0 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "var(--c-text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Asiakkaat</div>
+          </div>
+          <div style={{ flex: 1, overflowY: "auto" }}>
+            {(threads.data ?? []).map((t: any) => {
+              const other = (t.coach_id === userId ? t.client : t.coach) as Profile;
+              const active = t.id === threadId;
+              const initials = (other?.full_name ?? "?").slice(0, 2).toUpperCase();
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => setThreadId(t.id)}
+                  style={{
+                    width: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    padding: "10px 16px",
+                    background: active ? "var(--c-pink-dim)" : "transparent",
+                    border: "none",
+                    borderLeft: active ? "2px solid var(--c-pink)" : "2px solid transparent",
+                    cursor: "pointer",
+                    textAlign: "left",
+                    fontFamily: "inherit",
+                    transition: "all 0.15s",
+                  }}
+                >
+                  <div style={{
+                    width: 36, height: 36, borderRadius: "50%",
+                    background: active ? "var(--c-pink)" : "var(--c-surface2)",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 12, fontWeight: 800, color: "#fff", flexShrink: 0,
+                  }}>
+                    {initials}
+                  </div>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: active ? 700 : 500, color: active ? "var(--c-pink)" : "var(--c-text)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {other?.full_name ?? "—"}
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Chat area */}
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+          {/* Chat header */}
+          {coachProfile ? (
+            <div style={{
+              padding: "14px 20px",
+              borderBottom: "1px solid var(--c-border)",
+              display: "flex", alignItems: "center", gap: 12, flexShrink: 0, background: "var(--c-surface)",
+            }}>
+              <div style={{ position: "relative" }}>
+                <div style={{
+                  width: 40, height: 40, borderRadius: "50%",
+                  background: "linear-gradient(135deg,var(--c-pink),#9B4DCA)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 13, fontWeight: 800, color: "#fff",
+                }}>
+                  {(coachProfile.full_name ?? "?").slice(0, 2).toUpperCase()}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 14 }}>{coachProfile.full_name ?? "—"}</div>
+                <div style={{ fontSize: 11, color: "var(--c-text-muted)" }}>asiakas</div>
+              </div>
+            </div>
+          ) : (
+            <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--c-border)", fontSize: 14, fontWeight: 700, flexShrink: 0, background: "var(--c-surface)" }}>
+              Viestit
+            </div>
+          )}
+          <ChatPane
+            threadId={threadId}
+            userId={userId}
+            messages={messages.data ?? []}
+            loading={messages.isLoading}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // Client layout: stacked vertical
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-      {/* Coach header */}
+      {/* Header */}
       {coachProfile ? (
         <div style={{
           padding: "16px 20px",

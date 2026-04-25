@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { createProgram } from "@/lib/queries/programs";
 import { Button } from "@/components/ui/button";
+import { Pencil } from "lucide-react";
 
 export function OhjelmoiButton({
   clientId,
@@ -51,6 +52,7 @@ export function OhjelmoiButton({
 
   return (
     <Button onClick={handleOhjelmoi} disabled={working}>
+      <Pencil className="h-4 w-4" />
       {working ? "Luodaan…" : "Ohjelmoi"}
     </Button>
   );
