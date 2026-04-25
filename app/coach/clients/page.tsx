@@ -12,8 +12,6 @@ export default async function ClientsPage() {
   const { data: user } = await supabase.auth.getUser();
   if (!user.user) return null;
 
-  const today = new Date().toISOString().slice(0, 10);
-
   const { data } = await supabase
     .from("coach_clients")
     .select("client_id, status, profiles:client_id(id, full_name, avatar_url, created_at)")
@@ -21,36 +19,30 @@ export default async function ClientsPage() {
 
   const rows = (data ?? []).filter((r: any) => r.profiles);
 
-  // Fetch last completed + next upcoming workout for each client in parallel
+  // Fetch last completed + next pending workout (active week) for each client in parallel
   const extras = await Promise.all(
     rows.map(async (r: any) => {
       const clientId: string = r.client_id;
-      const [lastRes, nextRes, pendingRes] = await Promise.all([
+      const [lastRes, allPendingRes] = await Promise.all([
         supabase
           .from("scheduled_workouts")
-          .select("scheduled_date, program_days(name)")
+          .select("completed_at, program_days(name)")
           .eq("client_id", clientId)
           .eq("status", "completed")
-          .order("scheduled_date", { ascending: false })
+          .order("completed_at", { ascending: false })
           .limit(1)
           .maybeSingle(),
         supabase
           .from("scheduled_workouts")
-          .select("scheduled_date, program_days(name)")
+          .select("program_days(name, program_weeks(is_active))")
           .eq("client_id", clientId)
-          .eq("status", "pending")
-          .gte("scheduled_date", today)
-          .order("scheduled_date")
-          .limit(1)
-          .maybeSingle(),
-        supabase
-          .from("scheduled_workouts")
-          .select("*", { count: "exact", head: true })
-          .eq("client_id", clientId)
-          .eq("status", "pending")
-          .gte("scheduled_date", today),
+          .eq("status", "pending"),
       ]);
-      return { clientId, last: lastRes.data, next: nextRes.data, pendingCount: pendingRes.count ?? 0 };
+      const activeWeekPending = (allPendingRes.data ?? []).filter(
+        (w: any) => w.program_days?.program_weeks?.is_active === true
+      );
+      const nextWorkout = activeWeekPending[0] ?? null;
+      return { clientId, last: lastRes.data, next: nextWorkout, pendingCount: activeWeekPending.length };
     })
   );
 
@@ -139,9 +131,11 @@ export default async function ClientsPage() {
                     {extra?.last ? (
                       <span>
                         Viimeksi{" "}
-                        <span className="text-foreground">
-                          {new Date(extra.last.scheduled_date).toLocaleDateString("fi-FI", { weekday: "short", day: "numeric", month: "numeric" })}
-                        </span>
+                        {(extra.last as any).completed_at && (
+                          <span className="text-foreground">
+                            {new Date((extra.last as any).completed_at).toLocaleDateString("fi-FI", { weekday: "short", day: "numeric", month: "numeric" })}
+                          </span>
+                        )}
                         {(extra.last as any).program_days?.name
                           ? ` · ${(extra.last as any).program_days.name.replace(/^Day(\d+)/, "Päivä $1")}`
                           : ""}
@@ -156,11 +150,8 @@ export default async function ClientsPage() {
                       <span>
                         Seuraava{" "}
                         <span className="text-foreground">
-                          {new Date(extra.next.scheduled_date).toLocaleDateString("fi-FI", { weekday: "short", day: "numeric", month: "numeric" })}
+                          {(extra.next as any).program_days?.name?.replace(/^Day(\d+)/, "Päivä $1") ?? "Treeni"}
                         </span>
-                        {(extra.next as any).program_days?.name
-                          ? ` · ${(extra.next as any).program_days.name.replace(/^Day(\d+)/, "Päivä $1")}`
-                          : ""}
                       </span>
                     ) : (
                       <span className="italic">Ei tulevia treenejä</span>

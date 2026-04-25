@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/components/ui/use-toast";
@@ -19,7 +18,6 @@ export function AssignProgramButton({ programId }: { programId: string }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [clientId, setClientId] = useState<string>("");
-  const [startDate, setStartDate] = useState(new Date().toISOString().slice(0, 10));
   const [working, setWorking] = useState(false);
 
   const { data: clients = [] } = useQuery({
@@ -41,10 +39,10 @@ export function AssignProgramButton({ programId }: { programId: string }) {
       });
       if (copyErr) throw copyErr;
       const { error: rpcErr } = await supabase.rpc("schedule_program", {
-        _program: newProgId, _client: clientId, _start_date: startDate,
+        _program: newProgId, _client: clientId,
       });
       if (rpcErr) throw rpcErr;
-      toast({ title: "Ohjelma määritetty", description: "Istunnot ajastettu." });
+      toast({ title: "Ohjelma määritetty" });
       setOpen(false);
       router.refresh();
     } catch (e: any) {
@@ -60,7 +58,7 @@ export function AssignProgramButton({ programId }: { programId: string }) {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Määritä ohjelma</DialogTitle>
-          <DialogDescription>Aikatauluttaa yhden treenin päivässä valitusta päivämäärästä alkaen.</DialogDescription>
+          <DialogDescription>Valitse asiakas, jolle ohjelma kopioidaan.</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           <div>
@@ -77,15 +75,6 @@ export function AssignProgramButton({ programId }: { programId: string }) {
                 ))}
               </SelectContent>
             </Select>
-          </div>
-          <div>
-            <Label htmlFor="start">Aloituspäivämäärä</Label>
-            <Input
-              id="start"
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-            />
           </div>
         </div>
         <DialogFooter>
