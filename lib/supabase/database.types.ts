@@ -494,7 +494,7 @@ export type Database = {
           day_id: string | null
           id: string
           program_id: string | null
-          scheduled_date: string
+          scheduled_date: string | null
           status: string
         }
         Insert: {
@@ -503,7 +503,7 @@ export type Database = {
           day_id?: string | null
           id?: string
           program_id?: string | null
-          scheduled_date: string
+          scheduled_date?: string | null
           status?: string
         }
         Update: {
@@ -512,7 +512,7 @@ export type Database = {
           day_id?: string | null
           id?: string
           program_id?: string | null
-          scheduled_date?: string
+          scheduled_date?: string | null
           status?: string
         }
         Relationships: [
@@ -800,7 +800,6 @@ export type Database = {
         Args: {
           _program: string
           _client: string
-          _start_date: string
         }
         Returns: number
       }
