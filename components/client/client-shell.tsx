@@ -2,15 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, CalendarDays, Trophy, History, MessageCircle } from "lucide-react";
+import { House, CalendarDots, Trophy, ClockCounterClockwise, ChatCircle } from "@phosphor-icons/react";
 import type { ReactNode } from "react";
 
 const NAV = [
-  { href: "/client/dashboard", label: "Koti",       Icon: Home },
-  { href: "/client/ohjelma",   label: "Ohjelma",    Icon: CalendarDays },
+  { href: "/client/dashboard", label: "Koti",       Icon: House },
+  { href: "/client/ohjelma",   label: "Ohjelma",    Icon: CalendarDots },
   { href: "/client/progress",  label: "Ennätykset", Icon: Trophy },
-  { href: "/client/history",   label: "Historia",   Icon: History },
-  { href: "/client/messages",  label: "Viestit",    Icon: MessageCircle },
+  { href: "/client/history",   label: "Historia",   Icon: ClockCounterClockwise },
+  { href: "/client/messages",  label: "Viestit",    Icon: ChatCircle },
 ] as const;
 
 type Me = { id: string; full_name: string | null } | null;
@@ -180,7 +180,7 @@ export function ClientShell({ me, children }: { me: Me; children: ReactNode }) {
               )}
               <Icon
                 size={24}
-                strokeWidth={2}
+                weight={active ? "fill" : "regular"}
                 color={active ? "var(--c-pink)" : "rgba(240,238,245,0.65)"}
               />
               <span style={{ fontSize: 10, fontWeight: active ? 700 : 400, letterSpacing: "0.2px", color: active ? "var(--c-pink)" : "rgba(240,238,245,0.4)" }}>

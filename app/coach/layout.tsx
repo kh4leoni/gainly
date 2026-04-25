@@ -1,15 +1,14 @@
 "use client";
 
-import { LayoutDashboard, Users, Dumbbell, BookOpen, MessageSquare } from "lucide-react";
+import { SquaresFour, Users, Barbell, BookOpen, Chat } from "@phosphor-icons/react";
 import { AppShell } from "@/components/app-shell/shell";
 
-const ICON = "h-5 w-5";
 const nav = [
-  { href: "/coach/dashboard", icon: <LayoutDashboard className={ICON} />, label: "Dashboard"   },
-  { href: "/coach/clients",   icon: <Users           className={ICON} />, label: "Asiakkaat"   },
-  { href: "/coach/programs",  icon: <BookOpen        className={ICON} />, label: "Ohjelmat"    },
-  { href: "/coach/exercises", icon: <Dumbbell        className={ICON} />, label: "Liikepankki" },
-  { href: "/coach/messages",  icon: <MessageSquare   className={ICON} />, label: "Viestit"     },
+  { href: "/coach/dashboard", icon: <SquaresFour size={20} weight="fill" />, label: "Dashboard"   },
+  { href: "/coach/clients",   icon: <Users       size={20} weight="fill" />, label: "Asiakkaat"   },
+  { href: "/coach/programs",  icon: <BookOpen    size={20} weight="fill" />, label: "Ohjelmat"    },
+  { href: "/coach/exercises", icon: <Barbell     size={20} weight="fill" />, label: "Liikepankki" },
+  { href: "/coach/messages",  icon: <Chat        size={20} weight="fill" />, label: "Viestit"     },
 ];
 
 export default function CoachLayout({ children }: { children: React.ReactNode }) {
