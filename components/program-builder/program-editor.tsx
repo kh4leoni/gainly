@@ -6,7 +6,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { getProgramFull, type ProgramFull, type ProgramExerciseRow } from "@/lib/queries/programs";
 import { getExercises } from "@/lib/queries/exercises";
-import { Plus, Trash2, GripVertical, ChevronDown, ChevronRight, AlignLeft, Dumbbell } from "lucide-react";
+import { Plus, Trash2, GripVertical, ChevronDown, ChevronRight, AlignLeft, Dumbbell, Circle, TriangleAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AssignProgramButton } from "./assign-program-button";
 
@@ -22,13 +22,6 @@ function isAutoDayName(name: string | null | undefined): boolean {
   return /^(päivä|day|treeni)\s*\d*$/i.test(name.trim());
 }
 
-function getNextMonday(date: Date): string {
-  const d = new Date(date);
-  const day = d.getDay();
-  const diff = day === 0 ? 1 : 8 - day;
-  d.setDate(d.getDate() + diff);
-  return d.toISOString().slice(0, 10);
-}
 
 // ── Primitives ────────────────────────────────────────────────────────────────
 
@@ -350,11 +343,11 @@ function WorkoutBlock({ day, exercises, onUpdate, onDelete, onAddExercise, onAss
 
 // ── WeekCard (Viikko = program_week) ──────────────────────────────────────────
 
-function WeekCard({ week, exercises, onUpdate, onSetActive, onAddWorkout, onDelete,
+function WeekCard({ week, exercises, onUpdate, onSetActive, onClearActive, onAddWorkout, onDelete,
   onUpdateDay, onDeleteDay, onAddExercise, onAssignExercise, onUpdateExercise, onDeleteExercise }: {
   week: Week; exercises: ExList;
   onUpdate: (patch: { name?: string | null; description?: string | null }) => void;
-  onSetActive: () => void; onAddWorkout: () => void; onDelete: () => void;
+  onSetActive: () => void; onClearActive: () => void; onAddWorkout: () => void; onDelete: () => void;
   onUpdateDay: (patch: { id: string; name?: string | null; description?: string | null }) => void;
   onDeleteDay: (id: string) => void; onAddExercise: (dayId: string) => void;
   onAssignExercise: (peId: string, exerciseId: string) => void;
@@ -382,19 +375,27 @@ function WeekCard({ week, exercises, onUpdate, onSetActive, onAddWorkout, onDele
           onBlur={(e) => { const v = e.target.value.trim() || null; if (v !== week.name) onUpdate({ name: v }); }}
         />
         <div className="ml-auto flex shrink-0 items-center gap-2">
-          <button
-            type="button"
-            onClick={() => { if (!week.is_active) onSetActive(); }}
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold transition-all",
-              week.is_active
-                ? "cursor-default bg-emerald-500/15 text-emerald-500"
-                : "bg-muted text-muted-foreground hover:bg-emerald-500/10 hover:text-emerald-500"
-            )}
-          >
-            <span className={cn("h-1.5 w-1.5 rounded-full", week.is_active ? "bg-emerald-500" : "bg-muted-foreground")} />
-            {week.is_active ? "Aktiivinen" : "Ei aktiivinen"}
-          </button>
+          {week.is_active ? (
+            <button
+              type="button"
+              onClick={() => {
+                if (window.confirm("Poistetaanko aktiivinen viikko? Asiakkaan treeniohjelma ei enää näy.")) onClearActive();
+              }}
+              className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-500 transition-colors hover:bg-destructive/10 hover:text-destructive"
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              Aktiivinen
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={onSetActive}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1 text-[12px] font-semibold text-foreground transition-colors hover:border-emerald-500/50 hover:bg-emerald-500/10 hover:text-emerald-600"
+            >
+              <Circle className="h-3 w-3 text-muted-foreground" />
+              Aseta aktiiviseksi
+            </button>
+          )}
           <button type="button" onClick={onAddWorkout}
             className="inline-flex items-center gap-1 rounded px-2 py-1 text-[12px] font-semibold text-primary transition-colors hover:bg-primary/10">
             <Plus className="h-3 w-3" /> Treeni
@@ -435,7 +436,7 @@ function WeekCard({ week, exercises, onUpdate, onSetActive, onAddWorkout, onDele
 // ── BlockCard (Jakso = program_block) ─────────────────────────────────────────
 
 function BlockCard({ block, exercises, onUpdate, onDelete, onAddWeek,
-  onUpdateWeek, onDeleteWeek, onSetActiveWeek, onAddWorkout,
+  onUpdateWeek, onDeleteWeek, onSetActiveWeek, onClearActiveWeek, onAddWorkout,
   onUpdateDay, onDeleteDay, onAddExercise, onAssignExercise, onUpdateExercise, onDeleteExercise }: {
   block: Block; exercises: ExList;
   onUpdate: (patch: { name?: string | null; description?: string | null }) => void;
@@ -443,6 +444,7 @@ function BlockCard({ block, exercises, onUpdate, onDelete, onAddWeek,
   onUpdateWeek: (patch: { id: string; name?: string | null; description?: string | null }) => void;
   onDeleteWeek: (id: string) => void;
   onSetActiveWeek: (weekId: string) => void;
+  onClearActiveWeek: () => void;
   onAddWorkout: (weekId: string) => void;
   onUpdateDay: (patch: { id: string; name?: string | null; description?: string | null }) => void;
   onDeleteDay: (id: string) => void; onAddExercise: (dayId: string) => void;
@@ -507,6 +509,7 @@ function BlockCard({ block, exercises, onUpdate, onDelete, onAddWeek,
                 key={week.id} week={week} exercises={exercises}
                 onUpdate={(patch) => onUpdateWeek({ id: week.id, ...patch })}
                 onSetActive={() => onSetActiveWeek(week.id)}
+                onClearActive={onClearActiveWeek}
                 onAddWorkout={() => onAddWorkout(week.id)}
                 onDelete={() => onDeleteWeek(week.id)}
                 onUpdateDay={onUpdateDay} onDeleteDay={onDeleteDay}
@@ -543,13 +546,8 @@ export function ProgramEditor({ programId }: { programId: string }) {
   const rescheduleMutation = useMutation({
     mutationFn: async () => {
       if (!program?.client_id) return;
-      const { data: existing } = await supabase
-        .from("scheduled_workouts").select("scheduled_date")
-        .eq("program_id", programId).eq("client_id", program.client_id)
-        .order("scheduled_date").limit(1).single();
-      const startDate = existing?.scheduled_date ?? getNextMonday(new Date());
       const { error } = await supabase.rpc("schedule_program", {
-        _program: programId, _client: program.client_id, _start_date: startDate,
+        _program: programId, _client: program.client_id,
       });
       if (error) throw error;
     },
@@ -625,6 +623,29 @@ export function ProgramEditor({ programId }: { programId: string }) {
         for (const b of next.program_blocks ?? [])
           for (const w of b.program_weeks ?? [])
             w.is_active = w.id === weekId;
+        return next;
+      });
+      return { prev };
+    },
+    onError: (_e, _p, ctx) => { if (ctx?.prev) qc.setQueryData(["program", programId], ctx.prev); },
+    onSettled: invalidate,
+  });
+
+  const clearActiveWeek = useMutation({
+    mutationFn: async () => {
+      const allWeeks = (program?.program_blocks ?? []).flatMap((b) => b.program_weeks ?? []);
+      const { error } = await supabase.from("program_weeks").update({ is_active: false }).in("id", allWeeks.map((w) => w.id));
+      if (error) throw error;
+    },
+    onMutate: async () => {
+      await qc.cancelQueries({ queryKey: ["program", programId] });
+      const prev = qc.getQueryData<ProgramFull>(["program", programId]);
+      qc.setQueryData(["program", programId], (old: ProgramFull) => {
+        if (!old) return old;
+        const next = structuredClone(old);
+        for (const b of next.program_blocks ?? [])
+          for (const w of b.program_weeks ?? [])
+            w.is_active = false;
         return next;
       });
       return { prev };
@@ -846,6 +867,10 @@ export function ProgramEditor({ programId }: { programId: string }) {
     return <div className="p-6"><div className="h-40 animate-pulse rounded-lg bg-muted" /></div>;
   }
 
+  const hasActiveWeek = (program.program_blocks ?? [])
+    .flatMap((b) => b.program_weeks ?? [])
+    .some((w) => w.is_active);
+
   return (
     <div className="flex flex-col">
       {/* Sticky topbar */}
@@ -877,6 +902,15 @@ export function ProgramEditor({ programId }: { programId: string }) {
       {/* Content */}
       <div className="p-6 md:p-8">
         <div className="space-y-5">
+          {!hasActiveWeek && (program.program_blocks ?? []).length > 0 && (
+            <div className="flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-600 dark:text-amber-400">
+              <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" />
+              <p>
+                <span className="font-semibold">Ei aktiivista viikkoa.</span>{" "}
+                Asiakkaan treeniohjelma ei näy ennen kuin valitset aktiivisen viikon alta.
+              </p>
+            </div>
+          )}
           {(program.program_blocks ?? []).length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
               <Dumbbell className="mb-4 h-10 w-10 opacity-30" />
@@ -896,6 +930,7 @@ export function ProgramEditor({ programId }: { programId: string }) {
                 onUpdateWeek={(patch) => updateWeek.mutate(patch)}
                 onDeleteWeek={(id) => deleteWeek.mutate(id)}
                 onSetActiveWeek={(weekId) => setActiveWeek.mutate(weekId)}
+                onClearActiveWeek={() => clearActiveWeek.mutate()}
                 onAddWorkout={(weekId) => addWorkout.mutate(weekId)}
                 onUpdateDay={(patch) => updateDay.mutate(patch)}
                 onDeleteDay={(id) => deleteDay.mutate(id)}
