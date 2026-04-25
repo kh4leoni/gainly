@@ -11,7 +11,7 @@ export default function LandingPage() {
 
       <div className="mt-10 flex gap-3">
         <Button asChild>
-          <Link href="/signup">Aloita</Link>
+          <Link href="/login">Aloita</Link>
         </Button>
         <Button asChild variant="outline">
           <Link href="/login">Kirjaudu sisään</Link>

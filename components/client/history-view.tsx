@@ -9,7 +9,8 @@ import Link from "next/link";
 function groupByWeek(workouts: PastWorkout[]): Array<{ label: string; workouts: PastWorkout[] }> {
   const map = new Map<string, PastWorkout[]>();
   for (const w of workouts) {
-    const d = new Date(w.scheduled_date);
+    const ts = w.completed_at ?? "";
+    const d = ts ? new Date(ts) : new Date(0);
     const day = d.getDay();
     const diff = d.getDate() - day + (day === 0 ? -6 : 1);
     d.setDate(diff);
@@ -56,9 +57,9 @@ function WorkoutCard({ w }: { w: PastWorkout }) {
     .slice().sort((a, b) => a.order_idx - b.order_idx)
     .map((pe) => pe.exercises?.name).filter(Boolean);
 
-  const dateStr = new Date(w.scheduled_date).toLocaleDateString("fi-FI", {
-    weekday: "short", day: "numeric", month: "numeric",
-  });
+  const dateStr = w.completed_at
+    ? new Date(w.completed_at).toLocaleDateString("fi-FI", { weekday: "short", day: "numeric", month: "numeric" })
+    : "";
 
   return (
     <div style={{

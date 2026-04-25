@@ -9,10 +9,6 @@ import { usePrToast } from "@/hooks/use-pr-toast";
 
 const FI_DAYS = ["sunnuntai","maanantai","tiistai","keskiviikko","torstai","perjantai","lauantai"];
 
-function formatWorkoutDate(dateStr: string): { isToday: boolean } {
-  return { isToday: dateStr === new Date().toISOString().slice(0, 10) };
-}
-
 const WEIGHT_REFS = [
   { min: 0,      max: 150,    text: "Olet nostanut painoa Vespan verran! 🛵" },
   { min: 151,    max: 400,    text: "Olet nostanut painoa flyygelin verran! 🎹" },
@@ -235,8 +231,6 @@ export function ClientDashboardView({ clientId, firstName }: { clientId: string;
     .map((e) => e.exercises?.name)
     .filter(Boolean)
     .slice(0, 4);
-  const workoutDate = workout?.scheduled_date ? formatWorkoutDate(workout.scheduled_date) : null;
-
   const volume = weeklyVolume.data ?? 0;
   const wc = weeklyCompletion.data;
   const wcTotal = wc?.total ?? 0;
@@ -305,7 +299,7 @@ export function ClientDashboardView({ clientId, firstName }: { clientId: string;
               letterSpacing: "-0.2px",
             }}
           >
-            {workoutDate?.isToday ? "🔥 Aloita treeni" : "Näytä treeni"}
+            🔥 Aloita treeni
           </Link>
         </div>
       ) : (

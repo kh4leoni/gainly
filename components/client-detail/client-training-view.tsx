@@ -32,7 +32,7 @@ type WorkoutLog = {
 
 type WorkoutEntry = {
   id: string;
-  scheduled_date: string;
+  completed_at?: string | null;
   status: string;
   program_days: {
     name: string | null;
@@ -82,15 +82,10 @@ function pickRichestLog(logs: WorkoutLog[] | undefined): WorkoutLog | null {
 export function ClientTrainingView({ upcomingWorkouts, pastWorkouts, weekDescription }: Props) {
   const [historyOpen, setHistoryOpen] = useState(true);
 
-  const todayStr = new Date().toISOString().slice(0, 10);
-
   const allPast = (pastWorkouts as WorkoutEntry[]).filter((w) => w.status === "completed");
   const historyByWeek = groupWorkoutsByWeek(allPast);
 
-  const upcoming = (upcomingWorkouts as WorkoutEntry[])
-    .filter((w) => w.status !== "completed" && w.scheduled_date >= todayStr)
-    .slice()
-    .sort((a, b) => a.scheduled_date.localeCompare(b.scheduled_date));
+  const upcoming = (upcomingWorkouts as WorkoutEntry[]).filter((w) => w.status !== "completed");
 
   return (
     <div className="space-y-4">
@@ -155,12 +150,6 @@ export function ClientTrainingView({ upcomingWorkouts, pastWorkouts, weekDescrip
                   <div key={wg.weekStart} className="overflow-hidden rounded-xl border">
                     <div className="flex items-center justify-between bg-muted/30 px-3 py-2">
                       <span className="text-sm font-medium">{wg.weekLabel}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {new Date(wg.weekStart).toLocaleDateString("fi-FI", {
-                          day: "numeric",
-                          month: "numeric",
-                        })}
-                      </span>
                     </div>
                     <div className="divide-y divide-border/50 px-3">
                       {wg.workouts.map((w) => (
@@ -210,12 +199,11 @@ function WorkoutRow({ workout }: { workout: WorkoutEntry }) {
                 <p className="text-sm font-semibold">
                   {workout.program_days?.name ?? "Treeni"}
                 </p>
-                <span className="text-xs text-muted-foreground">
-                  {new Date(workout.scheduled_date).toLocaleDateString("fi-FI", {
-                    day: "numeric",
-                    month: "numeric",
-                  })}
-                </span>
+                {workout.completed_at && (
+                  <span className="text-xs text-muted-foreground">
+                    {new Date(workout.completed_at).toLocaleDateString("fi-FI", { day: "numeric", month: "numeric" })}
+                  </span>
+                )}
               </div>
               {workout.program_days?.description && (
                 <p className="mt-0.5 text-xs italic text-muted-foreground">
@@ -318,21 +306,17 @@ function buildExerciseNoteMap(notes: ExerciseNote[]): Record<string, string> {
 function groupWorkoutsByWeek(workouts: WorkoutEntry[]): WeekGroup[] {
   const map = new Map<string, WeekGroup>();
   for (const w of workouts) {
-    const weekStart = getWeekStart(new Date(w.scheduled_date));
-    const weekLabel = formatWeekLabel(new Date(weekStart));
+    const ts = w.completed_at ?? w.workout_logs?.[0]?.logged_at ?? "";
+    const d = ts ? new Date(ts) : new Date(0);
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+    d.setDate(diff); d.setHours(0, 0, 0, 0);
+    const weekStart = d.toISOString().slice(0, 10);
+    const weekLabel = formatWeekLabel(d);
     if (!map.has(weekStart)) map.set(weekStart, { weekStart, weekLabel, workouts: [] });
     map.get(weekStart)!.workouts.push(w);
   }
   return Array.from(map.values()).sort((a, b) => b.weekStart.localeCompare(a.weekStart));
-}
-
-function getWeekStart(date: Date): string {
-  const d = new Date(date);
-  const day = d.getDay();
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-  d.setDate(diff);
-  d.setHours(0, 0, 0, 0);
-  return d.toISOString().slice(0, 10);
 }
 
 function formatWeekLabel(weekStart: Date): string {

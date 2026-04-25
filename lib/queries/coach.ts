@@ -52,7 +52,6 @@ export type RecentPR = {
 export type UpcomingWorkout = {
   id: string;
   client_id: string;
-  scheduled_date: string;
   status: string;
   client_name: string | null;
 };
@@ -111,9 +110,6 @@ export async function getCoachFullDashboard(
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
   const weekAgo = new Date(now.getTime() - 7 * 86400000).toISOString();
-  const today = (now.toISOString().split("T")[0] ?? "") as string;
-  const nextWeek = (new Date(now.getTime() + 7 * 86400000).toISOString().split("T")[0] ?? "") as string;
-  const fourWeeksAgo = (new Date(now.getTime() - 28 * 86400000).toISOString().split("T")[0] ?? "") as string;
 
   const [
     { count: prCount },
@@ -143,17 +139,14 @@ export async function getCoachFullDashboard(
       .limit(6),
     supabase
       .from("scheduled_workouts")
-      .select("id, client_id, scheduled_date, status, profiles:client_id(full_name)")
+      .select("id, client_id, status, profiles:client_id(full_name), program_days(program_weeks(is_active))")
       .in("client_id", clientIds)
-      .gte("scheduled_date", today)
-      .lte("scheduled_date", nextWeek)
-      .order("scheduled_date")
-      .limit(8),
+      .eq("status", "pending")
+      .limit(50),
     supabase
       .from("scheduled_workouts")
-      .select("client_id, status, profiles:client_id(full_name)")
-      .in("client_id", clientIds)
-      .gte("scheduled_date", fourWeeksAgo),
+      .select("client_id, status, profiles:client_id(full_name), program_days(program_weeks(is_active))")
+      .in("client_id", clientIds),
     supabase.rpc("coach_dashboard"),
     supabase
       .from("programs")
@@ -225,26 +218,31 @@ export async function getCoachFullDashboard(
     client_name: r.profiles?.full_name ?? null,
   }));
 
-  // Upcoming workouts
+  // Upcoming workouts — pending workouts in active week only
   type RawUpcoming = {
-    id: string; client_id: string; scheduled_date: string; status: string;
+    id: string; client_id: string; status: string;
     profiles: { full_name: string | null } | null;
+    program_days: { program_weeks: { is_active: boolean } | null } | null;
   };
-  const upcomingWorkouts: UpcomingWorkout[] = ((upcomingRaw ?? []) as unknown as RawUpcoming[]).map((r) => ({
-    id: r.id,
-    client_id: r.client_id,
-    scheduled_date: r.scheduled_date,
-    status: r.status,
-    client_name: r.profiles?.full_name ?? null,
-  }));
+  const upcomingWorkouts: UpcomingWorkout[] = ((upcomingRaw ?? []) as unknown as RawUpcoming[])
+    .filter((r) => r.program_days?.program_weeks?.is_active === true)
+    .slice(0, 8)
+    .map((r) => ({
+      id: r.id,
+      client_id: r.client_id,
+      status: r.status,
+      client_name: r.profiles?.full_name ?? null,
+    }));
 
-  // Compliance
+  // Compliance — active week only
   type RawComp = {
     client_id: string; status: string;
     profiles: { full_name: string | null } | null;
+    program_days: { program_weeks: { is_active: boolean } | null } | null;
   };
   const compMap = new Map<string, { name: string; completed: number; total: number }>();
   for (const row of (complianceRaw ?? []) as unknown as RawComp[]) {
+    if (row.program_days?.program_weeks?.is_active !== true) continue;
     const name = row.profiles?.full_name ?? row.client_id;
     const e = compMap.get(row.client_id) ?? { name, completed: 0, total: 0 };
     e.total++;

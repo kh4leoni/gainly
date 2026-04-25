@@ -14,28 +14,20 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
   const { id } = await params;
   const supabase = await createClient();
 
-  const currentWeekStart = getWeekStart(new Date());
-  const fourWeeksAgo = new Date();
-  fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28);
-  const fourWeeksAgoStr = fourWeeksAgo.toISOString().slice(0, 10);
-  const todayStr = new Date().toISOString().slice(0, 10);
-
   const [profileRes, upcomingRes, threadRes, activeProgRes, pastWorkoutsRes, exercisesRes, adherenceRes] = await Promise.all([
     supabase.from("profiles").select("id, full_name, avatar_url, created_at").eq("id", id).single(),
     supabase
       .from("scheduled_workouts")
       .select(`
-        id, scheduled_date, status,
+        id, status,
         program_days(
-          name, description,
+          name, description, day_number,
+          program_weeks(is_active),
           program_exercises(order_idx, exercises(name))
         )
       `)
       .eq("client_id", id)
-      .neq("status", "completed")
-      .gte("scheduled_date", currentWeekStart)
-      .order("scheduled_date")
-      .limit(21),
+      .neq("status", "completed"),
     supabase.from("threads").select("id").eq("client_id", id).maybeSingle(),
     supabase
       .from("programs")
@@ -47,7 +39,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
     supabase
       .from("scheduled_workouts")
       .select(`
-        id, scheduled_date, status,
+        id, completed_at, status,
         program_days (name, day_number),
         workout_logs (
           id, logged_at, notes,
@@ -60,15 +52,13 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
       `)
       .eq("client_id", id)
       .eq("status", "completed")
-      .order("scheduled_date", { ascending: false })
+      .order("completed_at", { ascending: false })
       .limit(50),
     supabase.from("exercises").select("id, name").order("name"),
     supabase
       .from("scheduled_workouts")
-      .select("status")
-      .eq("client_id", id)
-      .gte("scheduled_date", fourWeeksAgoStr)
-      .lte("scheduled_date", todayStr),
+      .select("status, program_days(program_weeks(is_active))")
+      .eq("client_id", id),
   ]);
 
   if (profileRes.error || !profileRes.data) notFound();
@@ -79,14 +69,21 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
   const initials = name.split(" ").map((p: string) => p[0]).join("").slice(0, 2).toUpperCase();
   const gradient = avatarColor(name);
 
-  // Compute adherence %
-  const adherenceData = adherenceRes.data ?? [];
+  // Compute adherence % for active week
+  const adherenceData = (adherenceRes.data ?? []).filter(
+    (w: any) => w.program_days?.program_weeks?.is_active === true
+  );
   const adherenceTotal = adherenceData.length;
   const adherenceCompleted = adherenceData.filter((w: any) => w.status === "completed").length;
   const adherencePct = adherenceTotal > 0 ? Math.round((adherenceCompleted / adherenceTotal) * 100) : null;
 
-  // Compute streak (consecutive days with completed workout)
-  const streak = computeStreak((pastWorkoutsRes.data ?? []) as Array<{ scheduled_date: string; status: string }>);
+  // Compute streak (consecutive days with completed workout, using completed_at)
+  const streak = computeStreak((pastWorkoutsRes.data ?? []) as Array<{ completed_at: string | null; status: string }>);
+
+  // Filter upcoming workouts to active week only
+  const upcomingWorkouts = (upcomingRes.data ?? []).filter(
+    (w: any) => w.program_days?.program_weeks?.is_active === true
+  );
 
   // Active program info
   const activeProg = activeProgRes.data;
@@ -176,7 +173,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
         )}
 
         <ClientTrainingView
-          upcomingWorkouts={upcomingRes.data ?? []}
+          upcomingWorkouts={upcomingWorkouts}
           pastWorkouts={pastWorkoutsRes.data ?? []}
           weekDescription={weekDescription}
         />
@@ -187,18 +184,12 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
   );
 }
 
-function getWeekStart(date: Date): string {
-  const d = new Date(date);
-  const day = d.getDay();
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-  d.setDate(diff);
-  d.setHours(0, 0, 0, 0);
-  return d.toISOString().slice(0, 10);
-}
 
-function computeStreak(workouts: Array<{ scheduled_date: string; status: string }>): number {
+function computeStreak(workouts: Array<{ completed_at: string | null; status: string }>): number {
   const completedDates = new Set(
-    workouts.filter((w) => w.status === "completed").map((w) => w.scheduled_date)
+    workouts
+      .filter((w) => w.status === "completed" && w.completed_at)
+      .map((w) => w.completed_at!.slice(0, 10))
   );
 
   let streak = 0;

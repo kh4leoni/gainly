@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { getScheduledWorkout } from "@/lib/queries/workouts";
@@ -28,6 +29,8 @@ function targetRpeIdx(t: number | null): number {
 export function WorkoutLogger({ scheduledWorkoutId }: { scheduledWorkoutId: string }) {
   const supabase = createClient();
   const qc = useQueryClient();
+  const router = useRouter();
+  const [showCelebration, setShowCelebration] = useState(false);
 
   const { data: workout } = useQuery({
     queryKey: ["workout", scheduledWorkoutId],
@@ -102,7 +105,7 @@ export function WorkoutLogger({ scheduledWorkoutId }: { scheduledWorkoutId: stri
       }
       qc.invalidateQueries({ queryKey: ["coach-dashboard"] });
       qc.invalidateQueries({ queryKey: ["client-workouts"] });
-      toast({ title: "Treeni tallennettu! 🎉" });
+      setShowCelebration(true);
     },
     onError: (e: any) => {
       toast({ title: "Virhe tallennuksessa", description: e?.message ?? "Yritä uudelleen." });
@@ -151,6 +154,105 @@ export function WorkoutLogger({ scheduledWorkoutId }: { scheduledWorkoutId: stri
   const pendingExercises = targetsByPe.filter((t: { done: number; target: number }) => t.done < t.target);
   const allSetsConfirmed = pendingExercises.length === 0 && exercises.length > 0;
 
+  if (showCelebration) {
+    const dayName = workout?.program_days?.name ?? "Treeni";
+    return (
+      <div className="client-app" style={{
+        flex: 1, display: "flex", flexDirection: "column",
+        alignItems: "center", justifyContent: "center",
+        padding: "32px 24px", textAlign: "center",
+      }}>
+        <style>{`
+          @keyframes trophy-pop {
+            0%   { transform: scale(0) rotate(-15deg); opacity: 0; }
+            60%  { transform: scale(1.25) rotate(8deg); opacity: 1; }
+            80%  { transform: scale(0.92) rotate(-4deg); }
+            100% { transform: scale(1) rotate(0deg); }
+          }
+          @keyframes celebrate-fade-up {
+            from { opacity: 0; transform: translateY(18px); }
+            to   { opacity: 1; transform: translateY(0); }
+          }
+          @keyframes ring-pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(62,207,142,0.5); }
+            50%       { box-shadow: 0 0 0 18px rgba(62,207,142,0); }
+          }
+        `}</style>
+
+        {/* Trophy */}
+        <div style={{
+          fontSize: 72, lineHeight: 1, marginBottom: 24,
+          animation: "trophy-pop 0.55s cubic-bezier(0.34,1.56,0.64,1) both",
+          display: "inline-block",
+        }}>
+          🏆
+        </div>
+
+        {/* Heading */}
+        <div style={{
+          fontSize: 30, fontWeight: 900, letterSpacing: "-0.6px", marginBottom: 8,
+          animation: "celebrate-fade-up 0.4s ease both 0.3s",
+          opacity: 0,
+        }}>
+          Hyvin tehty!
+        </div>
+
+        {/* Workout name */}
+        <div style={{
+          fontSize: 15, color: "var(--c-text-muted)", marginBottom: 8, fontWeight: 600,
+          animation: "celebrate-fade-up 0.4s ease both 0.45s",
+          opacity: 0,
+        }}>
+          {dayName} suoritettu ✓
+        </div>
+
+        {/* Sub-text */}
+        <div style={{
+          fontSize: 13, color: "var(--c-text-subtle)", marginBottom: 40,
+          lineHeight: 1.65, maxWidth: 260,
+          animation: "celebrate-fade-up 0.4s ease both 0.55s",
+          opacity: 0,
+        }}>
+          Jokainen treeni vie sinut lähemmäs tavoitettasi. Nyt ansaitset levon — hyvää työtä! 💪
+        </div>
+
+        {/* CTA */}
+        <div style={{
+          width: "100%", maxWidth: 320,
+          animation: "celebrate-fade-up 0.4s ease both 0.65s",
+          opacity: 0,
+        }}>
+          <button
+            onClick={() => router.push("/client/dashboard")}
+            style={{
+              width: "100%", padding: "16px",
+              borderRadius: 16, border: "none",
+              background: "var(--c-green)",
+              color: "#fff", fontSize: 16, fontWeight: 800,
+              cursor: "pointer", fontFamily: "inherit",
+              animation: "ring-pulse 2s ease-in-out 1.2s infinite",
+              letterSpacing: "-0.2px",
+            }}
+          >
+            Jatka →
+          </button>
+          <button
+            onClick={() => setShowCelebration(false)}
+            style={{
+              width: "100%", marginTop: 12, padding: "13px",
+              borderRadius: 14, border: "1px solid var(--c-border)",
+              background: "transparent",
+              color: "var(--c-text-muted)", fontSize: 14, fontWeight: 600,
+              cursor: "pointer", fontFamily: "inherit",
+            }}
+          >
+            Muokkaa sarjoja
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="client-app" style={{ flex: 1, overflowY: "auto", padding: "20px 14px 32px" }}>
       {/* Header */}
@@ -161,9 +263,6 @@ export function WorkoutLogger({ scheduledWorkoutId }: { scheduledWorkoutId: stri
           </div>
         )}
         <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-0.5px" }}>{day?.name ?? "Treeni"}</div>
-        <div style={{ fontSize: 12, color: "var(--c-text-muted)", marginTop: 2 }}>
-          {new Date(workout.scheduled_date).toLocaleDateString("fi-FI")}
-        </div>
         {day?.description && (
           <div style={{ fontSize: 13, color: "var(--c-text-muted)", fontStyle: "italic", marginTop: 8, lineHeight: 1.5 }}>
             {day.description}

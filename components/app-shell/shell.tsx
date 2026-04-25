@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { NavLink } from "./nav-link";
 import { BackButton } from "./back-button";
 import { ThemeToggle } from "./theme-toggle";
+import { LogOut } from "lucide-react";
 
 type NavItem = { href: string; icon: ReactNode; label: string };
 
@@ -38,13 +39,6 @@ export function AppShell({
             <NavLink key={n.href} {...n} variant={variant} />
           ))}
         </nav>
-        <div className="mt-auto p-2">
-          <form action="/auth/logout" method="post">
-            <button className="w-full rounded-md border border-input px-3 py-2 text-left text-sm hover:bg-accent">
-              Kirjaudu ulos
-            </button>
-          </form>
-        </div>
       </aside>
 
       {/* Main */}
@@ -53,6 +47,15 @@ export function AppShell({
           <div className="ml-auto flex items-center gap-1">
             {rightSlot}
             <ThemeToggle />
+            <form action="/auth/logout" method="post">
+              <button
+                type="submit"
+                className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-[#FF1D8C] hover:text-white"
+                aria-label="Kirjaudu ulos"
+              >
+                <LogOut className="h-5 w-5" />
+              </button>
+            </form>
           </div>
         </header>
         <main className="flex-1 pb-20 md:pb-0">{children}</main>
