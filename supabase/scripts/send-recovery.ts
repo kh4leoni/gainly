@@ -6,12 +6,14 @@
 
 import { createClient } from "@supabase/supabase-js";
 
-const [email] = process.argv.slice(2);
+const [email] = process.argv.slice(2) as [string | undefined];
 
 if (!email) {
   console.error("Usage: npx tsx send-recovery.ts <email>");
   process.exit(1);
 }
+
+const confirmedEmail: string = email;
 
 const url = process.env.SUPABASE_URL;
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -25,7 +27,7 @@ if (!url || !key) {
 const admin = createClient(url, key, { auth: { persistSession: false } });
 
 async function main() {
-  const { error } = await admin.auth.resetPasswordForEmail(email, {
+  const { error } = await admin.auth.resetPasswordForEmail(confirmedEmail, {
     redirectTo: `${siteUrl}/auth/update-password`,
   });
 
@@ -34,7 +36,7 @@ async function main() {
     process.exit(1);
   }
 
-  console.log(`Recovery email sent to ${email}`);
+  console.log(`Recovery email sent to ${confirmedEmail}`);
 }
 
 main().catch((e) => { console.error(e); process.exit(1); });
