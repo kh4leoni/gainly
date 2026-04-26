@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { relativeTime } from "@/lib/utils";
 import { derivedRepMax, roundKg } from "@/lib/calc/one-rm";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 
 type Props = {
   clientId: string;
@@ -51,23 +52,13 @@ function ExerciseSelect({
   onChange: (id: string) => void;
 }) {
   return (
-    <div className="relative flex-1">
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="h-9 w-full appearance-none rounded-lg border bg-background px-3 pr-8 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-      >
-        <option value="">Valitse harjoitus…</option>
-        {exercises.map((e) => (
-          <option key={e.id} value={e.id}>{e.name}</option>
-        ))}
-      </select>
-      <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground">
-        <svg width="10" height="7" viewBox="0 0 10 7" fill="none">
-          <path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
-        </svg>
-      </span>
-    </div>
+    <SearchableSelect
+      className="flex-1"
+      options={exercises.map((e) => ({ value: e.id, label: e.name }))}
+      value={value}
+      onChange={onChange}
+      placeholder="Valitse harjoitus…"
+    />
   );
 }
 

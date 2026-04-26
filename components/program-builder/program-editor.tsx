@@ -9,6 +9,7 @@ import { getExercises } from "@/lib/queries/exercises";
 import { Plus, Trash2, GripVertical, ChevronDown, ChevronRight, AlignLeft, Dumbbell, Circle, TriangleAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AssignProgramButton } from "./assign-program-button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 type Block = ProgramFull["program_blocks"][number];
 type Week = Block["program_weeks"][number];
@@ -289,10 +290,19 @@ function WorkoutBlock({ day, exercises, onUpdate, onDelete, onAddExercise, onAss
   onUpdateExercise: (patch: ExPatch) => void; onDeleteExercise: (id: string) => void;
 }) {
   const [collapsed, setCollapsed] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
   const displayName = isAutoDayName(day.name) ? "" : (day.name ?? "");
 
   return (
     <div className="rounded-lg border border-border bg-card">
+      <ConfirmDialog
+        open={deleteConfirm}
+        onOpenChange={setDeleteConfirm}
+        title="Poistetaanko treeni?"
+        description="Kaikki treenin liikkeet poistetaan pysyvästi."
+        onConfirm={onDelete}
+        confirmLabel="Poista treeni"
+      />
       <div className={cn("flex items-center gap-2.5 bg-muted/20 px-3.5 py-2.5", !collapsed && "border-b border-border")}>
         <button type="button" onClick={() => setCollapsed((c) => !c)}
           className="shrink-0 text-muted-foreground transition-colors hover:text-foreground">
@@ -313,7 +323,7 @@ function WorkoutBlock({ day, exercises, onUpdate, onDelete, onAddExercise, onAss
             className="inline-flex items-center gap-1 rounded px-2 py-1 text-[12px] font-semibold text-primary transition-colors hover:bg-primary/10">
             <Plus className="h-3 w-3" /> Liike
           </button>
-          <button type="button" onClick={onDelete}
+          <button type="button" onClick={() => setDeleteConfirm(true)}
             className="flex items-center justify-center rounded p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive">
             <Trash2 className="h-3.5 w-3.5" />
           </button>
@@ -354,9 +364,27 @@ function WeekCard({ week, exercises, onUpdate, onSetActive, onClearActive, onAdd
   onUpdateExercise: (patch: ExPatch) => void; onDeleteExercise: (id: string) => void;
 }) {
   const [collapsed, setCollapsed] = useState(false);
+  const [clearActiveConfirm, setClearActiveConfirm] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
 
   return (
     <div className="rounded-xl border border-border bg-card/50">
+      <ConfirmDialog
+        open={clearActiveConfirm}
+        onOpenChange={setClearActiveConfirm}
+        title="Poista aktiivinen viikko?"
+        description="Asiakkaan treeniohjelma ei enää näy sovelluksessa."
+        onConfirm={onClearActive}
+        confirmLabel="Poista aktiivisuus"
+      />
+      <ConfirmDialog
+        open={deleteConfirm}
+        onOpenChange={setDeleteConfirm}
+        title="Poistetaanko viikko?"
+        description="Kaikki viikon treenit poistetaan pysyvästi."
+        onConfirm={onDelete}
+        confirmLabel="Poista viikko"
+      />
       <div className={cn(
         "flex items-center gap-2.5 bg-muted/20 px-4 py-3",
         "border-b border-border",
@@ -378,9 +406,7 @@ function WeekCard({ week, exercises, onUpdate, onSetActive, onClearActive, onAdd
           {week.is_active ? (
             <button
               type="button"
-              onClick={() => {
-                if (window.confirm("Poistetaanko aktiivinen viikko? Asiakkaan treeniohjelma ei enää näy.")) onClearActive();
-              }}
+              onClick={() => setClearActiveConfirm(true)}
               className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-500 transition-colors hover:bg-destructive/10 hover:text-destructive"
             >
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
@@ -401,7 +427,7 @@ function WeekCard({ week, exercises, onUpdate, onSetActive, onClearActive, onAdd
             <Plus className="h-3 w-3" /> Treeni
           </button>
           <button type="button"
-            onClick={() => { if (window.confirm("Poistetaanko viikko ja kaikki sen treenit?")) onDelete(); }}
+            onClick={() => setDeleteConfirm(true)}
             className="flex items-center justify-center rounded p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive">
             <Trash2 className="h-3.5 w-3.5" />
           </button>
@@ -452,10 +478,19 @@ function BlockCard({ block, exercises, onUpdate, onDelete, onAddWeek,
   onUpdateExercise: (patch: ExPatch) => void; onDeleteExercise: (id: string) => void;
 }) {
   const [collapsed, setCollapsed] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
   const hasActiveWeek = (block.program_weeks ?? []).some((w) => w.is_active);
 
   return (
     <div className={cn("rounded-2xl border bg-card", hasActiveWeek ? "border-primary/50" : "border-border")}>
+      <ConfirmDialog
+        open={deleteConfirm}
+        onOpenChange={setDeleteConfirm}
+        title="Poistetaanko jakso?"
+        description="Kaikki jakson viikot ja treenit poistetaan pysyvästi."
+        onConfirm={onDelete}
+        confirmLabel="Poista jakso"
+      />
       <div className={cn(
         "px-5 pb-3 pt-4 bg-muted/20",
         "border-b border-border",
@@ -488,7 +523,7 @@ function BlockCard({ block, exercises, onUpdate, onDelete, onAddWeek,
               <Plus className="h-3 w-3" /> Viikko
             </button>
             <button type="button"
-              onClick={() => { if (window.confirm("Poistetaanko jakso ja kaikki sen viikot ja treenit?")) onDelete(); }}
+              onClick={() => setDeleteConfirm(true)}
               className="flex items-center justify-center rounded p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive">
               <Trash2 className="h-3.5 w-3.5" />
             </button>

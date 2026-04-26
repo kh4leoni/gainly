@@ -15,12 +15,14 @@ export function AppShell({
   children,
   rightSlot,
   variant = "coach",
+  coachName,
 }: {
   title: string;
   nav: NavItem[];
   children: ReactNode;
   rightSlot?: ReactNode;
   variant?: "athlete" | "coach";
+  coachName?: string | null;
 }) {
   const rootPaths = nav.map((n) => n.href);
 
@@ -31,7 +33,7 @@ export function AppShell({
         <div className="flex h-14 items-center border-b px-4">
           <Link href="/" prefetch className="flex items-baseline gap-1 font-semibold text-base" style={{ lineHeight: 1 }}>
             <span style={{ fontWeight: 700, color: "var(--foreground)" }}>Gainly ×&nbsp;</span>
-            <span style={{ fontFamily: "var(--font-dancing)", fontSize: "1.4rem", fontWeight: 400, color: "#FF1D8C" }}>Fanni Savela</span>
+            <span style={{ fontFamily: "var(--font-dancing)", fontSize: "1.4rem", fontWeight: 400, color: "#FF1D8C" }}>{coachName ?? "Valmentaja"}</span>
           </Link>
         </div>
         <nav className="flex flex-col gap-1 p-2">
