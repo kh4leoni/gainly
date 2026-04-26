@@ -82,7 +82,7 @@ export default async function ClientsPage() {
                 key={r.client_id}
                 href={`/coach/clients/${r.client_id}`}
                 prefetch
-                className="group relative overflow-hidden rounded-2xl border bg-card p-5 transition-all duration-280 hover:scale-[1.025] hover:shadow-md active:scale-[0.99]"
+                className="group relative overflow-hidden rounded-2xl border bg-card p-5 transition-all duration-280 hover:scale-[1.04] hover:shadow-md active:scale-[0.99]"
                 style={{ transition: "transform 280ms cubic-bezier(0.34,1.56,0.64,1), box-shadow 200ms ease" }}
               >
                 {/* pink gradient hover overlay */}
@@ -106,7 +106,7 @@ export default async function ClientsPage() {
                       <p className="truncate font-semibold">{name}</p>
                       <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${
                         isActive
-                          ? "bg-emerald-500/15 text-emerald-500"
+                          ? "active-tag bg-emerald-500/15 text-emerald-500"
                           : "bg-muted text-muted-foreground"
                       }`}>
                         {isActive ? "Aktiivinen" : r.status === "pending" ? "Odottaa" : r.status}

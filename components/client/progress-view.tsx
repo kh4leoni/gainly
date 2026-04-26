@@ -59,7 +59,7 @@ export function ProgressView({ clientId, exercises }: { clientId: string; exerci
     .sort((a, b) => b.e1rm - a.e1rm);
 
   return (
-    <div style={{ flex: 1, overflowY: "auto", padding: "24px 20px 20px" }}>
+    <div style={{ flex: 1, padding: "24px 20px 20px" }}>
       <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-0.5px", marginBottom: 6 }}>Ennätykset</div>
       <div style={{ fontSize: 12, color: "var(--c-text-muted)", marginBottom: 22 }}>
         Parhaat suoritukset 1–5 toiston välillä + arviot.

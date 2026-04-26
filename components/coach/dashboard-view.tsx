@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRef } from "react";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { getCoachFullDashboard } from "@/lib/queries/coach";
@@ -83,25 +84,39 @@ function StatCard({
   label,
   sub,
   dotColor,
+  href,
+  className,
 }: {
   icon: React.ReactNode;
   value: string | number;
   label: string;
   sub: string;
   dotColor: string;
+  href?: string;
+  className?: string;
 }) {
-  return (
+  const card = (
     <div
-      className="relative overflow-hidden rounded-2xl border bg-card p-5 transition-shadow hover:shadow-lg"
-      style={{ transition: "transform 280ms cubic-bezier(0.34,1.56,0.64,1), box-shadow 200ms ease" }}
-      onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.03)")}
-      onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
+      className={`stat-card card-grow relative overflow-hidden rounded-2xl border bg-card p-5${className ? ` ${className}` : ""}`}
+      style={{ cursor: href ? "pointer" : undefined }}
+      onMouseEnter={(e) => {
+        if (href) {
+          e.currentTarget.style.background = `linear-gradient(135deg, ${dotColor}22 0%, ${dotColor}0a 100%)`;
+          e.currentTarget.style.borderColor = `${dotColor}55`;
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (href) {
+          e.currentTarget.style.background = "";
+          e.currentTarget.style.borderColor = "";
+        }
+      }}
     >
       <span
-        className="absolute right-3 top-3 h-2.5 w-2.5 rounded-full"
+        className="stat-dot absolute right-3 top-3 h-2.5 w-2.5 rounded-full"
         style={{ backgroundColor: dotColor }}
       />
-      <div className="mb-3" style={{ color: dotColor }}>{icon}</div>
+      <div className="mb-3 stat-icon" style={{ color: dotColor }}>{icon}</div>
       <div className="text-3xl font-bold leading-none" style={{ color: dotColor }}>
         {value}
       </div>
@@ -109,19 +124,32 @@ function StatCard({
       <div className="mt-0.5 text-xs text-muted-foreground">{sub}</div>
     </div>
   );
+
+  if (href) {
+    return (
+      <Link href={href} style={{ display: "block", textDecoration: "none", color: "inherit" }}>
+        {card}
+      </Link>
+    );
+  }
+  return card;
 }
 
 function SectionCard({
   title,
   badge,
   children,
+  className,
 }: {
   title: string;
   badge?: string;
   children: React.ReactNode;
+  className?: string;
 }) {
   return (
-    <div className="flex flex-col overflow-hidden rounded-2xl border bg-card">
+    <div
+      className={`card-grow flex flex-col overflow-hidden rounded-2xl border bg-card${className ? ` ${className}` : ""}`}
+    >
       <div className="flex items-center gap-2 border-b px-5 py-3.5">
         <span className="text-sm font-semibold">{title}</span>
         {badge && (
@@ -155,6 +183,55 @@ export function CoachDashboardView() {
       coachId ? getCoachFullDashboard(supabase, coachId) : Promise.resolve(null),
   });
 
+  const barRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const pctRefs = useRef<Map<string, HTMLSpanElement>>(new Map());
+  const rafRefs = useRef<Map<string, number>>(new Map());
+
+  const ANIM_MS = 950;
+  const easeOut = (t: number) => 1 - Math.pow(1 - t, 2.5);
+
+  const animateBar = (clientId: string, pct: number) => {
+    const bar = barRefs.current.get(clientId);
+    if (bar) {
+      bar.style.transition = "none";
+      bar.style.width = "0%";
+      bar.offsetWidth; // force reflow
+      bar.style.transition = `width ${ANIM_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`;
+      bar.style.width = `${pct}%`;
+    }
+
+    const pctEl = pctRefs.current.get(clientId);
+    if (pctEl) {
+      const prev = rafRefs.current.get(clientId);
+      if (prev) cancelAnimationFrame(prev);
+      const start = performance.now();
+      const tick = (now: number) => {
+        const elapsed = Math.min(now - start, ANIM_MS);
+        pctEl.textContent = `${Math.round(easeOut(elapsed / ANIM_MS) * pct)}%`;
+        if (elapsed < ANIM_MS) {
+          rafRefs.current.set(clientId, requestAnimationFrame(tick));
+        } else {
+          pctEl.textContent = `${pct}%`;
+          rafRefs.current.delete(clientId);
+        }
+      };
+      rafRefs.current.set(clientId, requestAnimationFrame(tick));
+    }
+  };
+
+  const resetBar = (clientId: string, pct: number) => {
+    const bar = barRefs.current.get(clientId);
+    if (bar) {
+      bar.style.transition = "none";
+      bar.style.width = `${pct}%`;
+    }
+    const prev = rafRefs.current.get(clientId);
+    if (prev) cancelAnimationFrame(prev);
+    rafRefs.current.delete(clientId);
+    const pctEl = pctRefs.current.get(clientId);
+    if (pctEl) pctEl.textContent = `${pct}%`;
+  };
+
   if (!data) return null;
 
   const now = new Date();
@@ -165,8 +242,8 @@ export function CoachDashboardView() {
   return (
     <div className="p-4 md:p-6">
       {/* Header */}
-      <h1 className="text-2xl font-bold">Dashboard</h1>
-      <p className="mt-0.5 text-sm text-muted-foreground">
+      <h1 className="card-enter text-2xl font-bold">Dashboard</h1>
+      <p className="card-enter card-enter-1 mt-0.5 text-sm text-muted-foreground">
         {dayName} {dateLabel} — Hei {firstName}! 👋
       </p>
 
@@ -178,6 +255,7 @@ export function CoachDashboardView() {
           label="Aktiiviset asiakkaat"
           sub={`/ ${data.totalCount} yhteensä`}
           dotColor="#ec4899"
+          className="card-enter card-enter-2"
         />
         <StatCard
           icon={<Trophy size={18} />}
@@ -185,6 +263,7 @@ export function CoachDashboardView() {
           label="Ennätyksiä rikottu"
           sub="tässä kuussa"
           dotColor="#f59e0b"
+          className="card-enter card-enter-3"
         />
         <StatCard
           icon={<Dumbbell size={18} />}
@@ -192,6 +271,7 @@ export function CoachDashboardView() {
           label="Sarjoja kirjattu"
           sub="viimeinen viikko"
           dotColor="#14b8a6"
+          className="card-enter card-enter-4"
         />
         <StatCard
           icon={<MessageCircle size={18} />}
@@ -199,6 +279,8 @@ export function CoachDashboardView() {
           label="Uusia viestejä"
           sub="vastaamatta"
           dotColor="#8b5cf6"
+          href="/coach/messages"
+          className="card-enter card-enter-5"
         />
       </div>
 
@@ -213,6 +295,7 @@ export function CoachDashboardView() {
                 ? `${data.attentionClients.length} asiakasta`
                 : undefined
             }
+            className="card-enter card-enter-6"
           >
             {data.attentionClients.length === 0 ? (
               <div className="px-5 py-10 text-center text-sm text-muted-foreground">
@@ -255,7 +338,7 @@ export function CoachDashboardView() {
 
         {/* Tuoreimmat ennätykset */}
         <div className="lg:col-span-2">
-          <SectionCard title="Tuoreimmat ennätykset">
+          <SectionCard title="Tuoreimmat ennätykset" className="card-enter card-enter-7">
             {data.recentPRs.length === 0 ? (
               <div className="px-5 py-10 text-center text-sm text-muted-foreground">
                 Ei ennätyksiä vielä.
@@ -294,7 +377,7 @@ export function CoachDashboardView() {
       <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-5">
         {/* Noudatusprosentit */}
         <div className="lg:col-span-3">
-          <SectionCard title="Noudatusprosentit">
+          <SectionCard title="Noudatusprosentit" className="card-enter card-enter-8">
             {data.compliance.length === 0 ? (
               <div className="px-5 py-10 text-center text-sm text-muted-foreground">
                 Ei aikataulutettuja treenejä viimeisen 4 viikon aikana.
@@ -302,7 +385,12 @@ export function CoachDashboardView() {
             ) : (
               <div className="divide-y">
                 {data.compliance.map((c) => (
-                  <div key={c.clientId} className="flex items-center gap-3 px-5 py-3.5">
+                  <div
+                    key={c.clientId}
+                    className="flex items-center gap-3 px-5 py-3.5"
+                    onMouseEnter={() => animateBar(c.clientId, c.pct)}
+                    onMouseLeave={() => resetBar(c.clientId, c.pct)}
+                  >
                     <ClientAvatar name={c.name} size={32} />
                     <div className="min-w-0 flex-1">
                       <div className="mb-1.5 flex items-center justify-between gap-2">
@@ -310,6 +398,10 @@ export function CoachDashboardView() {
                           {c.name.split(" ")[0] ?? c.name}
                         </span>
                         <span
+                          ref={(el) => {
+                            if (el) pctRefs.current.set(c.clientId, el);
+                            else pctRefs.current.delete(c.clientId);
+                          }}
                           className="shrink-0 text-sm font-bold"
                           style={{ color: barColor(c.pct) }}
                         >
@@ -318,11 +410,14 @@ export function CoachDashboardView() {
                       </div>
                       <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
                         <div
+                          ref={(el) => {
+                            if (el) barRefs.current.set(c.clientId, el);
+                            else barRefs.current.delete(c.clientId);
+                          }}
                           className="h-full rounded-full"
                           style={{
                             width: `${c.pct}%`,
                             backgroundColor: barColor(c.pct),
-                            transition: "width 600ms ease",
                           }}
                         />
                       </div>
@@ -336,7 +431,7 @@ export function CoachDashboardView() {
 
         {/* Aktiivinen viikko — odottavat treenit */}
         <div className="lg:col-span-2">
-          <SectionCard title="Aktiivinen viikko">
+          <SectionCard title="Aktiivinen viikko" className="card-enter card-enter-9">
             {data.upcomingWorkouts.length === 0 ? (
               <div className="px-5 py-10 text-center text-sm text-muted-foreground">
                 Ei odottavia treenejä aktiivisella viikolla.

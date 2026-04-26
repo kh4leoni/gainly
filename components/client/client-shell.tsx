@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useRef } from "react";
 import { House, CalendarDots, Trophy, ClockCounterClockwise, ChatCircle } from "@phosphor-icons/react";
 import type { ReactNode } from "react";
 
@@ -28,8 +29,23 @@ function avatarColor(seed: string) {
   return palette[h % palette.length] ?? "#ec4899";
 }
 
+const NAV_PATHS = NAV.map((n) => n.href);
+function navIndex(path: string) {
+  return NAV_PATHS.findIndex((p) => path.startsWith(p));
+}
+
 export function ClientShell({ me, children }: { me: Me; children: ReactNode }) {
   const pathname = usePathname();
+  const prevRef = useRef(pathname);
+
+  const prev = prevRef.current;
+  const prevIdx = navIndex(prev);
+  const currIdx = navIndex(pathname);
+  const dir = prev !== pathname && prevIdx !== -1 && currIdx !== -1 && prevIdx !== currIdx
+    ? currIdx > prevIdx ? "c-slide-right" : "c-slide-left"
+    : "c-ani";
+  prevRef.current = pathname;
+
   const color = avatarColor(me?.full_name ?? "?");
 
   return (
@@ -51,6 +67,7 @@ export function ClientShell({ me, children }: { me: Me; children: ReactNode }) {
         height: "100%",
         display: "flex",
         flexDirection: "column",
+        overflow: "hidden",
       }}
     >
       {/* ── Top header ── */}
@@ -105,6 +122,7 @@ export function ClientShell({ me, children }: { me: Me; children: ReactNode }) {
           <form action="/auth/logout" method="post">
             <button
               type="submit"
+              className="icon-wiggle"
               style={{
                 width: 32,
                 height: 32,
@@ -130,11 +148,17 @@ export function ClientShell({ me, children }: { me: Me; children: ReactNode }) {
 
       {/* ── Content ── */}
       <main
-        className="c-ani"
         key={pathname}
-        style={{ flex: 1, minHeight: 0, overflowY: "auto", overscrollBehavior: "contain", display: "flex", flexDirection: "column" }}
+        style={{ flex: 1, minHeight: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}
       >
-        {children}
+        <div
+          className={dir}
+          style={{ flex: 1, overflowY: "auto", overscrollBehavior: "contain", display: "flex", flexDirection: "column", paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 48px)" }}
+        >
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: "100%" }}>
+            {children}
+          </div>
+        </div>
       </main>
 
       {/* ── Bottom nav ── */}

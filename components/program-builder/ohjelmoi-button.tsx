@@ -51,7 +51,7 @@ export function OhjelmoiButton({
   }
 
   return (
-    <Button onClick={handleOhjelmoi} disabled={working}>
+    <Button className="icon-wiggle" onClick={handleOhjelmoi} disabled={working}>
       <Pencil className="h-4 w-4" />
       {working ? "Luodaan…" : "Ohjelmoi"}
     </Button>

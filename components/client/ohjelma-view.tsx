@@ -62,7 +62,7 @@ export function OhjelmaView({ clientId }: { clientId: string }) {
   }
 
   return (
-    <div style={{ flex: 1, overflowY: "auto", padding: "24px 20px 20px" }}>
+    <div style={{ flex: 1, padding: "24px 20px 20px" }}>
       <div style={{ marginBottom: 22 }}>
         <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-0.5px" }}>Ohjelma</div>
         {weeks.length > 0 && (
