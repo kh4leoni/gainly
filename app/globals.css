@@ -23,8 +23,8 @@
   color-scheme: dark;
 }
 @keyframes c-fadeUp        { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:none} }
-@keyframes c-slideInRight  { from{opacity:0;transform:translateX(48px)}  to{opacity:1;transform:none} }
-@keyframes c-slideInLeft   { from{opacity:0;transform:translateX(-48px)} to{opacity:1;transform:none} }
+@keyframes c-slideInRight  { from{transform:translateX(100%)}  to{transform:translateX(0)} }
+@keyframes c-slideInLeft   { from{transform:translateX(-100%)} to{transform:translateX(0)} }
 @keyframes c-pulse         { 0%,100%{opacity:1} 50%{opacity:0.5} }
 @keyframes spin            { to{transform:rotate(360deg)} }
 @keyframes quote-in-right  { from{opacity:0;transform:translateX(64px)}  to{opacity:1;transform:none} }
@@ -150,8 +150,8 @@ body:has(.client-app) {
   background: #070708;
 }
 .c-ani         { animation: c-fadeUp       0.26s ease-out forwards; }
-.c-slide-right { animation: c-slideInRight 0.26s ease-out forwards; }
-.c-slide-left  { animation: c-slideInLeft  0.26s ease-out forwards; }
+.c-slide-right { animation: c-slideInRight 0.2s cubic-bezier(0.25,0.46,0.45,0.94) forwards; }
+.c-slide-left  { animation: c-slideInLeft  0.2s cubic-bezier(0.25,0.46,0.45,0.94) forwards; }
 
 @layer base {
   :root {
