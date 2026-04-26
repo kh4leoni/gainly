@@ -129,7 +129,7 @@ export type ScheduleDay = {
     name: string | null;
     day_number: number;
     program_weeks: { id: string; week_number: number; description: string | null; is_active: boolean } | null;
-    program_exercises: Array<{ order_idx: number; exercises: { name: string } | null }>;
+    program_exercises: Array<{ order_idx: number; exercises: { name: string; instructions: string | null; video_path: string | null } | null }>;
   } | null;
 };
 
@@ -141,7 +141,7 @@ export async function getClientSchedule(supabase: DB, clientId: string): Promise
       program_days(
         name, day_number,
         program_weeks(id, week_number, description, is_active),
-        program_exercises(order_idx, exercises(name))
+        program_exercises(order_idx, exercises(name, instructions, video_path))
       )
     `)
     .eq("client_id", clientId)

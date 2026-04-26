@@ -1,10 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { getClientSchedule, type ScheduleDay } from "@/lib/queries/workouts";
+import { ExerciseInfoDialog } from "@/components/client/exercise-info-dialog";
 
 type WeekGroup = {
   weekId: string;
@@ -34,6 +35,7 @@ function workoutStatus(w: ScheduleDay) {
 
 export function OhjelmaView({ clientId }: { clientId: string }) {
   const supabase = createClient();
+  const router = useRouter();
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   const schedule = useQuery({
@@ -147,17 +149,29 @@ export function OhjelmaView({ clientId }: { clientId: string }) {
                   .filter(Boolean)
                   .slice(0, 3)
                   .join(" · ");
+                const infoExercises = (day.program_days?.program_exercises ?? [])
+                  .slice()
+                  .sort((a, b) => a.order_idx - b.order_idx)
+                  .filter((e) => e.exercises != null)
+                  .map((e) => ({
+                    name: e.exercises!.name,
+                    instructions: e.exercises!.instructions,
+                    video_path: e.exercises!.video_path,
+                  }));
                 return (
-                  <Link
+                  <div
                     key={day.id}
-                    href={`/client/workout/${day.id}`}
+                    role="link"
+                    tabIndex={0}
+                    onClick={() => router.push(`/client/workout/${day.id}`)}
+                    onKeyDown={(e) => { if (e.key === "Enter") router.push(`/client/workout/${day.id}`); }}
                     style={{
                       padding: "12px 18px 12px 44px",
                       borderTop: "1px solid var(--c-border)",
                       display: "flex",
                       alignItems: "center",
                       gap: 12,
-                      textDecoration: "none",
+                      cursor: "pointer",
                       transition: "background 0.15s",
                     }}
                     onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.02)")}
@@ -174,7 +188,32 @@ export function OhjelmaView({ clientId }: { clientId: string }) {
                     <span style={{ fontSize: 11, padding: "3px 10px", borderRadius: 20, background: st.bg, color: st.color, fontWeight: 600, whiteSpace: "nowrap" }}>
                       {st.label}
                     </span>
-                  </Link>
+                    {infoExercises.length > 0 && (
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <ExerciseInfoDialog
+                          exercises={infoExercises}
+                          title={day.program_days?.name ?? "Harjoitteet"}
+                          trigger={
+                            <button
+                              type="button"
+                              title="Katso harjoitteiden kuvaukset"
+                              style={{
+                                width: 30, height: 30, borderRadius: "50%",
+                                border: "1px solid var(--c-border)",
+                                background: "var(--c-surface2)",
+                                color: "var(--c-text-muted)",
+                                fontSize: 12, fontWeight: 700,
+                                display: "flex", alignItems: "center", justifyContent: "center",
+                                cursor: "pointer", flexShrink: 0,
+                              }}
+                            >
+                              ?
+                            </button>
+                          }
+                        />
+                      </div>
+                    )}
+                  </div>
                 );
               })}
           </div>

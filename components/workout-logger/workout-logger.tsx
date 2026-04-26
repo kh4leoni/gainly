@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { getScheduledWorkout } from "@/lib/queries/workouts";
 import { toast } from "@/components/ui/use-toast";
+import { ExerciseInfoDialog } from "@/components/client/exercise-info-dialog";
 
 // ── RPE ───────────────────────────────────────────────────────────────────────
 // Stored as numeric. "<6" is stored as 5 so the DB formula (coalesce rpe,10)
@@ -610,6 +611,31 @@ function ExerciseBlock({ programExercise, workoutLogId }: { programExercise: any
             <div style={{ fontWeight: 700, fontSize: 15, color: "var(--c-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0 }}>
               {programExercise.exercises?.name ?? "Harjoitus"}
             </div>
+            {(programExercise.exercises?.instructions || programExercise.exercises?.video_path) && (
+              <ExerciseInfoDialog
+                exercises={[{
+                  name: programExercise.exercises?.name ?? "Harjoitus",
+                  instructions: programExercise.exercises?.instructions ?? null,
+                  video_path: programExercise.exercises?.video_path ?? null,
+                }]}
+                trigger={
+                  <button
+                    type="button"
+                    title="Katso harjoitteen kuvaus"
+                    style={{
+                      flexShrink: 0, width: 30, height: 30, borderRadius: "50%", border: "1px solid var(--c-border)",
+                      background: "var(--c-surface2)",
+                      color: "var(--c-text-muted)",
+                      display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
+                      fontSize: 13, fontWeight: 700,
+                      transition: "all 0.15s",
+                    }}
+                  >
+                    ?
+                  </button>
+                }
+              />
+            )}
             <button
               type="button"
               onClick={() => { setNoteOpen((o) => !o); }}
