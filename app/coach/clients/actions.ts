@@ -15,7 +15,6 @@ export async function inviteClient(coachId: string, email: string, name?: string
   const foundUser = listData?.users.find((u) => u.email?.toLowerCase() === email.toLowerCase()) ?? null;
 
   if (foundUser) {
-    // Get their profile role
     const { data: profile } = await serviceClient
       .from("profiles")
       .select("role")
@@ -26,11 +25,19 @@ export async function inviteClient(coachId: string, email: string, name?: string
       throw new Error("That email belongs to a coach account");
     }
 
-    // Link directly
     const { error } = await serviceClient
       .from("coach_clients")
       .insert({ coach_id: coachId, client_id: foundUser.id, status: "active" });
     if (error && !error.message.includes("duplicate")) throw error;
+
+    // If the user never confirmed their email, send a password setup email
+    if (!foundUser.email_confirmed_at) {
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://gainly-lilac.vercel.app";
+      await serviceClient.auth.resetPasswordForEmail(email, {
+        redirectTo: `${siteUrl}/auth/update-password`,
+      });
+      return { type: "invited" as const };
+    }
 
     return { type: "linked" as const };
   }
