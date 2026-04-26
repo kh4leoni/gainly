@@ -35,10 +35,10 @@ export async function inviteClient(coachId: string, email: string, name?: string
     return { type: "linked" as const };
   }
 
-  // New user — create invitation row then send invite email
+  // New user — upsert invitation row (handles resend gracefully)
   const { data: inv, error: invErr } = await supabase
     .from("invitations")
-    .insert({ coach_id: coachId, email, invited_name: name ?? null })
+    .upsert({ coach_id: coachId, email, invited_name: name ?? null }, { onConflict: "coach_id,email" })
     .select("token")
     .single();
   if (invErr) throw invErr;
