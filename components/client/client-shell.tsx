@@ -36,15 +36,22 @@ function navIndex(path: string) {
 
 export function ClientShell({ me, coachName, children }: { me: Me; coachName?: string | null; children: ReactNode }) {
   const pathname = usePathname();
-  const prevRef = useRef(pathname);
+  const prevRef = useRef<string | undefined>(undefined);
+  const dirRef = useRef("c-ani");
 
-  const prev = prevRef.current;
-  const prevIdx = navIndex(prev);
-  const currIdx = navIndex(pathname);
-  const dir = prev !== pathname && prevIdx !== -1 && currIdx !== -1 && prevIdx !== currIdx
-    ? currIdx > prevIdx ? "c-slide-right" : "c-slide-left"
-    : "c-ani";
-  prevRef.current = pathname;
+  if (prevRef.current !== pathname) {
+    const prev = prevRef.current;
+    if (prev !== undefined) {
+      const prevIdx = navIndex(prev);
+      const currIdx = navIndex(pathname);
+      dirRef.current = prevIdx !== -1 && currIdx !== -1 && prevIdx !== currIdx
+        ? currIdx > prevIdx ? "c-slide-right" : "c-slide-left"
+        : "c-ani";
+    }
+    prevRef.current = pathname;
+  }
+
+  const dir = dirRef.current;
 
   const color = avatarColor(me?.full_name ?? "?");
 
@@ -153,7 +160,7 @@ export function ClientShell({ me, coachName, children }: { me: Me; coachName?: s
       >
         <div
           className={dir}
-          style={{ flex: 1, overflowY: "auto", overscrollBehavior: "contain", display: "flex", flexDirection: "column", paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 48px)" }}
+          style={{ flex: 1, overflowY: "auto", overscrollBehavior: "contain", display: "flex", flexDirection: "column" }}
         >
           <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: "100%" }}>
             {children}
