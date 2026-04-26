@@ -44,7 +44,7 @@ export async function inviteClient(coachId: string, email: string, name?: string
   }
 
   // New user — upsert invitation row (handles resend gracefully)
-  const { data: inv, error: invErr } = await supabase
+  const { data: inv, error: invErr } = await serviceClient
     .from("invitations")
     .upsert({ coach_id: coachId, email, invited_name: name ?? null }, { onConflict: "coach_id,email" })
     .select("token")
