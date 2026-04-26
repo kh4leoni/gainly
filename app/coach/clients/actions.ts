@@ -9,7 +9,10 @@ export async function inviteClient(coachId: string, email: string, name?: string
   if (!user || user.id !== coachId) throw new Error("Unauthorized");
 
   const serviceClient = createServiceClient();
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://gainly-lilac.vercel.app";
+  // Hardcoded production URL — env var was unreliable.
+  const siteUrl = "https://gainly-lilac.vercel.app";
+  const redirectTo = `${siteUrl}/auth/callback`;
+  console.log("[inviteClient] redirectTo:", redirectTo, "envSiteUrl:", process.env.NEXT_PUBLIC_SITE_URL);
 
   // Check if user already exists
   const { data: listData } = await serviceClient.auth.admin.listUsers({ page: 1, perPage: 1000 });
@@ -33,7 +36,7 @@ export async function inviteClient(coachId: string, email: string, name?: string
 
     if (!foundUser.email_confirmed_at) {
       await serviceClient.auth.admin.inviteUserByEmail(email, {
-        redirectTo: `${siteUrl}/auth/callback`,
+        redirectTo,
         data: { role: "client", full_name: name ?? "" },
       });
       return { type: "invited" as const };
@@ -44,7 +47,7 @@ export async function inviteClient(coachId: string, email: string, name?: string
 
   // New user — invite via Supabase, link to coach immediately using returned user id
   const { data: inviteData, error: inviteErr } = await serviceClient.auth.admin.inviteUserByEmail(email, {
-    redirectTo: `${siteUrl}/auth/callback`,
+    redirectTo,
     data: { role: "client", full_name: name ?? "" },
   });
   if (inviteErr) throw inviteErr;
