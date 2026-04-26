@@ -13,7 +13,7 @@ insert into public.exercises (id, created_by, name, instructions, muscle_groups)
   ('00000000-0000-0000-0000-000000000018', null, 'Kaapelisoutu istuen',      'Selkä suorana, vedä napaan, palauta hallitusti.',              array['back','biceps']),
   ('00000000-0000-0000-0000-000000000019', null, 'Käsipainosoutu',           'Polvi ja käsi tuella, kyynärpää ohittaa kylkiluun.',           array['back','biceps']),
   ('00000000-0000-0000-0000-000000000020', null, 'Selän ojennus',            'Lantio sarjalla, nosta vartalo vaakatasoon, ei yli.',          array['back','glutes','hamstrings']),
-  ('00000000-0000-0000-0000-000000000021', null, 'Face pull',                'Kaapeli silmien korkeudella, kyynärpäät ylös, harittaa.',      array['shoulders','back']),
+  ('00000000-0000-0000-0000-000000000021', null, 'Kasvoveto',               'Kaapeli silmien korkeudella, kyynärpäät ylös, harittaa.',      array['shoulders','back']),
 
   -- Hartiat
   ('00000000-0000-0000-0000-000000000022', null, 'Sivunostot',               'Kevyt koukistus kyynärpäissä, nosta 90° asti.',                array['shoulders']),
@@ -31,7 +31,7 @@ insert into public.exercises (id, created_by, name, instructions, muscle_groups)
   ('00000000-0000-0000-0000-000000000032', null, 'Pohjenostot seisten',      'Täysi liikerata, pidä ylä-asennossa hetki.',                   array['calves']),
   ('00000000-0000-0000-0000-000000000033', null, 'Sumokyykky',               'Leveä haara-asento, varpaat ulospäin, selkä suorana.',         array['quads','glutes','adductors']),
   ('00000000-0000-0000-0000-000000000034', null, 'Romanian maastaveto',      'Polvet pehmeästi koukussa, lantio taaksepäin, selkä suora.',   array['hamstrings','glutes','back']),
-  ('00000000-0000-0000-0000-000000000035', null, 'Hip thrust',               'Yläselkä penkillä, paino lantiolla, purista pakaroita ylhäällä.', array['glutes','hamstrings']),
+  ('00000000-0000-0000-0000-000000000035', null, 'Lonkkaojennus',            'Yläselkä penkillä, paino lantiolla, purista pakaroita ylhäällä.', array['glutes','hamstrings']),
   ('00000000-0000-0000-0000-000000000036', null, 'Lonkka-abduktori koneella','Hallittu avaus ulospäin, ei keinuntaa.',                       array['glutes','abductors']),
   ('00000000-0000-0000-0000-000000000037', null, 'Sumo maastaveto',          'Leveä ote jalkojen sisäpuolelta, polvet ulospäin.',            array['glutes','hamstrings','back','quads']),
 

@@ -10,11 +10,11 @@
 
 -- Global exercise library
 insert into public.exercises (id, created_by, name, instructions, muscle_groups) values
-  ('00000000-0000-0000-0000-000000000001', null, 'Back Squat',  'Bar on upper traps, depth below parallel.', array['quads','glutes','hamstrings']),
-  ('00000000-0000-0000-0000-000000000002', null, 'Bench Press', 'Touch chest, pause, press.',                 array['chest','triceps','shoulders']),
-  ('00000000-0000-0000-0000-000000000003', null, 'Deadlift',    'Hinge pattern, neutral spine.',              array['hamstrings','glutes','back']),
-  ('00000000-0000-0000-0000-000000000004', null, 'Overhead Press','Full lockout overhead.',                   array['shoulders','triceps']),
-  ('00000000-0000-0000-0000-000000000005', null, 'Pull-Up',     'Chin over bar, controlled descent.',         array['back','biceps'])
+  ('00000000-0000-0000-0000-000000000001', null, 'Takakyykky',     'Tanko yläselälle, syvyys alle vaakatasoon.',   array['quads','glutes','hamstrings']),
+  ('00000000-0000-0000-0000-000000000002', null, 'Penkkipunnerrus','Kosketa rintaa, pidä hetki, punnerra.',       array['chest','triceps','shoulders']),
+  ('00000000-0000-0000-0000-000000000003', null, 'Maastaveto',    'Lantiosaranaliike, neutraali selkäranka.',    array['hamstrings','glutes','back']),
+  ('00000000-0000-0000-0000-000000000004', null, 'Pystypunnerrus','Täysi ojennus ylhäällä.',                     array['shoulders','triceps']),
+  ('00000000-0000-0000-0000-000000000005', null, 'Leuanveto',     'Leuka tangon yli, kontrolloitu lasku.',       array['back','biceps'])
 on conflict (id) do nothing;
 
 -- Finnish exercise library (40 exercises)

@@ -796,13 +796,22 @@ export type Database = {
         }
         Returns: number
       }
-      schedule_program: {
-        Args: {
-          _program: string
-          _client: string
-        }
-        Returns: number
-      }
+      schedule_program:
+        | {
+            Args: {
+              _program: string
+              _client: string
+            }
+            Returns: number
+          }
+        | {
+            Args: {
+              _program: string
+              _client: string
+              _start_date: string
+            }
+            Returns: number
+          }
     }
     Enums: {
       [_ in never]: never
