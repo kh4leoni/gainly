@@ -42,7 +42,7 @@ export function NewProgramButton() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <Button onClick={() => setOpen(true)}>
+      <Button className="btn-spring" onClick={() => setOpen(true)}>
         <Plus className="h-4 w-4" />
         Lisää ohjelma
       </Button>

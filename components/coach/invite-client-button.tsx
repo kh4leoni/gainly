@@ -42,7 +42,7 @@ export function InviteClientButton({ coachId }: { coachId: string }) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <Button onClick={() => setOpen(true)}>Kutsu asiakas</Button>
+      <Button className="btn-spring" onClick={() => setOpen(true)}>Kutsu asiakas</Button>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Kutsu asiakas</DialogTitle>

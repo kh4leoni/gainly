@@ -95,11 +95,11 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
   return (
     <div>
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b px-4 py-4 md:px-6">
+      <div className="card-enter flex flex-wrap items-center justify-between gap-4 border-b px-4 py-4 md:px-6">
         <div className="flex items-center gap-3">
           <Link
             href="/coach/clients"
-            className="flex h-8 w-8 items-center justify-center rounded-lg border text-muted-foreground transition-colors hover:bg-muted"
+            className="icon-nudge-l flex h-8 w-8 items-center justify-center rounded-lg border text-muted-foreground transition-colors hover:bg-muted"
           >
             <ChevronLeft className="h-4 w-4" />
           </Link>
@@ -118,7 +118,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
         <div className="flex shrink-0 gap-2">
           <Link
             href={`/coach/messages${threadRes.data ? `?thread=${threadRes.data.id}` : `?with=${profile.id}`}`}
-            className="flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition-all hover:bg-accent"
+            className="icon-shake flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition-all hover:bg-accent"
           >
             <MessageSquare className="h-4 w-4" />
             Viesti
@@ -134,7 +134,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
       <div className="space-y-5 p-4 md:p-6">
         {/* Stat boxes */}
         <div className="grid grid-cols-3 gap-3">
-          <div className="rounded-2xl border bg-card p-4">
+          <div className="card-enter card-enter-1 rounded-2xl border bg-card p-4 hover:scale-[1.04] hover:shadow-md" style={{ transition: "transform 280ms cubic-bezier(0.34,1.56,0.64,1), box-shadow 200ms ease" }}>
             <div className="mb-3 flex items-center justify-between">
               <span className="text-xs text-muted-foreground">Noudatus</span>
               <Check className="h-4 w-4 text-muted-foreground" />
@@ -143,7 +143,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
               {adherencePct !== null ? `${adherencePct}%` : "—"}
             </p>
           </div>
-          <div className="rounded-2xl border bg-card p-4">
+          <div className="card-enter card-enter-2 rounded-2xl border bg-card p-4 hover:scale-[1.04] hover:shadow-md" style={{ transition: "transform 280ms cubic-bezier(0.34,1.56,0.64,1), box-shadow 200ms ease" }}>
             <div className="mb-3 flex items-center justify-between">
               <span className="text-xs text-muted-foreground">Treeniputki</span>
               <Zap className="h-4 w-4 text-muted-foreground" />
@@ -152,7 +152,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
               {streak > 0 ? `${streak} pv` : "—"}
             </p>
           </div>
-          <div className="rounded-2xl border bg-card p-4">
+          <div className="card-enter card-enter-3 rounded-2xl border bg-card p-4 hover:scale-[1.04] hover:shadow-md" style={{ transition: "transform 280ms cubic-bezier(0.34,1.56,0.64,1), box-shadow 200ms ease" }}>
             <div className="mb-3 flex items-center justify-between">
               <span className="text-xs text-muted-foreground">Ohjelma</span>
               <LayoutGrid className="h-4 w-4 text-muted-foreground" />
@@ -165,7 +165,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
 
         {/* Phase badge */}
         {weekLabel && (
-          <div>
+          <div className="card-enter card-enter-4">
             <span className="inline-flex items-center rounded-full bg-primary/15 px-3 py-1 text-xs font-semibold text-primary">
               {weekLabel}
             </span>
@@ -176,9 +176,12 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
           upcomingWorkouts={upcomingWorkouts}
           pastWorkouts={pastWorkoutsRes.data ?? []}
           weekDescription={weekDescription}
+          ohjelmoiHref={activeProg?.id ? `/coach/client-programs/${activeProg.id}/edit` : null}
         />
 
-        <RecordsSection clientId={id} exercises={exercises} />
+        <div className="card-enter card-enter-7">
+          <RecordsSection clientId={id} exercises={exercises} />
+        </div>
       </div>
     </div>
   );

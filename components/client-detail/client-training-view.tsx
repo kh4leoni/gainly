@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, Pencil } from "lucide-react";
+import Link from "next/link";
 
 type ProgramExercise = {
   order_idx: number | null;
@@ -53,6 +54,7 @@ type Props = {
   upcomingWorkouts: unknown[];
   pastWorkouts: unknown[];
   weekDescription?: string | null;
+  ohjelmoiHref?: string | null;
 };
 
 function statusDotStyle(status: string): React.CSSProperties {
@@ -79,8 +81,15 @@ function pickRichestLog(logs: WorkoutLog[] | undefined): WorkoutLog | null {
   return best;
 }
 
-export function ClientTrainingView({ upcomingWorkouts, pastWorkouts, weekDescription }: Props) {
+const CARD_HOVER_STYLE = {
+  background: "linear-gradient(135deg, rgba(236,72,153,0.07) 0%, rgba(139,92,246,0.04) 100%)",
+  borderColor: "rgba(236,72,153,0.3)",
+} as const;
+
+export function ClientTrainingView({ upcomingWorkouts, pastWorkouts, weekDescription, ohjelmoiHref }: Props) {
   const [historyOpen, setHistoryOpen] = useState(true);
+  const [tulevaTHover, setTulevaTHover] = useState(false);
+  const [historiaHover, setHistoriaHover] = useState(false);
 
   const allPast = (pastWorkouts as WorkoutEntry[]).filter((w) => w.status === "completed");
   const historyByWeek = groupWorkoutsByWeek(allPast);
@@ -90,23 +99,52 @@ export function ClientTrainingView({ upcomingWorkouts, pastWorkouts, weekDescrip
   return (
     <div className="space-y-4">
       {/* Tulevat treenit */}
-      <div className="rounded-2xl border bg-card">
-        <div className="px-5 pt-5 pb-3">
-          <div className="flex items-center justify-between">
+      <div
+        className="card-enter card-enter-5 rounded-2xl border bg-card"
+        style={{
+          transition: "transform 280ms cubic-bezier(0.34,1.56,0.64,1), box-shadow 200ms ease, background 200ms ease, border-color 200ms ease",
+          ...(ohjelmoiHref && tulevaTHover ? CARD_HOVER_STYLE : {}),
+        }}
+        onMouseEnter={(e) => { e.currentTarget.style.transform = "scale(1.02)"; e.currentTarget.style.boxShadow = "0 4px 24px rgba(0,0,0,0.12)"; ohjelmoiHref && setTulevaTHover(true); }}
+        onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = ""; setTulevaTHover(false); }}
+      >
+        {ohjelmoiHref ? (
+          <Link
+            href={ohjelmoiHref}
+            className="icon-wiggle flex items-center justify-between px-5 pt-5 pb-3 no-underline"
+            style={{ color: "inherit", textDecoration: "none" }}
+          >
             <div className="flex items-center gap-2">
               <h2 className="text-base font-semibold">Tulevat treenit</h2>
               <span className="rounded-full bg-pink-500/15 px-2 py-0.5 text-xs font-medium text-pink-400">
                 Aktiivinen
               </span>
             </div>
-            <span className="text-sm text-muted-foreground">
-              {upcoming.length} treeni{upcoming.length !== 1 ? "ä" : ""}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">
+                {upcoming.length} treeni{upcoming.length !== 1 ? "ä" : ""}
+              </span>
+              <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+            </div>
+          </Link>
+        ) : (
+          <div className="px-5 pt-5 pb-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-semibold">Tulevat treenit</h2>
+                <span className="rounded-full bg-pink-500/15 px-2 py-0.5 text-xs font-medium text-pink-400">
+                  Aktiivinen
+                </span>
+              </div>
+              <span className="text-sm text-muted-foreground">
+                {upcoming.length} treeni{upcoming.length !== 1 ? "ä" : ""}
+              </span>
+            </div>
           </div>
-          {weekDescription && (
-            <p className="mt-2 text-sm italic text-primary/80">{weekDescription}</p>
-          )}
-        </div>
+        )}
+        {weekDescription && (
+          <p className="px-5 pb-3 mt-0 text-sm italic text-primary/80">{weekDescription}</p>
+        )}
         <div className="px-5 pb-5">
           {upcoming.length === 0 ? (
             <p className="py-2 text-sm text-muted-foreground">Ei tulevia treenejä.</p>
@@ -121,26 +159,50 @@ export function ClientTrainingView({ upcomingWorkouts, pastWorkouts, weekDescrip
       </div>
 
       {/* Historia */}
-      <div className="rounded-2xl border bg-card">
+      <div
+        className="card-enter card-enter-6 rounded-2xl border bg-card"
+        style={{
+          transition: "transform 280ms cubic-bezier(0.34,1.56,0.64,1), box-shadow 200ms ease, background 200ms ease, border-color 200ms ease",
+          ...(ohjelmoiHref && historiaHover ? CARD_HOVER_STYLE : {}),
+        }}
+        onMouseEnter={(e) => { e.currentTarget.style.transform = "scale(1.02)"; e.currentTarget.style.boxShadow = "0 4px 24px rgba(0,0,0,0.12)"; ohjelmoiHref && setHistoriaHover(true); }}
+        onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = ""; setHistoriaHover(false); }}
+      >
         <div className="px-5 py-4">
-          <button
-            onClick={() => setHistoryOpen(!historyOpen)}
-            className="flex w-full items-center justify-between text-left"
-          >
-            <div className="flex items-center gap-2">
-              {historyOpen ? (
-                <ChevronDown className="h-4 w-4 text-muted-foreground" />
-              ) : (
-                <ChevronRight className="h-4 w-4 text-muted-foreground" />
-              )}
+          {ohjelmoiHref ? (
+            <Link
+              href={ohjelmoiHref}
+              className="icon-wiggle flex w-full items-center justify-between no-underline"
+              style={{ color: "inherit", textDecoration: "none" }}
+            >
               <span className="text-base font-semibold">Historia</span>
-            </div>
-            <span className="text-sm text-muted-foreground">
-              {allPast.length} treeni{allPast.length !== 1 ? "ä" : ""}
-            </span>
-          </button>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">
+                  {allPast.length} treeni{allPast.length !== 1 ? "ä" : ""}
+                </span>
+                <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+              </div>
+            </Link>
+          ) : (
+            <button
+              onClick={() => setHistoryOpen(!historyOpen)}
+              className="icon-wiggle flex w-full items-center justify-between text-left"
+            >
+              <div className="flex items-center gap-2">
+                {historyOpen ? (
+                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                )}
+                <span className="text-base font-semibold">Historia</span>
+              </div>
+              <span className="text-sm text-muted-foreground">
+                {allPast.length} treeni{allPast.length !== 1 ? "ä" : ""}
+              </span>
+            </button>
+          )}
         </div>
-        {historyOpen && (
+        {(historyOpen || ohjelmoiHref) && (
           <div className="border-t px-5 pb-5 pt-4">
             {historyByWeek.length === 0 ? (
               <p className="text-sm text-muted-foreground">Ei suoritettuja treenejä.</p>

@@ -238,10 +238,15 @@ export function ClientDashboardView({ clientId, firstName }: { clientId: string;
   const wcDone = wc?.completed ?? 0;
   const wcPct = wcTotal > 0 ? Math.round((wcDone / wcTotal) * 100) : 0;
 
+  const enterStyle = (delay: number): React.CSSProperties => ({
+    animation: "card-enter 0.45s cubic-bezier(0.22, 1, 0.36, 1) both",
+    animationDelay: `${delay}ms`,
+  });
+
   return (
     <div style={{ flex: 1, overflowY: "auto", padding: "24px 20px 20px" }}>
       {/* Header */}
-      <div style={{ marginBottom: 20 }}>
+      <div style={{ marginBottom: 20, ...enterStyle(0) }}>
         <div style={{ fontSize: 12, color: "var(--c-text-muted)", marginBottom: 4, textTransform: "capitalize" }}>
           {dateLabel}
         </div>
@@ -251,7 +256,7 @@ export function ClientDashboardView({ clientId, firstName }: { clientId: string;
       </div>
 
       {/* Motivational quotes carousel */}
-      <QuoteCard />
+      <div style={enterStyle(60)}><QuoteCard /></div>
 
       {/* Next workout card */}
       {workout ? (
@@ -262,6 +267,7 @@ export function ClientDashboardView({ clientId, firstName }: { clientId: string;
           padding: 20,
           marginBottom: 20,
           position: "relative",
+          ...enterStyle(120),
         }}>
           {exercises.length > 0 && (
             <ExerciseInfoDialog
@@ -344,6 +350,7 @@ export function ClientDashboardView({ clientId, firstName }: { clientId: string;
           padding: 24,
           marginBottom: 20,
           textAlign: "center",
+          ...enterStyle(120),
         }}>
           <div style={{ fontSize: 32, marginBottom: 8 }}>😴</div>
           <div style={{ fontWeight: 700, fontSize: 15 }}>Ei tulevia treenejä</div>
@@ -355,13 +362,20 @@ export function ClientDashboardView({ clientId, firstName }: { clientId: string;
 
       {/* Weekly completion card */}
       {wcTotal > 0 && (
-        <div style={{
-          background: "var(--c-surface)",
-          border: "1px solid var(--c-border)",
-          borderRadius: 18,
-          padding: 20,
-          marginBottom: 20,
-        }}>
+        <Link
+          href="/client/history"
+          style={{
+            display: "block",
+            background: "var(--c-surface)",
+            border: "1px solid var(--c-border)",
+            borderRadius: 18,
+            padding: 20,
+            marginBottom: 20,
+            textDecoration: "none",
+            color: "inherit",
+            ...enterStyle(190),
+          }}
+        >
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
             <div style={{ fontSize: 11, color: "var(--c-text-muted)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "1px" }}>
               📅 Viikon treenit
@@ -387,7 +401,7 @@ export function ClientDashboardView({ clientId, firstName }: { clientId: string;
           <div style={{ fontSize: 13, color: "var(--c-text-muted)", lineHeight: 1.5 }}>
             {getCompletionFeedback(wcPct)}
           </div>
-        </div>
+        </Link>
       )}
 
       {/* Weekly volume card */}
@@ -398,6 +412,7 @@ export function ClientDashboardView({ clientId, firstName }: { clientId: string;
           borderRadius: 18,
           padding: 20,
           marginBottom: 20,
+          ...enterStyle(260),
         }}>
           <div style={{ fontSize: 11, color: "var(--c-text-muted)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 8 }}>
             🏋️ Viikon volyymi
@@ -419,6 +434,7 @@ export function ClientDashboardView({ clientId, firstName }: { clientId: string;
           borderRadius: 14,
           padding: "14px 16px",
           marginBottom: 16,
+          ...enterStyle(330),
         }}>
           <div style={{ fontSize: 11, color: "var(--c-text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: 6 }}>
             Viikkojen kuvaus

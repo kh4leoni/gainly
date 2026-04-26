@@ -23,7 +23,7 @@ export function NavLink({
     <a
       href={href}
       className={cn(
-        "group relative overflow-hidden",
+        "group relative overflow-hidden icon-bounce",
         "flex flex-1 flex-col items-center justify-center gap-0.5 text-xs font-medium md:flex-row md:justify-start md:gap-3 md:px-3 md:rounded-md md:text-sm",
         "active:scale-95 md:hover:scale-[1.04]",
         isAthlete ? "py-4" : "py-2",

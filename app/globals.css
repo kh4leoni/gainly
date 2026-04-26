@@ -2,8 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── Client-side app theme (shared dark vars) ──────────────────────────── */
-.dark {
+/* ── Client-side app theme — always dark, independent of system theme ───── */
+.client-app {
   --c-pink: #FF1D8C;
   --c-pink-dim: rgba(255,29,140,0.12);
   --c-pink-glow: rgba(255,29,140,0.4);
@@ -17,14 +17,14 @@
   --c-text: #f0eef5;
   --c-text-muted: rgba(240,238,245,0.48);
   --c-text-subtle: rgba(240,238,245,0.24);
-}
-
-.client-app {
   color: var(--c-text);
   background: var(--c-bg);
   font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  color-scheme: dark;
 }
 @keyframes c-fadeUp        { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:none} }
+@keyframes c-slideInRight  { from{opacity:0;transform:translateX(48px)}  to{opacity:1;transform:none} }
+@keyframes c-slideInLeft   { from{opacity:0;transform:translateX(-48px)} to{opacity:1;transform:none} }
 @keyframes c-pulse         { 0%,100%{opacity:1} 50%{opacity:0.5} }
 @keyframes spin            { to{transform:rotate(360deg)} }
 @keyframes quote-in-right  { from{opacity:0;transform:translateX(64px)}  to{opacity:1;transform:none} }
@@ -32,6 +32,111 @@
 @keyframes quote-out-right { from{opacity:1;transform:none} to{opacity:0;transform:translateX(64px)}  }
 @keyframes quote-out-left  { from{opacity:1;transform:none} to{opacity:0;transform:translateX(-64px)} }
 @keyframes quote-progress  { from{width:0%} to{width:100%} }
+
+/* ── Icon hover animations ───────────────────────────────────────────────── */
+@keyframes icon-bounce {
+  0%   { transform: translateY(0)   scale(1); }
+  40%  { transform: translateY(-5px) scale(1.18); }
+  70%  { transform: translateY(-2px) scale(1.07); }
+  100% { transform: translateY(0)   scale(1); }
+}
+@keyframes icon-wiggle {
+  0%, 100% { transform: rotate(0deg)   scale(1); }
+  20%       { transform: rotate(-16deg) scale(1.1); }
+  55%       { transform: rotate(14deg)  scale(1.1); }
+  80%       { transform: rotate(-7deg)  scale(1.04); }
+}
+@keyframes icon-spin-once {
+  0%   { transform: rotate(0deg)   scale(1); }
+  55%  { transform: rotate(200deg) scale(1.14); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+@keyframes icon-shake {
+  0%, 100% { transform: translateX(0)    rotate(0deg); }
+  20%       { transform: translateX(-4px) rotate(-6deg); }
+  50%       { transform: translateX(4px)  rotate(6deg); }
+  75%       { transform: translateX(-2px) rotate(-2deg); }
+}
+@keyframes icon-nudge-l {
+  0%, 100% { transform: translateX(0); }
+  40%       { transform: translateX(-5px); }
+  70%       { transform: translateX(-2px); }
+}
+
+/* Active status tag — spring scale transition (smooth, no keyframe restart jank) */
+.active-tag {
+  display: inline-block;
+  will-change: transform;
+  transition: transform 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.group:hover .active-tag {
+  transform: scale(1.22);
+}
+
+/* Utility classes — element with this class animates its child SVG on hover */
+/* Nav / icon-bounce: transition-based so it never restarts mid-animation */
+.icon-bounce svg {
+  will-change: transform;
+  transition: transform 240ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.icon-bounce:hover svg {
+  transform: scale(1.22) translateY(-3px);
+}
+.icon-wiggle:hover   > svg,
+.icon-wiggle:hover   svg { animation: icon-wiggle 0.42s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.icon-spin:hover     > svg,
+.icon-spin:hover     svg { animation: icon-spin-once 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.icon-shake:hover    > svg,
+.icon-shake:hover    svg { animation: icon-shake 0.4s ease both; }
+.icon-nudge-l:hover  > svg,
+.icon-nudge-l:hover  svg { animation: icon-nudge-l 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+
+/* Coach stat cards — spin icon when card is hovered */
+.stat-card:hover .stat-icon svg { animation: icon-spin-once 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+
+/* ── Button spring hover ─────────────────────────────────────────────────── */
+.btn-spring {
+  transition: transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 200ms ease;
+}
+.btn-spring:hover:not(:disabled) {
+  transform: scale(1.06) translateY(-2px);
+  box-shadow: 0 6px 20px rgba(255, 29, 140, 0.35);
+}
+.btn-spring:active:not(:disabled) {
+  transform: scale(0.96);
+  box-shadow: none;
+}
+
+/* ── Card entrance animation ─────────────────────────────────────────────── */
+@keyframes card-enter {
+  from { opacity: 0; translate: 0 14px; }
+  to   { opacity: 1; translate: 0 0px; }
+}
+.card-enter   { animation: card-enter 0.45s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* Hover growth — uses transform so it never conflicts with the translate-based entrance animation */
+.card-grow {
+  transition: transform 280ms cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 200ms ease, background 200ms ease, border-color 200ms ease;
+}
+.card-grow:hover {
+  transform: scale(1.03);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+}
+.stat-dot {
+  transition: transform 280ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.card-grow:hover .stat-dot {
+  transform: scale(0.5);
+}
+.card-enter-1 { animation-delay:  50ms; }
+.card-enter-2 { animation-delay: 100ms; }
+.card-enter-3 { animation-delay: 150ms; }
+.card-enter-4 { animation-delay: 200ms; }
+.card-enter-5 { animation-delay: 260ms; }
+.card-enter-6 { animation-delay: 320ms; }
+.card-enter-7 { animation-delay: 380ms; }
+.card-enter-8 { animation-delay: 440ms; }
+.card-enter-9 { animation-delay: 500ms; }
 
 /* Lock the PWA shell — no document-level scroll or bounce on iOS */
 html:has(.client-app) {
@@ -44,7 +149,9 @@ body:has(.client-app) {
   overflow: hidden;
   background: #070708;
 }
-.c-ani { animation: c-fadeUp 0.28s ease forwards; }
+.c-ani         { animation: c-fadeUp       0.26s ease-out forwards; }
+.c-slide-right { animation: c-slideInRight 0.26s ease-out forwards; }
+.c-slide-left  { animation: c-slideInLeft  0.26s ease-out forwards; }
 
 @layer base {
   :root {

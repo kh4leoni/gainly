@@ -50,7 +50,7 @@ export function AppShell({
             <form action="/auth/logout" method="post">
               <button
                 type="submit"
-                className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-[#FF1D8C] hover:text-white"
+                className="icon-wiggle flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-[#FF1D8C] hover:text-white"
                 aria-label="Kirjaudu ulos"
               >
                 <LogOut className="h-5 w-5" />

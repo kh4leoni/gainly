@@ -281,7 +281,7 @@ export function ExerciseLibrary() {
     <div className="p-4 md:p-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Liikkeet</h1>
-        <Button onClick={() => setCreateOpen(true)}>
+        <Button className="btn-spring" onClick={() => setCreateOpen(true)}>
           <Plus className="h-4 w-4" /> Lisää liike
         </Button>
       </div>

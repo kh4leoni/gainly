@@ -21,7 +21,7 @@ type PRRow = {
 function RecordCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div
-      className="group relative rounded-2xl border bg-card transition-all duration-280 hover:shadow-md active:scale-[0.995]"
+      className="group relative rounded-2xl border bg-card transition-all duration-280 hover:scale-[1.025] hover:shadow-md active:scale-[0.995]"
       style={{ transition: "transform 280ms cubic-bezier(0.34,1.56,0.64,1), box-shadow 200ms ease" }}
     >
       <span

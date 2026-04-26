@@ -188,7 +188,7 @@ export function HistoryView({ clientId }: { clientId: string }) {
   const weeks = groupByWeek(workouts);
 
   return (
-    <div style={{ flex: 1, overflowY: "auto", padding: "24px 16px 32px" }}>
+    <div style={{ flex: 1, padding: "24px 16px 32px" }}>
       <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-0.5px", marginBottom: 4 }}>Historia</div>
       <div style={{ fontSize: 13, color: "var(--c-text-muted)", marginBottom: 24 }}>
         Tehdyt treenit
