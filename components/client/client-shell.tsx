@@ -34,7 +34,7 @@ function navIndex(path: string) {
   return NAV_PATHS.findIndex((p) => path.startsWith(p));
 }
 
-export function ClientShell({ me, children }: { me: Me; children: ReactNode }) {
+export function ClientShell({ me, coachName, children }: { me: Me; coachName?: string | null; children: ReactNode }) {
   const pathname = usePathname();
   const prevRef = useRef(pathname);
 
@@ -95,7 +95,7 @@ export function ClientShell({ me, children }: { me: Me; children: ReactNode }) {
               color: "var(--c-pink)",
             }}
           >
-            Fanni Savela
+            {coachName ?? "Valmentaja"}
           </span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>

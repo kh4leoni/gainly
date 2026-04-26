@@ -11,3 +11,16 @@ export async function getMe(supabase: DB) {
   if (error) throw error;
   return data;
 }
+
+export async function getMyCoach(supabase: DB) {
+  const { data: user } = await supabase.auth.getUser();
+  if (!user.user) return null;
+  const { data } = await supabase
+    .from("coach_clients")
+    .select("profiles:coach_id (full_name)")
+    .eq("client_id", user.user.id)
+    .eq("status", "active")
+    .maybeSingle();
+  const coach = data?.profiles as unknown as { full_name: string | null } | null;
+  return coach?.full_name ?? null;
+}

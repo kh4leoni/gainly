@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { getRecentPRs } from "@/lib/queries/workouts";
 import { derivedRepMax, roundKg } from "@/lib/calc/one-rm";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 
 type Exercise = { id: string; name: string };
 type PR = {
@@ -66,37 +67,13 @@ export function ProgressView({ clientId, exercises }: { clientId: string; exerci
       </div>
 
       {/* Exercise selector */}
-      <div style={{ position: "relative", marginBottom: 20 }}>
-        <select
+      <div style={{ marginBottom: 20 }}>
+        <SearchableSelect
+          options={exercises.map((ex) => ({ value: ex.id, label: ex.name }))}
           value={selId}
-          onChange={(e) => setSelId(e.target.value)}
-          style={{
-            width: "100%",
-            background: "var(--c-surface)",
-            border: "1px solid var(--c-border)",
-            borderRadius: 14,
-            padding: "13px 40px 13px 16px",
-            color: selId ? "var(--c-text)" : "var(--c-text-muted)",
-            fontSize: 14,
-            fontWeight: 500,
-            outline: "none",
-            appearance: "none",
-            WebkitAppearance: "none",
-            fontFamily: "inherit",
-            transition: "border-color 0.2s",
-            cursor: "pointer",
-          }}
-          onFocus={(e) => (e.target.style.borderColor = "var(--c-pink)")}
-          onBlur={(e) => (e.target.style.borderColor = "var(--c-border)")}
-        >
-          <option value="">Valitse harjoitus...</option>
-          {exercises.map((ex) => (
-            <option key={ex.id} value={ex.id}>{ex.name}</option>
-          ))}
-        </select>
-        <span style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", pointerEvents: "none", color: "var(--c-text-muted)" }}>
-          <svg width="12" height="8" viewBox="0 0 12 8" fill="none"><path d="M1 1l5 5 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none"/></svg>
-        </span>
+          onChange={setSelId}
+          placeholder="Valitse harjoitus..."
+        />
       </div>
 
       {/* Per-rep table */}
