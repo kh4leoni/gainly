@@ -33,7 +33,7 @@ export function AppShell({
       <aside className="hidden md:flex md:w-60 md:flex-col md:border-r md:bg-muted/20">
         <div className="flex h-14 items-center border-b px-4">
           <Link href="/" prefetch className="flex items-center gap-2">
-            <Image src="/logo.png" alt="Gainly" width={80} height={32} className="dark:invert" style={{ objectFit: "contain" }} />
+            <Image src="/logo.png" alt="Gainly" width={120} height={48} className="dark:invert" style={{ objectFit: "contain" }} />
             <span style={{ fontWeight: 700, color: "var(--foreground)" }}>×</span>
             <span style={{ fontFamily: "var(--font-dancing)", fontSize: "1.2rem", fontWeight: 400, color: "#FF1D8C" }}>{coachName ?? "Valmentaja"}</span>
           </Link>
