@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { getNextWorkout, getWeeklyVolume, getWeeklyCompletion } from "@/lib/queries/workouts";
 import { usePrToast } from "@/hooks/use-pr-toast";
+import { ExerciseInfoDialog } from "@/components/client/exercise-info-dialog";
 
 const FI_DAYS = ["sunnuntai","maanantai","tiistai","keskiviikko","torstai","perjantai","lauantai"];
 
@@ -260,7 +261,40 @@ export function ClientDashboardView({ clientId, firstName }: { clientId: string;
           borderRadius: 18,
           padding: 20,
           marginBottom: 20,
+          position: "relative",
         }}>
+          {exercises.length > 0 && (
+            <ExerciseInfoDialog
+              exercises={exercises
+                .slice()
+                .sort((a, b) => a.order_idx - b.order_idx)
+                .filter((e) => e.exercises != null)
+                .map((e) => ({
+                  name: e.exercises!.name,
+                  instructions: e.exercises!.instructions,
+                  video_path: e.exercises!.video_path,
+                }))}
+              title={workout.program_days?.name ?? "Harjoitteet"}
+              trigger={
+                <button
+                  type="button"
+                  title="Katso harjoitteiden kuvaukset"
+                  style={{
+                    position: "absolute", top: 12, right: 12,
+                    width: 34, height: 34, borderRadius: "50%",
+                    border: "1px solid rgba(255,29,140,0.35)",
+                    background: "rgba(255,29,140,0.1)",
+                    color: "var(--c-pink)",
+                    fontSize: 13, fontWeight: 700,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    cursor: "pointer",
+                  }}
+                >
+                  ?
+                </button>
+              }
+            />
+          )}
           <div style={{ marginBottom: 10 }}>
             <div style={{ fontSize: 11, color: "var(--c-pink)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 4 }}>
               Seuraava treeni

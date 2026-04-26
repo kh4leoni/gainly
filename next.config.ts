@@ -19,7 +19,7 @@ const csp = [
   `connect-src 'self' ${supabaseOrigin} ${supabaseWsOrigin}`,
   "worker-src 'self' blob:",
   "manifest-src 'self'",
-  "frame-src 'none'",
+  "frame-src https://www.youtube.com https://player.vimeo.com",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",
