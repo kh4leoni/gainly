@@ -30,11 +30,12 @@ export async function inviteClient(coachId: string, email: string, name?: string
       .insert({ coach_id: coachId, client_id: foundUser.id, status: "active" });
     if (error && !error.message.includes("duplicate")) throw error;
 
-    // If the user never confirmed their email, send a password setup email
+    // If the user never confirmed their email, re-send invite pointing to password setup
     if (!foundUser.email_confirmed_at) {
       const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://gainly-lilac.vercel.app";
-      await serviceClient.auth.resetPasswordForEmail(email, {
+      await serviceClient.auth.admin.inviteUserByEmail(email, {
         redirectTo: `${siteUrl}/auth/update-password`,
+        data: { role: "client", full_name: name ?? "" },
       });
       return { type: "invited" as const };
     }
