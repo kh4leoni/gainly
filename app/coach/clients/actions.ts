@@ -33,7 +33,7 @@ export async function inviteClient(coachId: string, email: string, name?: string
 
     if (!foundUser.email_confirmed_at) {
       await serviceClient.auth.admin.inviteUserByEmail(email, {
-        redirectTo: siteUrl,
+        redirectTo: `${siteUrl}/auth/callback`,
         data: { role: "client", full_name: name ?? "" },
       });
       return { type: "invited" as const };
@@ -44,7 +44,7 @@ export async function inviteClient(coachId: string, email: string, name?: string
 
   // New user — invite via Supabase, link to coach immediately using returned user id
   const { data: inviteData, error: inviteErr } = await serviceClient.auth.admin.inviteUserByEmail(email, {
-    redirectTo: siteUrl,
+    redirectTo: `${siteUrl}/auth/callback`,
     data: { role: "client", full_name: name ?? "" },
   });
   if (inviteErr) throw inviteErr;

@@ -28,12 +28,18 @@ export function UpdatePasswordForm() {
     setLoading(true);
     const supabase = createClient();
     const { error } = await supabase.auth.updateUser({ password });
-    setLoading(false);
     if (error) {
+      setLoading(false);
       setError(error.message);
       return;
     }
-    router.push("/");
+    const { data } = await supabase.auth.getSession();
+    const role =
+      (data.session?.user.app_metadata as { user_role?: string })?.user_role ??
+      (data.session?.user.user_metadata as { role?: string })?.role ??
+      "client";
+    setLoading(false);
+    router.replace(role === "coach" ? "/coach/dashboard" : "/client/dashboard");
     router.refresh();
   }
 
