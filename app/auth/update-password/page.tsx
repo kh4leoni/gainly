@@ -6,8 +6,8 @@ export default function UpdatePasswordPage() {
     <main className="mx-auto flex min-h-screen max-w-md items-center px-6">
       <Card className="w-full">
         <CardHeader>
-          <CardTitle>Aseta uusi salasana</CardTitle>
-          <CardDescription>Valitse uusi salasana tilillesi.</CardDescription>
+          <CardTitle>Tervetuloa Gainlyyn</CardTitle>
+          <CardDescription>Vahvista nimesi ja aseta salasana tilillesi.</CardDescription>
         </CardHeader>
         <CardContent>
           <UpdatePasswordForm />

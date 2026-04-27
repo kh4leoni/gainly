@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -9,14 +9,26 @@ import { Label } from "@/components/ui/label";
 
 export function UpdatePasswordForm() {
   const router = useRouter();
+  const [fullName, setFullName] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    createClient().auth.getUser().then(({ data }) => {
+      const name = (data.user?.user_metadata as { full_name?: string })?.full_name;
+      if (name) setFullName(name);
+    });
+  }, []);
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    if (!fullName.trim()) {
+      setError("Syötä nimesi.");
+      return;
+    }
     if (password !== confirm) {
       setError("Salasanat eivät täsmää.");
       return;
@@ -27,11 +39,18 @@ export function UpdatePasswordForm() {
     }
     setLoading(true);
     const supabase = createClient();
-    const { error } = await supabase.auth.updateUser({ password });
-    if (error) {
+    const { error: updateError } = await supabase.auth.updateUser({
+      password,
+      data: { full_name: fullName.trim() },
+    });
+    if (updateError) {
       setLoading(false);
-      setError(error.message);
+      setError(updateError.message);
       return;
+    }
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase.from("profiles").update({ full_name: fullName.trim() }).eq("id", user.id);
     }
     const { data } = await supabase.auth.getSession();
     const role =
@@ -45,6 +64,17 @@ export function UpdatePasswordForm() {
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
+      <div>
+        <Label htmlFor="full-name">Koko nimi</Label>
+        <Input
+          id="full-name"
+          type="text"
+          autoComplete="name"
+          placeholder="Etunimi Sukunimi"
+          value={fullName}
+          onChange={(e) => setFullName(e.target.value)}
+        />
+      </div>
       <div>
         <Label htmlFor="password">Uusi salasana</Label>
         <Input
