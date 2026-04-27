@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useRef } from "react";
 import { House, CalendarDots, Trophy, ClockCounterClockwise, ChatCircle } from "@phosphor-icons/react";
@@ -77,11 +78,12 @@ export function ClientShell({ me, coachName, children }: { me: Me; coachName?: s
         overflow: "hidden",
       }}
     >
+      {/* ── Status bar spacer ── */}
+      <div style={{ height: "env(safe-area-inset-top, 0px)", background: "var(--c-surface)", flexShrink: 0 }} />
       {/* ── Top header ── */}
       <header
         style={{
-          paddingTop: "calc(14px + env(safe-area-inset-top, 0px))",
-          paddingBottom: "12px",
+          height: 64,
           paddingLeft: "20px",
           paddingRight: "20px",
           borderBottom: "1px solid var(--c-border)",
@@ -93,17 +95,7 @@ export function ClientShell({ me, coachName, children }: { me: Me; coachName?: s
         }}
       >
         <div style={{ lineHeight: 1 }}>
-          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--c-text-muted)" }}>Gainly × </span>
-          <span
-            style={{
-              fontFamily: "var(--font-dancing)",
-              fontWeight: 700,
-              fontSize: 20,
-              color: "var(--c-pink)",
-            }}
-          >
-            {coachName ?? "Valmentaja"}
-          </span>
+          <Image src="/fs%20collab.png" alt="fs collab" width={140} height={44} className="invert dark:invert-0" style={{ objectFit: "contain" }} />
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <span style={{ fontSize: 12, color: "var(--c-text-muted)", fontWeight: 500 }}>

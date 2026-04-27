@@ -4,7 +4,6 @@ import Link from "next/link";
 import Image from "next/image";
 import type { ReactNode } from "react";
 import { NavLink } from "./nav-link";
-import { BackButton } from "./back-button";
 import { ThemeToggle } from "./theme-toggle";
 import { LogOut } from "lucide-react";
 
@@ -25,17 +24,14 @@ export function AppShell({
   variant?: "athlete" | "coach";
   coachName?: string | null;
 }) {
-  const rootPaths = nav.map((n) => n.href);
-
   return (
     <div className="min-h-dvh md:flex">
       {/* Sidebar (md+) */}
       <aside className="hidden md:flex md:w-60 md:flex-col md:border-r md:bg-muted/20">
-        <div className="flex h-14 items-center border-b px-4">
-          <Link href="/" prefetch className="flex items-center gap-2">
-            <Image src="/logo.png" alt="Gainly" width={120} height={48} className="dark:invert" style={{ objectFit: "contain" }} />
-            <span style={{ fontWeight: 700, color: "var(--foreground)" }}>×</span>
-            <span style={{ fontFamily: "var(--font-dancing)", fontSize: "1.2rem", fontWeight: 400, color: "#FF1D8C" }}>{coachName ?? "Valmentaja"}</span>
+        <div style={{ height: "calc(env(safe-area-inset-top, 0px) + 8px)" }} />
+        <div className="flex h-20 items-center border-b px-4">
+          <Link href="/" prefetch>
+            <Image src="/fs%20collab.png" alt="fs collab" width={160} height={52} className="invert dark:invert-0" style={{ objectFit: "contain" }} />
           </Link>
         </div>
         <nav className="flex flex-col gap-1 p-2">
@@ -47,7 +43,29 @@ export function AppShell({
 
       {/* Main */}
       <div className="flex min-h-dvh flex-1 flex-col">
-        <header className="flex h-14 items-center justify-between border-b px-4 md:px-6">
+        {/* Mobile top header */}
+        <header className="flex flex-col border-b md:hidden" style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 8px)" }}>
+          <div className="flex items-center justify-between px-4 pb-2">
+            <Link href="/" prefetch>
+              <Image src="/fs%20collab.png" alt="fs collab" width={140} height={44} className="invert dark:invert-0" style={{ objectFit: "contain" }} />
+            </Link>
+            <div className="flex items-center gap-1">
+              {rightSlot}
+              <ThemeToggle />
+              <form action="/auth/logout" method="post">
+                <button
+                  type="submit"
+                  className="icon-wiggle flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-[#FF1D8C] hover:text-white"
+                  aria-label="Kirjaudu ulos"
+                >
+                  <LogOut className="h-5 w-5" />
+                </button>
+              </form>
+            </div>
+          </div>
+        </header>
+        {/* Desktop top header */}
+        <header className="hidden h-14 items-center justify-between border-b px-4 md:flex md:px-6">
           <div className="ml-auto flex items-center gap-1">
             {rightSlot}
             <ThemeToggle />
@@ -66,7 +84,6 @@ export function AppShell({
 
         {/* Mobile bottom nav */}
         <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t bg-background pb-safe md:hidden">
-          <BackButton rootPaths={rootPaths} />
           {nav.map((n) => (
             <NavLink key={n.href} {...n} variant={variant} />
           ))}
