@@ -1,6 +1,15 @@
 import type { NextConfig } from "next";
+import withSerwistInit from "@serwist/next";
 
 const isDev = process.env.NODE_ENV === "development";
+
+const withSerwist = withSerwistInit({
+  swSrc: "app/sw.ts",
+  swDest: "public/sw.js",
+  cacheOnNavigation: true,
+  reloadOnOnline: true,
+  disable: isDev,
+});
 
 // Preserve full origin (protocol + host + port) so local Supabase on
 // http://127.0.0.1:54321 isn't blocked by a hardcoded https:// prefix.
@@ -58,4 +67,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withSerwist(nextConfig);

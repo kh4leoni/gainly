@@ -40,23 +40,34 @@ Never import the server client in a Client Component. Use `"use client"` boundar
 ### Authorization
 RLS is the enforcement boundary. `is_coach_of(client_id)` and `is_client_of(coach_id)` SQL helpers are used in policies. The custom `custom_access_token_hook` PL/pgSQL function injects `user_role` into JWT app_metadata. Middleware reads this claim to gate `/coach/*` and `/client/*` routes; falls back to `profiles.role` DB query only if the claim is absent.
 
-### Offline writes
-1. Client calls `enqueue(kind, payload, uuid())` from `lib/offline/queue.ts` — writes to Dexie `pending_mutations` table and registers Background Sync tag `gainly-sync`.
-2. SW handles the sync tag by postMessaging the page to trigger `replay()` from `lib/offline/sync.ts`.
-3. `replay()` processes mutations FIFO; Postgres unique constraints make it idempotent (duplicate UUID → code 23505 → skip).
-4. `installSyncListeners()` in `app/providers.tsx` also triggers replay on `online` event and `visibilitychange`.
+### Offline writes (mirror-table pattern)
+Tables `scheduled_workouts`, `workout_logs`, `set_logs` are mirrored in Dexie (`gainly-offline` DB) with a `synced: 0|1` flag. All client writes go to Dexie first via helpers in `lib/offline/writes.ts`:
+- `logSet`, `deleteSet` — `set_logs`
+- `ensureWorkoutLog` — idempotent `workout_logs` row for a `(scheduled_workout, client)` pair
+- `completeWorkout`, `uncompleteWorkout` — `scheduled_workouts.status`
 
-Supported mutation kinds: `workout_log.create`, `set_log.create`, `workout.complete`, `message.send`.
+UUIDs are generated client-side (`lib/offline/uuid.ts`, falls back to `uuid` pkg on platforms without `crypto.randomUUID`). Each row carries an `updated_at` set at write time.
+
+`syncNow()` in `lib/offline/sync.ts` collects all `synced=0` rows, groups them by `workout_log_id`, and calls the SECURITY INVOKER RPC `upsert_workout_with_sets(p_scheduled, p_workout, p_sets)`. The RPC performs last-write-wins by `updated_at` and returns canonical rows; the client overwrites Dexie with `synced=1`. Mutex prevents concurrent runs.
+
+Sync triggers: `online` event, `visibilitychange` (visible), `focus`, app mount, manual "Synkronoi nyt" button, Background Sync `gainly-sync` tag (Android-only — iOS Safari has no BG Sync API, fallbacks cover it). Listeners installed by `installSyncListeners()` in `app/providers.tsx`.
+
+### Offline reads
+`lib/offline/reads.ts` exposes `useLocalSetLogs`, `useLocalWorkoutLog`, `useUnsyncedCount` (Dexie `useLiveQuery`) and `mergeById` for LWW merge with server query results. Server queries call `hydrateSetLogs` / `hydrateWorkoutLog` to seed Dexie with `synced=1` so data survives going offline.
+
+### Offline UX
+- `components/offline/sync-bar.tsx` — sticky bar shown when `unsyncedCount > 0`. Indicates online/offline + running state. Manual "Synkronoi nyt" button.
+- `components/offline/sync-badge.tsx` — per-row clock/check icon for unsynced/synced rows. Used inline in workout logger.
 
 ### PR detection
-A BEFORE INSERT trigger on `set_logs` computes the Epley 1RM and compares to existing `personal_records`. On improvement it upserts the PR row. A Supabase Realtime channel subscription in `hooks/use-pr-toast.ts` fires a toast.
+Single `after insert/update/delete` trigger on `set_logs` calls `recompute_pr_bucket(client, exercise, reps)` which picks the best weight (then estimated_1rm, then `wl.logged_at`) and upserts/clears `personal_records`. Trigger also refreshes `set_logs.is_pr` on the affected row. Late-arriving offline rows do not displace newer PRs because ordering uses `logged_at`. A Realtime channel in `hooks/use-pr-toast.ts` fires a toast on PR changes.
 
 ### Service Worker (`app/sw.ts` → `public/sw.js`)
 Built by `@serwist/next` during `npm run build` (disabled in dev). Caching strategies:
 - Supabase REST (`**/rest/v1/**`): StaleWhileRevalidate
 - Supabase Storage: CacheFirst
-- RSC data (`/__nextjs_original-stack-frame*`): NetworkFirst (3 s timeout → cache)
-- Navigation: NetworkFirst with offline fallback to `/offline`
+- Navigation: NetworkFirst (3 s timeout) with offline fallback to `/offline`
+- Static assets: serwist `defaultCache`
 
 ### UI components
 `components/ui/` contains hand-authored Radix UI primitives (not installed via shadcn CLI). CSS variables for theming are defined in `app/globals.css`. Use `cn()` from `lib/utils.ts` for conditional class merging.

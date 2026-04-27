@@ -5,6 +5,9 @@ import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { getPastWorkouts, type PastWorkout } from "@/lib/queries/workouts";
 import Link from "next/link";
+import { SyncBar } from "@/components/offline/sync-bar";
+import { SyncBadge } from "@/components/offline/sync-badge";
+import { useLocalCompletedNotInServer, useUnsyncedForWorkout } from "@/lib/offline/reads";
 
 function groupByWeek(workouts: PastWorkout[]): Array<{ label: string; workouts: PastWorkout[] }> {
   const map = new Map<string, PastWorkout[]>();
@@ -56,6 +59,7 @@ function WorkoutCard({ w }: { w: PastWorkout }) {
   const exNames = (w.program_days?.program_exercises ?? [])
     .slice().sort((a, b) => a.order_idx - b.order_idx)
     .map((pe) => pe.exercises?.name).filter(Boolean);
+  const unsynced = useUnsyncedForWorkout(w.id);
 
   const dateStr = w.completed_at
     ? new Date(w.completed_at).toLocaleDateString("fi-FI", { weekday: "short", day: "numeric", month: "numeric" })
@@ -83,6 +87,7 @@ function WorkoutCard({ w }: { w: PastWorkout }) {
               ✓ Tehty
             </span>
             <span style={{ fontSize: 11, color: "var(--c-text-muted)" }}>{dateStr}</span>
+            <SyncBadge synced={!unsynced} size={11} />
           </div>
           <div style={{ fontSize: 15, fontWeight: 700, color: "var(--c-text)", marginBottom: 3 }}>
             {w.program_days?.name ?? "Treeni"}
@@ -175,6 +180,32 @@ function WorkoutCard({ w }: { w: PastWorkout }) {
   );
 }
 
+function LocalOnlyCard({ completedAt }: { completedAt: string | null }) {
+  const dateStr = completedAt
+    ? new Date(completedAt).toLocaleDateString("fi-FI", { weekday: "short", day: "numeric", month: "numeric" })
+    : "";
+  return (
+    <div style={{
+      background: "var(--c-surface)",
+      border: "1px dashed var(--c-border)",
+      borderRadius: 16,
+      padding: "14px 16px",
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+        <span style={{ fontSize: 10, color: "var(--c-green)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.8px" }}>
+          ✓ Tehty
+        </span>
+        <span style={{ fontSize: 11, color: "var(--c-text-muted)" }}>{dateStr}</span>
+        <SyncBadge synced={false} size={11} />
+      </div>
+      <div style={{ fontSize: 14, fontWeight: 700, color: "var(--c-text)" }}>Treeni</div>
+      <div style={{ fontSize: 12, color: "var(--c-text-muted)", marginTop: 2 }}>
+        Odottaa synkronointia — näkyy täydellisenä, kun yhteys palaa.
+      </div>
+    </div>
+  );
+}
+
 export function HistoryView({ clientId }: { clientId: string }) {
   const supabase = createClient();
 
@@ -185,10 +216,15 @@ export function HistoryView({ clientId }: { clientId: string }) {
     staleTime: 60_000,
   });
 
+  const serverIds = workouts.map((w) => w.id);
+  const localOnly = useLocalCompletedNotInServer(clientId, serverIds);
+
   const weeks = groupByWeek(workouts);
 
   return (
-    <div style={{ flex: 1, padding: "24px 16px 32px" }}>
+    <div style={{ flex: 1 }}>
+      <SyncBar />
+      <div style={{ padding: "24px 16px 32px" }}>
       <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-0.5px", marginBottom: 4 }}>Historia</div>
       <div style={{ fontSize: 13, color: "var(--c-text-muted)", marginBottom: 24 }}>
         Tehdyt treenit
@@ -202,11 +238,22 @@ export function HistoryView({ clientId }: { clientId: string }) {
         </div>
       )}
 
-      {!isLoading && workouts.length === 0 && (
+      {!isLoading && workouts.length === 0 && localOnly.length === 0 && (
         <div style={{ textAlign: "center", padding: "48px 0", color: "var(--c-text-muted)" }}>
           <div style={{ fontSize: 36, marginBottom: 12 }}>🏋️</div>
           <div style={{ fontWeight: 600, fontSize: 15 }}>Ei vielä treenejä</div>
           <div style={{ fontSize: 13, marginTop: 4 }}>Treenaaminen tallentuu tänne.</div>
+        </div>
+      )}
+
+      {localOnly.length > 0 && (
+        <div style={{ marginBottom: 24 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--c-text-muted)", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 10 }}>
+            Odottaa synkronointia
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {localOnly.map((s) => <LocalOnlyCard key={s.id} completedAt={s.completed_at} />)}
+          </div>
         </div>
       )}
 
@@ -220,6 +267,7 @@ export function HistoryView({ clientId }: { clientId: string }) {
           </div>
         </div>
       ))}
+      </div>
     </div>
   );
 }

@@ -1,12 +1,30 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { getScheduledWorkout } from "@/lib/queries/workouts";
 import { toast } from "@/components/ui/use-toast";
 import { ExerciseInfoDialog } from "@/components/client/exercise-info-dialog";
+import {
+  completeWorkout,
+  deleteSet,
+  ensureWorkoutLog,
+  logSet,
+} from "@/lib/offline/writes";
+import { getDB } from "@/lib/offline/db";
+import {
+  hydrateSetLogs,
+  hydrateWorkoutLog,
+  mergeById,
+  useDeletedSetIds,
+  useLocalSetLogs,
+  useLocalSetLogsAndDeleted,
+  useLocalWorkoutLog,
+} from "@/lib/offline/reads";
+import { SyncBadge } from "@/components/offline/sync-badge";
+import { SyncBar } from "@/components/offline/sync-bar";
 
 // ── RPE ───────────────────────────────────────────────────────────────────────
 // Stored as numeric. "<6" is stored as 5 so the DB formula (coalesce rpe,10)
@@ -40,9 +58,8 @@ export function WorkoutLogger({ scheduledWorkoutId }: { scheduledWorkoutId: stri
 
   const [workoutLogId, setWorkoutLogId] = useState<string | null>(null);
   const [dayNote, setDayNote] = useState("");
+  const localWorkoutLog = useLocalWorkoutLog(scheduledWorkoutId);
 
-  // Ensure a workout_log row exists for (scheduled_workout, client). The
-  // unique partial index lets us upsert idempotently.
   useEffect(() => {
     if (!workout) return;
     let cancelled = false;
@@ -51,32 +68,43 @@ export function WorkoutLogger({ scheduledWorkoutId }: { scheduledWorkoutId: stri
       if (!me.user || cancelled) return;
       const clientId = me.user.id;
 
-      const { data: existing } = await supabase
-        .from("workout_logs")
-        .select("id, notes")
-        .eq("scheduled_workout_id", scheduledWorkoutId)
-        .eq("client_id", clientId)
-        .order("logged_at", { ascending: true })
-        .limit(1);
+      let serverId: string | null = null;
+      let serverNotes: string | null = null;
+      try {
+        const { data: existing } = await supabase
+          .from("workout_logs")
+          .select("id, notes, scheduled_workout_id, client_id, logged_at, updated_at")
+          .eq("scheduled_workout_id", scheduledWorkoutId)
+          .eq("client_id", clientId)
+          .order("logged_at", { ascending: true })
+          .limit(1);
+        if (existing && existing[0]) {
+          serverId = existing[0].id;
+          serverNotes = existing[0].notes;
+          await hydrateWorkoutLog(existing[0]);
+        }
+      } catch {
+        // offline — fall through to local
+      }
 
       if (cancelled) return;
 
-      if (existing && existing[0]) {
-        setWorkoutLogId(existing[0].id);
-        if (existing[0].notes) setDayNote(existing[0].notes);
-        return;
-      }
-
-      const { data: inserted, error } = await supabase
-        .from("workout_logs")
-        .insert({ client_id: clientId, scheduled_workout_id: scheduledWorkoutId })
-        .select("id")
-        .single();
-      if (error || !inserted) return;
-      if (!cancelled) setWorkoutLogId(inserted.id);
+      const local = await ensureWorkoutLog({
+        scheduled_workout_id: scheduledWorkoutId,
+        client_id: clientId,
+        existingId: serverId,
+      });
+      if (cancelled) return;
+      setWorkoutLogId(local.id);
+      if (serverNotes) setDayNote(serverNotes);
+      else if (local.notes) setDayNote(local.notes);
     })();
     return () => { cancelled = true; };
   }, [workout, scheduledWorkoutId, supabase]);
+
+  useEffect(() => {
+    if (localWorkoutLog && !workoutLogId) setWorkoutLogId(localWorkoutLog.id);
+  }, [localWorkoutLog, workoutLogId]);
 
   async function saveDayNote(text: string) {
     if (!workoutLogId) return;
@@ -86,11 +114,15 @@ export function WorkoutLogger({ scheduledWorkoutId }: { scheduledWorkoutId: stri
 
   const complete = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase
-        .from("scheduled_workouts")
-        .update({ status: "completed", completed_at: new Date().toISOString() })
-        .eq("id", scheduledWorkoutId);
-      if (error) throw error;
+      const { data: me } = await supabase.auth.getUser();
+      if (!me.user) throw new Error("not signed in");
+      await completeWorkout({
+        scheduled_workout_id: scheduledWorkoutId,
+        client_id: me.user.id,
+        scheduled_date: null,
+        program_id: null,
+        day_id: null,
+      });
     },
     onSuccess: () => {
       const clientId = workout?.client_id;
@@ -116,18 +148,25 @@ export function WorkoutLogger({ scheduledWorkoutId }: { scheduledWorkoutId: stri
   const isCompleted = workout?.status === "completed";
 
   // All confirmed set_logs for this workout — gates the complete button.
-  const { data: loggedSets = [] } = useQuery({
+  const localSets = useLocalSetLogs(workoutLogId);
+  const deletedSetIds = useDeletedSetIds(workoutLogId);
+  const { data: serverLoggedSets = [] } = useQuery({
     queryKey: ["set_logs", workoutLogId],
     enabled: !!workoutLogId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("set_logs")
-        .select("program_exercise_id")
+        .select("id, workout_log_id, exercise_id, program_exercise_id, set_number, weight, reps, rpe, is_pr, estimated_1rm, updated_at")
         .eq("workout_log_id", workoutLogId!);
       if (error) throw error;
+      if (data) await hydrateSetLogs(data);
       return data ?? [];
     },
   });
+  const loggedSets = useMemo(
+    () => mergeById(serverLoggedSets, localSets ?? []).filter((s) => !deletedSetIds.has(s.id)),
+    [serverLoggedSets, localSets, deletedSetIds],
+  );
 
   if (!workout) {
     return (
@@ -255,7 +294,9 @@ export function WorkoutLogger({ scheduledWorkoutId }: { scheduledWorkoutId: stri
   }
 
   return (
-    <div className="client-app" style={{ flex: 1, overflowY: "auto", padding: "20px 14px 32px" }}>
+    <div className="client-app" style={{ flex: 1, overflowY: "auto" }}>
+      <SyncBar />
+      <div style={{ padding: "20px 14px 32px" }}>
       {/* Header */}
       <div style={{ marginBottom: 18 }}>
         {day?.program_weeks && (
@@ -374,6 +415,7 @@ export function WorkoutLogger({ scheduledWorkoutId }: { scheduledWorkoutId: stri
           )}
         </>
       )}
+      </div>
     </div>
   );
 }
@@ -386,6 +428,7 @@ type RowState = {
   confirmed: boolean;
   setLogId: string | null;
   isPr: boolean;
+  synced: boolean;
 };
 
 type SetConfig = { reps: string | null; weight: number | null; rpe: number | null };
@@ -400,6 +443,7 @@ function resolveInitialRows(pe: any): RowState[] {
       confirmed: false,
       setLogId: null,
       isPr: false,
+      synced: true,
     }));
   }
   const sets: number = pe.sets ?? 3;
@@ -411,6 +455,7 @@ function resolveInitialRows(pe: any): RowState[] {
     confirmed: false,
     setLogId: null,
     isPr: false,
+    synced: true,
   }));
 }
 
@@ -466,34 +511,46 @@ function ExerciseBlock({ programExercise, workoutLogId }: { programExercise: any
     },
   });
 
-  const { data: sets = [] } = useQuery({
+  const { sets: localSets, deletedIds } = useLocalSetLogsAndDeleted(workoutLogId);
+  const { data: serverSets = [] } = useQuery({
     queryKey: ["set_logs", workoutLogId, programExercise.id],
     enabled: !!workoutLogId,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("set_logs").select("id, set_number, weight, reps, rpe, is_pr")
+        .from("set_logs").select("id, workout_log_id, exercise_id, program_exercise_id, set_number, weight, reps, rpe, is_pr, estimated_1rm, updated_at")
         .eq("workout_log_id", workoutLogId!)
         .eq("program_exercise_id", programExercise.id)
         .order("set_number");
       if (error) throw error;
+      if (data) await hydrateSetLogs(data);
       return data ?? [];
     },
   });
+  const sets = useMemo(() => {
+    const localForExercise = localSets.filter((s) => s.program_exercise_id === programExercise.id);
+    return mergeById(serverSets, localForExercise)
+      .filter((s) => !deletedIds.has(s.id))
+      .sort((a, b) => (a.set_number ?? 0) - (b.set_number ?? 0));
+  }, [serverSets, localSets, deletedIds, programExercise.id]);
 
-  // Merge DB sets into row state by set_number (not array position) so that
-  // deleting a middle set doesn't misalign remaining confirmed rows.
+  const syncedById = useMemo(() => {
+    const map = new Map<string, boolean>();
+    for (const l of localSets) map.set(l.id, l.synced === 1);
+    return map;
+  }, [localSets]);
+
   useEffect(() => {
     setRows((prev) => prev.map((r, i) => {
       const setNumber = i + 1;
-      const match = (sets as any[]).find((s) => s.set_number === setNumber);
+      const match = sets.find((s) => s.set_number === setNumber);
       if (!match) {
-        // No DB row at this position → ensure row is marked unconfirmed.
         if (!r.confirmed && r.setLogId === null) return r;
-        return { ...r, confirmed: false, setLogId: null, isPr: false };
+        return { ...r, confirmed: false, setLogId: null, isPr: false, synced: true };
       }
       const dbRpeIdx = match.rpe === null
         ? -1
         : (RPE_STEPS as readonly number[]).indexOf(match.rpe as number);
+      const synced = syncedById.has(match.id) ? syncedById.get(match.id)! : true;
       return {
         ...r,
         weight: match.weight != null ? String(match.weight) : r.weight,
@@ -502,36 +559,41 @@ function ExerciseBlock({ programExercise, workoutLogId }: { programExercise: any
         confirmed: true,
         setLogId: match.id,
         isPr: !!match.is_pr,
+        synced,
       };
     }));
-  }, [sets]);
+  }, [sets, syncedById]);
+
+  // Tracks rows where the user hit unconfirm while add was still in-flight,
+  // so add.onSuccess doesn't re-confirm them.
+  const cancelledRef = useRef(new Set<number>());
 
   const add = useMutation({
     mutationFn: async ({ rowIdx, row }: { rowIdx: number; row: RowState }) => {
       if (!workoutLogId) throw new Error("no workout log");
       const setNumber = rowIdx + 1;
       const rpe: number | null = row.rpeIdx >= 0 ? RPE_STEPS[row.rpeIdx] ?? null : null;
-      const { data, error } = await supabase
-        .from("set_logs")
-        .insert({
-          workout_log_id: workoutLogId,
-          exercise_id: programExercise.exercise_id,
-          program_exercise_id: programExercise.id,
-          set_number: setNumber,
-          weight: row.weight ? Number(row.weight) : null,
-          reps: row.reps ? Number(row.reps) : null,
-          rpe,
-        })
-        .select("id")
-        .single();
-      if (error) throw error;
-      return { rowIdx, id: data.id };
+      const inserted = await logSet({
+        workout_log_id: workoutLogId,
+        exercise_id: programExercise.exercise_id,
+        program_exercise_id: programExercise.id,
+        set_number: setNumber,
+        weight: row.weight ? Number(row.weight) : null,
+        reps: row.reps ? Number(row.reps) : null,
+        rpe,
+      });
+      return { rowIdx, id: inserted.id };
     },
     onSuccess: ({ rowIdx, id }) => {
+      if (cancelledRef.current.has(rowIdx)) {
+        cancelledRef.current.delete(rowIdx);
+        return;
+      }
       setRows((prev) => prev.map((r, i) => i === rowIdx ? { ...r, confirmed: true, setLogId: id } : r));
       qc.invalidateQueries({ queryKey: ["set_logs"] });
     },
     onError: (e: any, { rowIdx }) => {
+      cancelledRef.current.delete(rowIdx);
       setRows((prev) => prev.map((r, i) => i === rowIdx ? { ...r, confirmed: false } : r));
       toast({ title: "Sarjan tallennus epäonnistui", description: e?.message ?? "Yritä uudelleen." });
     },
@@ -540,26 +602,59 @@ function ExerciseBlock({ programExercise, workoutLogId }: { programExercise: any
   const unconfirm = useMutation({
     mutationFn: async (rowIdx: number) => {
       const row = rows[rowIdx];
-      const id = row?.setLogId;
-      if (!id) return;
-      const { error } = await supabase.from("set_logs").delete().eq("id", id);
-      if (error) throw error;
+      // First try the confirmed row's cached id.
+      let id = row?.setLogId ?? null;
+
+      if (!id && workoutLogId) {
+        // Closure is stale — query Dexie directly for the freshest data.
+        const setNumber = rowIdx + 1;
+        const fresh = await getDB()
+          .set_logs.where("workout_log_id").equals(workoutLogId)
+          .filter(
+            (s) =>
+              s.set_number === setNumber &&
+              s.program_exercise_id === programExercise.id &&
+              s.deleted !== 1,
+          )
+          .first();
+        id = fresh?.id ?? null;
+      }
+
+      if (!id || !workoutLogId) return;
+      cancelledRef.current.add(rowIdx);
+      await deleteSet(id, workoutLogId);
     },
     onSuccess: (_d, rowIdx) => {
-      setRows((prev) => prev.map((r, i) => i === rowIdx ? { ...r, confirmed: false, setLogId: null, isPr: false } : r));
-      qc.invalidateQueries({ queryKey: ["set_logs"] });
+      setRows((prev) => prev.map((r, i) => i === rowIdx ? { ...r, confirmed: false, setLogId: null, isPr: false, synced: true } : r));
+    },
+    onError: (_e, rowIdx) => {
+      cancelledRef.current.delete(rowIdx);
     },
   });
 
   function confirmRow(i: number) {
     const row = rows[i];
     if (!row || row.confirmed) return;
+    cancelledRef.current.delete(i);
     setRows((prev) => prev.map((r, idx) => idx === i ? { ...r, confirmed: true } : r));
     add.mutate({ rowIdx: i, row });
   }
 
   function updateRow(i: number, patch: Partial<RowState>) {
-    setRows((prev) => prev.map((r, idx) => idx === i ? { ...r, ...patch } : r));
+    const cur = rows[i];
+    if (cur?.confirmed) {
+      // Auto-unconfirm: value changed on a saved set — delete it and mark editable.
+      const id = cur.setLogId;
+      if (id && workoutLogId) {
+        cancelledRef.current.add(i);
+        void deleteSet(id, workoutLogId).catch(() => {});
+      }
+      setRows((prev) => prev.map((r, idx) =>
+        idx === i ? { ...r, ...patch, confirmed: false, setLogId: null, isPr: false, synced: true } : r
+      ));
+    } else {
+      setRows((prev) => prev.map((r, idx) => idx === i ? { ...r, ...patch } : r));
+    }
   }
 
   const confirmedCount = rows.filter((r) => r.confirmed).length;
@@ -826,7 +921,7 @@ function SetTableRow({
   onConfirm: () => void;
   onUnconfirm: () => void;
 }) {
-  const inputsDisabled = row.confirmed;
+  const inputsDisabled = false;
   const weightNum = row.weight !== "" ? parseFloat(row.weight) : null;
   function decWeight() {
     if (weightNum === null || weightNum <= 0) return;
@@ -900,7 +995,7 @@ function SetTableRow({
         onInc={() => onChange({ rpeIdx: row.rpeIdx < 0 ? 0 : Math.min(RPE_STEPS.length - 1, row.rpeIdx + 1) })}
       />
 
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
         <button
           type="button"
           onClick={row.confirmed ? onUnconfirm : onConfirm}
@@ -920,6 +1015,7 @@ function SetTableRow({
             <polyline points="20 6 9 17 4 12"/>
           </svg>
         </button>
+        {row.confirmed && !row.synced && <SyncBadge synced={false} size={12} variant="icon" />}
       </div>
     </div>
   );
