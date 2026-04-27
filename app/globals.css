@@ -2,6 +2,18 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Logo adaptive inversion ─────────────────────────────────────────────── */
+/* Default: light mode — invert so black outline becomes visible */
+.logo-adaptive { filter: invert(1); }
+/* Dark via Tailwind class */
+html.dark .logo-adaptive { filter: none; }
+/* Dark via system preference (before hydration or no saved preference) */
+@media (prefers-color-scheme: dark) {
+  html:not(.light) .logo-adaptive { filter: none; }
+}
+/* Client app is always dark regardless of theme class */
+.client-app .logo-adaptive { filter: none; }
+
 /* ── Client-side app theme — always dark, independent of system theme ───── */
 .client-app {
   --c-pink: #FF1D8C;

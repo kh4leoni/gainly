@@ -13,7 +13,7 @@ export default async function LoginPage({
     <main className="mx-auto flex min-h-screen max-w-md items-center px-6">
       <Card className="w-full">
         <CardHeader className="items-center">
-          <Image src="/LOGO_gainly.png" alt="Gainly" width={280} height={112} className="mb-2 invert dark:invert-0" style={{ objectFit: "contain" }} />
+          <Image src="/LOGO_gainly.png" alt="Gainly" width={280} height={112} className="mb-2 logo-adaptive" style={{ objectFit: "contain" }} />
           <CardTitle>Kirjaudu Gainlyyn</CardTitle>
           <CardDescription>Tervetuloa takaisin.</CardDescription>
         </CardHeader>

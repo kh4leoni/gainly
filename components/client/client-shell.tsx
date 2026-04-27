@@ -95,7 +95,7 @@ export function ClientShell({ me, coachName, children }: { me: Me; coachName?: s
         }}
       >
         <div style={{ lineHeight: 1 }}>
-          <Image src="/fs%20collab.png" alt="fs collab" width={140} height={44} className="invert dark:invert-0" style={{ objectFit: "contain" }} />
+          <Image src="/fs%20collab.png" alt="fs collab" width={140} height={44} className="logo-adaptive" style={{ objectFit: "contain" }} />
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <span style={{ fontSize: 12, color: "var(--c-text-muted)", fontWeight: 500 }}>

@@ -31,7 +31,7 @@ export function AppShell({
         <div style={{ height: "calc(env(safe-area-inset-top, 0px) + 8px)" }} />
         <div className="flex h-20 items-center border-b px-4">
           <Link href="/" prefetch>
-            <Image src="/fs%20collab.png" alt="fs collab" width={160} height={52} className="invert dark:invert-0" style={{ objectFit: "contain" }} />
+            <Image src="/fs%20collab.png" alt="fs collab" width={160} height={52} className="logo-adaptive" style={{ objectFit: "contain" }} />
           </Link>
         </div>
         <nav className="flex flex-col gap-1 p-2">
@@ -47,7 +47,7 @@ export function AppShell({
         <header className="flex flex-col border-b md:hidden" style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 8px)" }}>
           <div className="flex items-center justify-between px-4 pb-2">
             <Link href="/" prefetch>
-              <Image src="/fs%20collab.png" alt="fs collab" width={140} height={44} className="invert dark:invert-0" style={{ objectFit: "contain" }} />
+              <Image src="/fs%20collab.png" alt="fs collab" width={140} height={44} className="logo-adaptive" style={{ objectFit: "contain" }} />
             </Link>
             <div className="flex items-center gap-1">
               {rightSlot}
