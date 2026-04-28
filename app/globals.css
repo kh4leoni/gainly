@@ -35,6 +35,7 @@ html.dark .logo-adaptive { filter: none; }
   color-scheme: dark;
 }
 @keyframes c-fadeUp        { from{opacity:0;transform:translate3d(0,10px,0)} to{opacity:1;transform:translate3d(0,0,0)} }
+@keyframes c-fadeIn        { from{opacity:0} to{opacity:1} }
 @keyframes c-slideInRight  { from{transform:translate3d(100%,0,0)}  to{transform:translate3d(0,0,0)} }
 @keyframes c-slideInLeft   { from{transform:translate3d(-100%,0,0)} to{transform:translate3d(0,0,0)} }
 @keyframes c-pulse         { 0%,100%{opacity:1} 50%{opacity:0.5} }
@@ -162,6 +163,7 @@ body:has(.client-app) {
   background: #070708;
 }
 .c-ani         { animation: c-fadeUp       0.26s ease-out both; will-change: opacity, transform; }
+.c-fade        { animation: c-fadeIn       0.22s ease-out both; will-change: opacity; }
 .c-slide-right { animation: c-slideInRight 0.2s cubic-bezier(0.25,0.46,0.45,0.94) both; will-change: transform; -webkit-backface-visibility: hidden; backface-visibility: hidden; }
 .c-slide-left  { animation: c-slideInLeft  0.2s cubic-bezier(0.25,0.46,0.45,0.94) both; will-change: transform; -webkit-backface-visibility: hidden; backface-visibility: hidden; }
 
