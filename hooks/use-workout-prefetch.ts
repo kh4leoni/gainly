@@ -11,6 +11,14 @@ export function useWorkoutPrefetch(clientId: string) {
     async function prefetch() {
       if (!navigator.onLine) return;
       const supabase = createClient();
+
+      // Prefetch key pages so they load offline.
+      await Promise.allSettled(
+        ["/client/dashboard", "/client/ohjelma", "/client/history"].map((path) =>
+          fetch(path, { credentials: "include" })
+        )
+      );
+
       let ids: string[];
       try {
         ids = await getUpcomingWorkoutIds(supabase, clientId);

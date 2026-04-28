@@ -162,7 +162,7 @@ export function MessagesView({ userId, initialThreadId, layout = "client" }: { u
 
   // Client layout: stacked vertical
   return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+    <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
       {/* Header */}
       {coachProfile ? (
         <div style={{
@@ -304,7 +304,7 @@ function ChatPane({
   return (
     <>
       {/* Message list */}
-      <div style={{ flex: 1, overflowY: "auto", padding: "20px", display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "20px", display: "flex", flexDirection: "column", gap: 10 }}>
         {loading && (
           <div style={{ textAlign: "center", color: "var(--c-text-subtle)", fontSize: 13 }}>Ladataan...</div>
         )}
