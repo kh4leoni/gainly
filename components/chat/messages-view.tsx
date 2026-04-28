@@ -162,7 +162,7 @@ export function MessagesView({ userId, initialThreadId, layout = "client" }: { u
 
   // Client layout: stacked vertical
   return (
-    <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+    <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden", width: "100%" }}>
       {/* Header */}
       {coachProfile ? (
         <div style={{

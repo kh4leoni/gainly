@@ -55,6 +55,7 @@ export function ClientShell({ me, coachName, children }: { me: Me; coachName?: s
   }
 
   const dir = dirRef.current;
+  const isMessages = pathname.startsWith("/client/messages");
 
   useWorkoutPrefetch(me?.id ?? "");
 
@@ -158,10 +159,10 @@ export function ClientShell({ me, coachName, children }: { me: Me; coachName?: s
         style={{ flex: 1, minHeight: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}
       >
         <div
-          className={dir}
-          style={{ flex: 1, overflowY: "auto", overscrollBehavior: "contain", display: "flex", flexDirection: "column" }}
+          className={isMessages ? undefined : dir}
+          style={{ flex: 1, overflow: isMessages ? "hidden" : "auto", overscrollBehavior: "contain", display: "flex", flexDirection: "column", width: "100%" }}
         >
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: "100%" }}>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: isMessages ? undefined : "100%", width: "100%" }}>
             {children}
           </div>
         </div>
