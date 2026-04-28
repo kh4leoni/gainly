@@ -159,7 +159,7 @@ export function ClientShell({ me, coachName, children }: { me: Me; coachName?: s
         style={{ flex: 1, minHeight: 0, overflow: "hidden", display: "flex", flexDirection: "column", transform: "translateZ(0)" }}
       >
         <div
-          className={isMessages ? undefined : dir}
+          className={dir}
           style={{ flex: 1, overflow: isMessages ? "hidden" : "auto", overscrollBehavior: "contain", display: "flex", flexDirection: "column", width: "100%" }}
         >
           <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: isMessages ? undefined : "100%", width: "100%" }}>
