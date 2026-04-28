@@ -156,7 +156,7 @@ export function ClientShell({ me, coachName, children }: { me: Me; coachName?: s
       {/* ── Content ── */}
       <main
         key={pathname}
-        style={{ flex: 1, minHeight: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}
+        style={{ flex: 1, minHeight: 0, overflow: "hidden", display: "flex", flexDirection: "column", transform: "translateZ(0)" }}
       >
         <div
           className={isMessages ? undefined : dir}
