@@ -155,14 +155,22 @@ export function ClientShell({ me, coachName, children }: { me: Me; coachName?: s
 
       {/* ── Content ── */}
       <main
-        key={pathname}
-        style={{ flex: 1, minHeight: 0, overflow: "hidden", display: "flex", flexDirection: "column", transform: "translateZ(0)", clipPath: "inset(0)" }}
+        style={{ flex: 1, minHeight: 0, position: "relative", overflow: "hidden" }}
       >
         <div
+          key={pathname}
           className={dir}
-          style={{ flex: 1, overflow: isMessages ? "hidden" : "auto", overscrollBehavior: "contain", display: "flex", flexDirection: "column", width: "100%" }}
+          style={{
+            position: "absolute",
+            inset: 0,
+            display: "flex",
+            flexDirection: "column",
+            overflowY: isMessages ? "hidden" : "auto",
+            overflowX: "hidden",
+            overscrollBehavior: "contain",
+          }}
         >
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: isMessages ? undefined : "100%", width: "100%" }}>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: isMessages ? undefined : "100%" }}>
             {children}
           </div>
         </div>
