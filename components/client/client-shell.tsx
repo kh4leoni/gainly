@@ -5,6 +5,7 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useRef } from "react";
 import { House, CalendarDots, Trophy, ClockCounterClockwise, ChatCircle } from "@phosphor-icons/react";
+import { SyncBar } from "@/components/offline/sync-bar";
 import type { ReactNode } from "react";
 
 const NAV = [
@@ -144,6 +145,9 @@ export function ClientShell({ me, coachName, children }: { me: Me; coachName?: s
           </form>
         </div>
       </header>
+
+      {/* ── Offline / sync indicator ── */}
+      <SyncBar />
 
       {/* ── Content ── */}
       <main

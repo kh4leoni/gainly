@@ -23,13 +23,15 @@ export function SyncBar() {
     };
   }, []);
 
-  if (pending === 0) return null;
+  if (pending === 0 && online) return null;
 
-  const label = !online
-    ? `${pending} merkintää offline-tilassa`
-    : running
-      ? "Synkronoidaan…"
-      : `${pending} synkronoimatonta merkintää`;
+  const label = !online && pending === 0
+    ? "Offline-tila"
+    : !online
+      ? `${pending} merkintää offline-tilassa`
+      : running
+        ? "Synkronoidaan…"
+        : `${pending} synkronoimatonta merkintää`;
 
   return (
     <div
@@ -62,24 +64,26 @@ export function SyncBar() {
       />
       <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}`}</style>
       <span style={{ flex: 1 }}>{label}</span>
-      <button
-        type="button"
-        onClick={() => void syncNow()}
-        disabled={!online || running}
-        style={{
-          padding: "6px 12px",
-          borderRadius: 8,
-          border: "1px solid var(--c-border)",
-          background: !online || running ? "transparent" : "var(--c-pink)",
-          color: !online || running ? "var(--c-text-muted)" : "#fff",
-          fontSize: 12,
-          fontWeight: 700,
-          cursor: !online || running ? "default" : "pointer",
-          fontFamily: "inherit",
-        }}
-      >
-        {running ? "…" : "Synkronoi nyt"}
-      </button>
+      {pending > 0 && (
+        <button
+          type="button"
+          onClick={() => void syncNow()}
+          disabled={!online || running}
+          style={{
+            padding: "6px 12px",
+            borderRadius: 8,
+            border: "1px solid var(--c-border)",
+            background: !online || running ? "transparent" : "var(--c-pink)",
+            color: !online || running ? "var(--c-text-muted)" : "#fff",
+            fontSize: 12,
+            fontWeight: 700,
+            cursor: !online || running ? "default" : "pointer",
+            fontFamily: "inherit",
+          }}
+        >
+          {running ? "…" : "Synkronoi nyt"}
+        </button>
+      )}
     </div>
   );
 }
