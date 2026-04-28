@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import { NavLink } from "./nav-link";
 import { ThemeToggle } from "./theme-toggle";
 import { LogOut } from "lucide-react";
+import { SyncBar } from "@/components/offline/sync-bar";
 
 type NavItem = { href: string; icon: ReactNode; label: string };
 
@@ -80,6 +81,7 @@ export function AppShell({
             </form>
           </div>
         </header>
+        <SyncBar />
         <main className="flex-1 pb-20 md:pb-0">{children}</main>
 
         {/* Mobile bottom nav */}

@@ -20,6 +20,13 @@ const serwist = new Serwist({
   navigationPreload: true,
   runtimeCaching: [
     {
+      matcher: ({ url }) => url.pathname.startsWith("/client/workout/"),
+      handler: new NetworkFirst({
+        cacheName: "workout-pages",
+        networkTimeoutSeconds: 5,
+      }),
+    },
+    {
       matcher: ({ request }) => request.mode === "navigate",
       handler: new NetworkFirst({
         cacheName: "pages",

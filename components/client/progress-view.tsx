@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { getRecentPRs } from "@/lib/queries/workouts";
@@ -25,6 +25,28 @@ function formatW(w: number | null) {
 export function ProgressView({ clientId, exercises }: { clientId: string; exercises: Exercise[] }) {
   const supabase = createClient();
   const [selId, setSelId] = useState(exercises[0]?.id ?? "");
+  const [online, setOnline] = useState(true);
+
+  useEffect(() => {
+    setOnline(navigator.onLine);
+    const on = () => setOnline(true);
+    const off = () => setOnline(false);
+    window.addEventListener("online", on);
+    window.addEventListener("offline", off);
+    return () => { window.removeEventListener("online", on); window.removeEventListener("offline", off); };
+  }, []);
+
+  if (!online) {
+    return (
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 24px", gap: 12, textAlign: "center" }}>
+        <div style={{ fontSize: 40 }}>📡</div>
+        <div style={{ fontSize: 18, fontWeight: 700 }}>Ennätykset</div>
+        <div style={{ fontSize: 14, color: "var(--c-text-muted)", lineHeight: 1.6 }}>
+          Ei käytössä ilman internet-yhteyttä.
+        </div>
+      </div>
+    );
+  }
 
   const prs = useQuery({
     queryKey: ["prs", clientId, "all"],

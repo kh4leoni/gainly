@@ -28,6 +28,20 @@ export type TodayWorkout = {
   } | null;
 };
 
+export async function getUpcomingWorkoutIds(supabase: DB, clientId: string, limit = 5): Promise<string[]> {
+  const { data } = await supabase
+    .from("scheduled_workouts")
+    .select("id, program_days(program_weeks(is_active))")
+    .eq("client_id", clientId)
+    .neq("status", "completed")
+    .order("day_number", { referencedTable: "program_days" })
+    .limit(20);
+  const active = (data ?? []).filter(
+    (w) => (w.program_days as any)?.program_weeks?.is_active === true
+  );
+  return active.slice(0, limit).map((w) => w.id);
+}
+
 export async function getNextWorkout(supabase: DB, clientId: string): Promise<TodayWorkout | null> {
   const { data, error } = await supabase
     .from("scheduled_workouts")
