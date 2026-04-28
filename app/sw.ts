@@ -20,6 +20,13 @@ const serwist = new Serwist({
   navigationPreload: true,
   runtimeCaching: [
     {
+      matcher: ({ request }) => request.mode === "navigate",
+      handler: new NetworkFirst({
+        cacheName: "pages",
+        networkTimeoutSeconds: 5,
+      }),
+    },
+    {
       matcher: /\/rest\/v1\/.*/i,
       handler: new StaleWhileRevalidate({
         cacheName: "supabase-rest",
@@ -42,13 +49,6 @@ const serwist = new Serwist({
       }),
     },
     ...defaultCache,
-    {
-      matcher: ({ request }) => request.mode === "navigate",
-      handler: new NetworkFirst({
-        cacheName: "pages",
-        networkTimeoutSeconds: 3,
-      }),
-    },
   ],
   fallbacks: {
     entries: [
