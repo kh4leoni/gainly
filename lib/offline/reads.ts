@@ -57,6 +57,13 @@ export function useDeletedSetIds(workoutLogId: string | null | undefined): Set<s
   }, [workoutLogId]) ?? new Set<string>();
 }
 
+export function useLocalScheduledWorkout(scheduledWorkoutId: string | null | undefined): LocalScheduledWorkout | undefined {
+  return useLiveQuery(async () => {
+    if (!scheduledWorkoutId) return undefined;
+    return getDB().scheduled_workouts.get(scheduledWorkoutId);
+  }, [scheduledWorkoutId]);
+}
+
 export function useLocalWorkoutLog(scheduledWorkoutId: string | null | undefined): LocalWorkoutLog | undefined {
   return useLiveQuery(async () => {
     if (!scheduledWorkoutId) return undefined;

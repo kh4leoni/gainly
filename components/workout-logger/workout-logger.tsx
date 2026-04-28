@@ -19,6 +19,7 @@ import {
   hydrateWorkoutLog,
   mergeById,
   useDeletedSetIds,
+  useLocalScheduledWorkout,
   useLocalSetLogs,
   useLocalSetLogsAndDeleted,
   useLocalWorkoutLog,
@@ -59,14 +60,14 @@ export function WorkoutLogger({ scheduledWorkoutId }: { scheduledWorkoutId: stri
   const [workoutLogId, setWorkoutLogId] = useState<string | null>(null);
   const [dayNote, setDayNote] = useState("");
   const localWorkoutLog = useLocalWorkoutLog(scheduledWorkoutId);
+  const localScheduledWorkout = useLocalScheduledWorkout(scheduledWorkoutId);
 
   useEffect(() => {
     if (!workout) return;
+    const clientId = workout.client_id;
+    if (!clientId) return;
     let cancelled = false;
     (async () => {
-      const { data: me } = await supabase.auth.getUser();
-      if (!me.user || cancelled) return;
-      const clientId = me.user.id;
 
       let serverId: string | null = null;
       let serverNotes: string | null = null;
@@ -114,11 +115,11 @@ export function WorkoutLogger({ scheduledWorkoutId }: { scheduledWorkoutId: stri
 
   const complete = useMutation({
     mutationFn: async () => {
-      const { data: me } = await supabase.auth.getUser();
-      if (!me.user) throw new Error("not signed in");
+      const clientId = workout?.client_id;
+      if (!clientId) throw new Error("not signed in");
       await completeWorkout({
         scheduled_workout_id: scheduledWorkoutId,
-        client_id: me.user.id,
+        client_id: clientId,
         scheduled_date: null,
         program_id: null,
         day_id: null,
@@ -145,7 +146,7 @@ export function WorkoutLogger({ scheduledWorkoutId }: { scheduledWorkoutId: stri
     },
   });
 
-  const isCompleted = workout?.status === "completed";
+  const isCompleted = workout?.status === "completed" || localScheduledWorkout?.status === "completed";
 
   // All confirmed set_logs for this workout — gates the complete button.
   const localSets = useLocalSetLogs(workoutLogId);
