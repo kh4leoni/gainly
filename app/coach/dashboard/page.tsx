@@ -2,7 +2,7 @@ import { HydrationBoundary, dehydrate } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/server";
 import { getQueryClient } from "@/lib/get-query-client";
 import { getCoachFullDashboard } from "@/lib/queries/coach";
-import { getMe } from "@/lib/queries/profile";
+import { getMeCached } from "@/lib/queries/profile";
 import { CoachDashboardView } from "@/components/coach/dashboard-view";
 
 export const dynamic = "force-dynamic";
@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 export default async function CoachDashboardPage() {
   const supabase = await createClient();
   const qc = getQueryClient();
-  const me = await getMe(supabase);
+  const me = await getMeCached();
 
   qc.setQueryData(["me"], me);
   if (me) {

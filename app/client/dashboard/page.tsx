@@ -2,7 +2,7 @@ import { HydrationBoundary, dehydrate } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/server";
 import { getQueryClient } from "@/lib/get-query-client";
 import { getNextWorkout, getWeeklyVolume, getWeeklyCompletion } from "@/lib/queries/workouts";
-import { getMe } from "@/lib/queries/profile";
+import { getMeCached } from "@/lib/queries/profile";
 import { ClientDashboardView } from "@/components/client/dashboard-view";
 
 export const dynamic = "force-dynamic";
@@ -10,10 +10,8 @@ export const dynamic = "force-dynamic";
 export default async function ClientDashboardPage() {
   const supabase = await createClient();
   const qc = getQueryClient();
-  const { data: auth } = await supabase.auth.getUser();
-  const clientId = auth.user?.id;
-
-  const me = clientId ? await getMe(supabase) : null;
+  const me = await getMeCached();
+  const clientId = me?.id;
   const firstName = me?.full_name?.split(" ")[0] ?? null;
 
   if (clientId) {

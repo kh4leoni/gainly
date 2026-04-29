@@ -1,6 +1,6 @@
 import type React from "react";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCachedUser } from "@/lib/supabase/server";
 import { InviteClientButton } from "@/components/coach/invite-client-button";
 import { Calendar, CheckCircle2, UserRound } from "lucide-react";
 import { avatarColor } from "@/lib/utils";
@@ -8,14 +8,14 @@ import { avatarColor } from "@/lib/utils";
 export const dynamic = "force-dynamic";
 
 export default async function ClientsPage() {
+  const user = await getCachedUser();
+  if (!user) return null;
   const supabase = await createClient();
-  const { data: user } = await supabase.auth.getUser();
-  if (!user.user) return null;
 
   const { data } = await supabase
     .from("coach_clients")
     .select("client_id, status, profiles:client_id(id, full_name, avatar_url, created_at)")
-    .eq("coach_id", user.user.id);
+    .eq("coach_id", user.id);
 
   const rows = (data ?? []).filter((r: any) => r.profiles);
 
@@ -57,7 +57,7 @@ export default async function ClientsPage() {
     <div className="p-4 md:p-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Asiakkaat</h1>
-        <InviteClientButton coachId={user.user.id} />
+        <InviteClientButton coachId={user.id} />
       </div>
 
       {rows.length === 0 ? (

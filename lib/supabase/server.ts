@@ -1,5 +1,6 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { cache } from "react";
 import type { Database } from "./database.types";
 
 export async function createClient() {
@@ -26,3 +27,10 @@ export async function createClient() {
     }
   );
 }
+
+// Memoized within a single RSC request — layout and page share one auth call.
+export const getCachedUser = cache(async () => {
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getUser();
+  return data.user ?? null;
+});
