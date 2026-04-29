@@ -19,34 +19,39 @@ export default async function ClientsPage() {
 
   const rows = (data ?? []).filter((r: any) => r.profiles);
 
-  // Fetch last completed + next pending workout (active week) for each client in parallel
-  const extras = await Promise.all(
-    rows.map(async (r: any) => {
-      const clientId: string = r.client_id;
-      const [lastRes, allPendingRes] = await Promise.all([
+  const clientIds = rows.map((r: any) => r.client_id as string);
+
+  const [lastWorkoutsRes, pendingRes] = clientIds.length > 0
+    ? await Promise.all([
         supabase
           .from("scheduled_workouts")
-          .select("completed_at, program_days(name)")
-          .eq("client_id", clientId)
+          .select("client_id, completed_at, program_days(name)")
+          .in("client_id", clientIds)
           .eq("status", "completed")
           .order("completed_at", { ascending: false })
-          .limit(1)
-          .maybeSingle(),
+          .limit(clientIds.length * 3),
         supabase
           .from("scheduled_workouts")
-          .select("program_days(name, program_weeks(is_active))")
-          .eq("client_id", clientId)
+          .select("client_id, program_days(name, program_weeks(is_active))")
+          .in("client_id", clientIds)
           .eq("status", "pending"),
-      ]);
-      const activeWeekPending = (allPendingRes.data ?? []).filter(
-        (w: any) => w.program_days?.program_weeks?.is_active === true
-      );
-      const nextWorkout = activeWeekPending[0] ?? null;
-      return { clientId, last: lastRes.data, next: nextWorkout, pendingCount: activeWeekPending.length };
-    })
-  );
+      ])
+    : [{ data: [] as any[] }, { data: [] as any[] }];
 
-  const extraMap = new Map(extras.map((e) => [e.clientId, e]));
+  const lastByClient = new Map<string, any>();
+  for (const w of lastWorkoutsRes.data ?? []) {
+    if (!lastByClient.has((w as any).client_id)) lastByClient.set((w as any).client_id, w);
+  }
+
+  const pendingByClient = new Map<string, { count: number; next: any }>();
+  for (const w of pendingRes.data ?? []) {
+    if ((w as any).program_days?.program_weeks?.is_active !== true) continue;
+    const cid = (w as any).client_id as string;
+    const cur = pendingByClient.get(cid) ?? { count: 0, next: null };
+    if (!cur.next) cur.next = w;
+    cur.count++;
+    pendingByClient.set(cid, cur);
+  }
 
   return (
     <div className="p-4 md:p-6">
@@ -65,8 +70,9 @@ export default async function ClientsPage() {
           {rows.map((r: any) => {
             const profile = r.profiles;
             const name: string = profile.full_name ?? "Unnamed";
-            const extra = extraMap.get(r.client_id);
-            const pendingCount = extra?.pendingCount ?? 0;
+            const lastWorkout = lastByClient.get(r.client_id);
+            const pendingEntry = pendingByClient.get(r.client_id);
+            const pendingCount = pendingEntry?.count ?? 0;
             const pendingStyle: React.CSSProperties =
               pendingCount >= 4
                 ? { background: "radial-gradient(circle at 35% 35%, #34d399, #059669)", boxShadow: "0 0 8px 3px rgba(16,185,129,0.45)" }
@@ -128,16 +134,16 @@ export default async function ClientsPage() {
                 <div className="relative mt-4 space-y-1.5 border-t pt-3">
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
-                    {extra?.last ? (
+                    {lastWorkout ? (
                       <span>
                         Viimeksi{" "}
-                        {(extra.last as any).completed_at && (
+                        {lastWorkout.completed_at && (
                           <span className="text-foreground">
-                            {new Date((extra.last as any).completed_at).toLocaleDateString("fi-FI", { weekday: "short", day: "numeric", month: "numeric" })}
+                            {new Date(lastWorkout.completed_at).toLocaleDateString("fi-FI", { weekday: "short", day: "numeric", month: "numeric" })}
                           </span>
                         )}
-                        {(extra.last as any).program_days?.name
-                          ? ` · ${(extra.last as any).program_days.name.replace(/^Day(\d+)/, "Päivä $1")}`
+                        {(lastWorkout as any).program_days?.name
+                          ? ` · ${(lastWorkout as any).program_days.name.replace(/^Day(\d+)/, "Päivä $1")}`
                           : ""}
                       </span>
                     ) : (
@@ -146,11 +152,11 @@ export default async function ClientsPage() {
                   </div>
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <Calendar className="h-3.5 w-3.5 shrink-0 text-sky-500" />
-                    {extra?.next ? (
+                    {pendingEntry?.next ? (
                       <span>
                         Seuraava{" "}
                         <span className="text-foreground">
-                          {(extra.next as any).program_days?.name?.replace(/^Day(\d+)/, "Päivä $1") ?? "Treeni"}
+                          {(pendingEntry.next as any).program_days?.name?.replace(/^Day(\d+)/, "Päivä $1") ?? "Treeni"}
                         </span>
                       </span>
                     ) : (

@@ -80,23 +80,20 @@ export async function getCoachFullDashboard(
   supabase: DB,
   coachId: string,
 ): Promise<FullDashboard> {
-  const [{ count: totalCount }, { data: activeClients }] = await Promise.all([
-    supabase
-      .from("coach_clients")
-      .select("*", { count: "exact", head: true })
-      .eq("coach_id", coachId),
-    supabase
-      .from("coach_clients")
-      .select("client_id")
-      .eq("coach_id", coachId)
-      .eq("status", "active"),
-  ]);
+  // Single query replaces two (count + active list)
+  const { data: allClients } = await supabase
+    .from("coach_clients")
+    .select("client_id, status")
+    .eq("coach_id", coachId);
 
-  const clientIds = (activeClients ?? []).map((c) => c.client_id);
+  const totalCount = allClients?.length ?? 0;
+  const clientIds = (allClients ?? [])
+    .filter((c) => c.status === "active")
+    .map((c) => c.client_id);
 
   const empty: FullDashboard = {
     activeCount: 0,
-    totalCount: totalCount ?? 0,
+    totalCount,
     prCount: 0,
     setCount: 0,
     unreadCount: 0,
@@ -113,24 +110,19 @@ export async function getCoachFullDashboard(
 
   const [
     { count: prCount },
-    { data: wlData },
     { data: recentPRsRaw },
-    { data: upcomingRaw },
-    { data: complianceRaw },
+    // Single scheduled_workouts query replaces two (upcoming + compliance)
+    { data: scheduledRaw },
     { data: dashRaw },
     { data: clientProgramsRaw },
-    { data: lastWorkoutsRaw },
+    // Single workout_logs query replaces two (weekly count + last per client)
+    { data: workoutLogsRaw },
   ] = await Promise.all([
     supabase
       .from("personal_records")
       .select("*", { count: "exact", head: true })
       .in("client_id", clientIds)
       .gte("achieved_at", monthStart),
-    supabase
-      .from("workout_logs")
-      .select("id")
-      .in("client_id", clientIds)
-      .gte("logged_at", weekAgo),
     supabase
       .from("personal_records")
       .select("id, client_id, reps, weight, estimated_1rm, achieved_at, exercises:exercise_id(name), profiles:client_id(full_name)")
@@ -140,12 +132,6 @@ export async function getCoachFullDashboard(
     supabase
       .from("scheduled_workouts")
       .select("id, client_id, status, profiles:client_id(full_name), program_days(program_weeks(is_active))")
-      .in("client_id", clientIds)
-      .eq("status", "pending")
-      .limit(50),
-    supabase
-      .from("scheduled_workouts")
-      .select("client_id, status, profiles:client_id(full_name), program_days(program_weeks(is_active))")
       .in("client_id", clientIds),
     supabase.rpc("coach_dashboard"),
     supabase
@@ -156,14 +142,16 @@ export async function getCoachFullDashboard(
       .order("created_at", { ascending: false }),
     supabase
       .from("workout_logs")
-      .select("client_id, logged_at")
+      .select("id, client_id, logged_at")
       .in("client_id", clientIds)
       .order("logged_at", { ascending: false })
       .limit(clientIds.length * 10),
   ]);
 
-  // Sets this week
-  const wlIds = (wlData ?? []).map((w) => w.id);
+  // Sets this week — derived from combined workout_logs result
+  const wlIds = (workoutLogsRaw ?? [])
+    .filter((w) => w.logged_at >= weekAgo)
+    .map((w) => w.id);
   const { count: setCount } =
     wlIds.length > 0
       ? await supabase
@@ -181,9 +169,9 @@ export async function getCoachFullDashboard(
       programByClient.set(p.client_id, p.title);
   }
 
-  // Last workout per client
+  // Last workout per client (already ordered desc)
   const lastWorkoutByClient = new Map<string, string>();
-  for (const w of lastWorkoutsRaw ?? []) {
+  for (const w of workoutLogsRaw ?? []) {
     if (!lastWorkoutByClient.has(w.client_id))
       lastWorkoutByClient.set(w.client_id, w.logged_at);
   }
@@ -218,14 +206,16 @@ export async function getCoachFullDashboard(
     client_name: r.profiles?.full_name ?? null,
   }));
 
-  // Upcoming workouts — pending workouts in active week only
-  type RawUpcoming = {
+  // Upcoming + compliance from the single scheduled_workouts query
+  type RawScheduled = {
     id: string; client_id: string; status: string;
     profiles: { full_name: string | null } | null;
     program_days: { program_weeks: { is_active: boolean } | null } | null;
   };
-  const upcomingWorkouts: UpcomingWorkout[] = ((upcomingRaw ?? []) as unknown as RawUpcoming[])
-    .filter((r) => r.program_days?.program_weeks?.is_active === true)
+  const scheduled = (scheduledRaw ?? []) as unknown as RawScheduled[];
+
+  const upcomingWorkouts: UpcomingWorkout[] = scheduled
+    .filter((r) => r.status === "pending" && r.program_days?.program_weeks?.is_active === true)
     .slice(0, 8)
     .map((r) => ({
       id: r.id,
@@ -234,14 +224,8 @@ export async function getCoachFullDashboard(
       client_name: r.profiles?.full_name ?? null,
     }));
 
-  // Compliance — active week only
-  type RawComp = {
-    client_id: string; status: string;
-    profiles: { full_name: string | null } | null;
-    program_days: { program_weeks: { is_active: boolean } | null } | null;
-  };
   const compMap = new Map<string, { name: string; completed: number; total: number }>();
-  for (const row of (complianceRaw ?? []) as unknown as RawComp[]) {
+  for (const row of scheduled) {
     if (row.program_days?.program_weeks?.is_active !== true) continue;
     const name = row.profiles?.full_name ?? row.client_id;
     const e = compMap.get(row.client_id) ?? { name, completed: 0, total: 0 };
@@ -261,7 +245,7 @@ export async function getCoachFullDashboard(
 
   return {
     activeCount: clientIds.length,
-    totalCount: totalCount ?? 0,
+    totalCount,
     prCount: prCount ?? 0,
     setCount: setCount ?? 0,
     unreadCount,

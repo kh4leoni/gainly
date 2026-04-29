@@ -14,20 +14,20 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
   const { id } = await params;
   const supabase = await createClient();
 
-  const [profileRes, upcomingRes, threadRes, activeProgRes, pastWorkoutsRes, exercisesRes, adherenceRes] = await Promise.all([
+  // Single scheduled_workouts query replaces two (upcoming + adherence)
+  const [profileRes, allScheduledRes, threadRes, activeProgRes, pastWorkoutsRes, prExercisesRes] = await Promise.all([
     supabase.from("profiles").select("id, full_name, avatar_url, created_at").eq("id", id).single(),
     supabase
       .from("scheduled_workouts")
       .select(`
-        id, status,
+        id, status, completed_at,
         program_days(
           name, description, day_number,
           program_weeks(is_active),
           program_exercises(order_idx, exercises(name))
         )
       `)
-      .eq("client_id", id)
-      .neq("status", "completed"),
+      .eq("client_id", id),
     supabase.from("threads").select("id").eq("client_id", id).maybeSingle(),
     supabase
       .from("programs")
@@ -54,23 +54,32 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
       .eq("status", "completed")
       .order("completed_at", { ascending: false })
       .limit(50),
-    supabase.from("exercises").select("id, name").order("name"),
+    // Only exercises this client has PRs for — much smaller than all exercises
     supabase
-      .from("scheduled_workouts")
-      .select("status, program_days(program_weeks(is_active))")
+      .from("personal_records")
+      .select("exercise_id, exercises(id, name)")
       .eq("client_id", id),
   ]);
 
   if (profileRes.error || !profileRes.data) notFound();
   const profile = profileRes.data;
-  const exercises = (exercisesRes.data ?? []).map((e: any) => ({ id: e.id, name: e.name }));
+
+  // Deduplicate exercises from PRs
+  const exerciseMap = new Map<string, { id: string; name: string }>();
+  for (const row of prExercisesRes.data ?? []) {
+    const ex = (row as any).exercises;
+    if (ex && !exerciseMap.has(ex.id)) exerciseMap.set(ex.id, { id: ex.id, name: ex.name });
+  }
+  const exercises = Array.from(exerciseMap.values()).sort((a, b) => a.name.localeCompare(b.name));
 
   const name: string = profile.full_name ?? "Unnamed";
   const initials = name.split(" ").map((p: string) => p[0]).join("").slice(0, 2).toUpperCase();
   const gradient = avatarColor(name);
 
-  // Compute adherence % for active week
-  const adherenceData = (adherenceRes.data ?? []).filter(
+  const allScheduled = allScheduledRes.data ?? [];
+
+  // Compute adherence % for active week from combined query
+  const adherenceData = allScheduled.filter(
     (w: any) => w.program_days?.program_weeks?.is_active === true
   );
   const adherenceTotal = adherenceData.length;
@@ -80,9 +89,9 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
   // Compute streak (consecutive days with completed workout, using completed_at)
   const streak = computeStreak((pastWorkoutsRes.data ?? []) as Array<{ completed_at: string | null; status: string }>);
 
-  // Filter upcoming workouts to active week only
-  const upcomingWorkouts = (upcomingRes.data ?? []).filter(
-    (w: any) => w.program_days?.program_weeks?.is_active === true
+  // Filter upcoming workouts to active week only from combined query
+  const upcomingWorkouts = allScheduled.filter(
+    (w: any) => w.status !== "completed" && w.program_days?.program_weeks?.is_active === true
   );
 
   // Active program info
