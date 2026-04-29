@@ -1,12 +1,19 @@
 import { cache } from "react";
 import { createClient, getCachedUser } from "@/lib/supabase/server";
-import { getMe } from "./profile";
 
 // Server-only — uses next/headers via createClient. Do not import in Client Components.
 
 export const getMeCached = cache(async () => {
+  const user = await getCachedUser();
+  if (!user) return null;
   const supabase = await createClient();
-  return getMe(supabase);
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, role, full_name, avatar_url")
+    .eq("id", user.id)
+    .single();
+  if (error) throw error;
+  return data;
 });
 
 export const getMyCoachCached = cache(async () => {
