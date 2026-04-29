@@ -1,7 +1,6 @@
 import { SquaresFour, Users, Barbell, BookOpen, Chat } from "@phosphor-icons/react/dist/ssr";
 import { AppShell } from "@/components/app-shell/shell";
-import { createClient } from "@/lib/supabase/server";
-import { getMe } from "@/lib/queries/profile";
+import { getMeCached } from "@/lib/queries/profile.server";
 
 const nav = [
   { href: "/coach/dashboard", icon: <SquaresFour size={20} weight="fill" />, label: "Dashboard"   },
@@ -12,8 +11,7 @@ const nav = [
 ];
 
 export default async function CoachLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createClient();
-  const me = await getMe(supabase);
+  const me = await getMeCached();
   return (
     <AppShell title="Gainly" nav={nav} variant="coach" coachName={me?.full_name}>
       {children}
