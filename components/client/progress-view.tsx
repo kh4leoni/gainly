@@ -36,6 +36,13 @@ export function ProgressView({ clientId, exercises }: { clientId: string; exerci
     return () => { window.removeEventListener("online", on); window.removeEventListener("offline", off); };
   }, []);
 
+  const prs = useQuery({
+    queryKey: ["prs", clientId, "all"],
+    queryFn: () => getRecentPRs(supabase, clientId, 250),
+    staleTime: 60_000,
+    enabled: online,
+  }) as { data: PR[] | undefined };
+
   if (!online) {
     return (
       <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 24px", gap: 12, textAlign: "center" }}>
@@ -47,12 +54,6 @@ export function ProgressView({ clientId, exercises }: { clientId: string; exerci
       </div>
     );
   }
-
-  const prs = useQuery({
-    queryKey: ["prs", clientId, "all"],
-    queryFn: () => getRecentPRs(supabase, clientId, 250),
-    staleTime: 60_000,
-  }) as { data: PR[] | undefined };
 
   const selExName = exercises.find((e) => e.id === selId)?.name ?? "";
 
