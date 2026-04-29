@@ -2,7 +2,7 @@ import { HydrationBoundary, dehydrate } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/server";
 import { getQueryClient } from "@/lib/get-query-client";
 import { getNextWorkout, getWeeklyVolume, getWeeklyCompletion } from "@/lib/queries/workouts";
-import { getMeCached } from "@/lib/queries/profile";
+import { getMeCached } from "@/lib/queries/profile.server";
 import { ClientDashboardView } from "@/components/client/dashboard-view";
 
 export const dynamic = "force-dynamic";

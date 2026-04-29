@@ -1,4 +1,4 @@
-import { getMeCached, getMyCoachCached } from "@/lib/queries/profile";
+import { getMeCached, getMyCoachCached } from "@/lib/queries/profile.server";
 import { ClientShell } from "@/components/client/client-shell";
 
 export default async function ClientLayout({ children }: { children: React.ReactNode }) {

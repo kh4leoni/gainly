@@ -1,6 +1,6 @@
 import { SquaresFour, Users, Barbell, BookOpen, Chat } from "@phosphor-icons/react/dist/ssr";
 import { AppShell } from "@/components/app-shell/shell";
-import { getMeCached } from "@/lib/queries/profile";
+import { getMeCached } from "@/lib/queries/profile.server";
 
 const nav = [
   { href: "/coach/dashboard", icon: <SquaresFour size={20} weight="fill" />, label: "Dashboard"   },
