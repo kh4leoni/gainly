@@ -86,6 +86,12 @@ html.dark .logo-adaptive { filter: none; }
   transform: scale(1.22);
 }
 
+/* Coach nav: transform transition only on desktop, none on mobile */
+.nav-link-coach { transition: color 150ms ease; }
+@media (min-width: 768px) {
+  .nav-link-coach { transition: transform 280ms cubic-bezier(0.34, 1.56, 0.64, 1), color 150ms ease; }
+}
+
 /* Utility classes — element with this class animates its child SVG on hover */
 /* Nav / icon-bounce: transition-based so it never restarts mid-animation */
 .icon-bounce svg {

@@ -23,15 +23,17 @@ export function NavLink({
     <a
       href={href}
       className={cn(
-        "group relative overflow-hidden icon-bounce",
+        "group relative overflow-hidden",
+        isAthlete && "icon-bounce",
         "flex flex-1 flex-col items-center justify-center gap-0.5 text-xs font-medium md:flex-row md:justify-start md:gap-3 md:px-3 md:rounded-md md:text-sm",
-        "active:scale-95 md:hover:scale-[1.04]",
+        isAthlete ? "active:scale-95" : "nav-link-coach",
+        "md:hover:scale-[1.04]",
         isAthlete ? "py-4" : "py-2",
         active
           ? "text-primary border-b-2 border-primary md:border-b-0 md:border-l-2 md:bg-accent md:text-accent-foreground"
           : "text-muted-foreground hover:text-foreground md:border-l-2 md:border-transparent"
       )}
-      style={{ transition: "transform 280ms cubic-bezier(0.34, 1.56, 0.64, 1), color 150ms ease" }}
+      style={isAthlete ? { transition: "transform 280ms cubic-bezier(0.34, 1.56, 0.64, 1), color 150ms ease" } : undefined}
     >
       {/* pink gradient — desktop only */}
       <span
