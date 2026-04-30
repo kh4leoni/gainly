@@ -97,7 +97,7 @@ function SetRow({ idx, cfg, onChange, onDelete, canDelete }: {
   const circleBtn = "flex h-[20px] w-[20px] items-center justify-center rounded-full border border-border bg-background text-xs text-muted-foreground hover:bg-muted";
 
   return (
-    <div className="grid grid-cols-[20px_auto_auto_auto_20px] items-end gap-1.5 px-2 py-1 pl-3 md:gap-3 md:pl-9">
+    <div className="grid grid-cols-[16px_80px_52px_76px_20px] items-end gap-1.5 px-2 py-1 pl-3 md:grid-cols-[20px_96px_64px_84px_20px] md:gap-3 md:pl-9">
       <span className="pb-[5px] text-[11px] font-bold text-muted-foreground/40">{idx + 1}</span>
       <div className="flex flex-col gap-1">
         {showLabels && <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Toistot</span>}
@@ -347,7 +347,7 @@ function WorkoutBlock({ day, exercises, onUpdate, onDelete, onAddExercise, onAss
   }
 
   return (
-    <div className="rounded-lg border border-border bg-card">
+    <div className="overflow-hidden rounded-lg border border-border bg-card">
       <ConfirmDialog
         open={deleteConfirm}
         onOpenChange={setDeleteConfirm}
@@ -373,7 +373,7 @@ function WorkoutBlock({ day, exercises, onUpdate, onDelete, onAddExercise, onAss
         <input
           key={`day-name:${day.id}:${day.name ?? ""}`}
           defaultValue={displayName} placeholder="Nimeä…"
-          className="h-[30px] flex-1 rounded border border-transparent bg-transparent px-2 text-[13.5px] font-medium text-foreground outline-none focus:border-border focus:bg-background"
+          className="h-[30px] min-w-0 flex-1 rounded border border-transparent bg-transparent px-2 text-[13.5px] font-medium text-foreground outline-none focus:border-border focus:bg-background"
           onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
           onBlur={(e) => { const v = e.target.value.trim() || null; if (v !== (displayName || null)) onUpdate({ name: v }); }}
         />
