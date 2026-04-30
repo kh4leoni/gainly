@@ -172,6 +172,7 @@ body:has(.client-app) {
 .c-fade        { animation: c-fadeIn       0.22s ease-out both; will-change: opacity; }
 .c-slide-right { animation: c-slideInRight 0.2s cubic-bezier(0.25,0.46,0.45,0.94) both; will-change: transform; -webkit-backface-visibility: hidden; backface-visibility: hidden; }
 .c-slide-left  { animation: c-slideInLeft  0.2s cubic-bezier(0.25,0.46,0.45,0.94) both; will-change: transform; -webkit-backface-visibility: hidden; backface-visibility: hidden; }
+.c-msg-in      { animation: c-fadeIn       0.18s ease-out both; }
 
 @layer base {
   :root {

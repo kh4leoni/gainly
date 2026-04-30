@@ -40,16 +40,19 @@ function navIndex(path: string) {
 export function ClientShell({ me, coachName, children }: { me: Me; coachName?: string | null; children: ReactNode }) {
   const pathname = usePathname();
   const prevRef = useRef<string | undefined>(undefined);
-  const dirRef = useRef("c-ani");
+  const dirRef = useRef(typeof window !== "undefined" && window.location.pathname.startsWith("/client/messages") ? "c-msg-in" : "c-ani");
 
   if (prevRef.current !== pathname) {
     const prev = prevRef.current;
     if (prev !== undefined) {
       const prevIdx = navIndex(prev);
       const currIdx = navIndex(pathname);
-      dirRef.current = prevIdx !== -1 && currIdx !== -1 && prevIdx !== currIdx
-        ? currIdx > prevIdx ? "c-slide-right" : "c-slide-left"
-        : "c-ani";
+      const next = pathname.startsWith("/client/messages")
+        ? "c-msg-in"
+        : prevIdx !== -1 && currIdx !== -1 && prevIdx !== currIdx
+          ? currIdx > prevIdx ? "c-slide-right" : "c-slide-left"
+          : "c-ani";
+      dirRef.current = next;
     }
     prevRef.current = pathname;
   }
