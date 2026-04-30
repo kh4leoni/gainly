@@ -1,7 +1,7 @@
 import { HydrationBoundary, dehydrate } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/server";
 import { getQueryClient } from "@/lib/get-query-client";
-import { getNextWorkout, getWeeklyVolume, getWeeklyCompletion } from "@/lib/queries/workouts";
+import { getNextWorkout, getWeeklyVolume, getWeeklyCompletion, getLatestPRs } from "@/lib/queries/workouts";
 import { getMeCached } from "@/lib/queries/profile.server";
 import { ClientDashboardView } from "@/components/client/dashboard-view";
 
@@ -19,6 +19,7 @@ export default async function ClientDashboardPage() {
       qc.prefetchQuery({ queryKey: ["next-workout", clientId],       queryFn: () => getNextWorkout(supabase, clientId) }),
       qc.prefetchQuery({ queryKey: ["weekly-volume", clientId],      queryFn: () => getWeeklyVolume(supabase, clientId) }),
       qc.prefetchQuery({ queryKey: ["weekly-completion", clientId],  queryFn: () => getWeeklyCompletion(supabase, clientId) }),
+      qc.prefetchQuery({ queryKey: ["latest-prs", clientId],         queryFn: () => getLatestPRs(supabase, clientId) }),
     ]);
   }
 

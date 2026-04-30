@@ -164,6 +164,17 @@ export async function getClientSchedule(supabase: DB, clientId: string): Promise
   return (data ?? []) as unknown as ScheduleDay[];
 }
 
+export async function getLatestPRs(supabase: DB, clientId: string, limit = 3) {
+  const { data, error } = await supabase
+    .from("personal_records")
+    .select("id, reps, weight, achieved_at, exercises ( name )")
+    .eq("client_id", clientId)
+    .order("achieved_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function getRecentPRs(supabase: DB, clientId: string, limit = 250) {
   const { data, error } = await supabase
     .from("personal_records")

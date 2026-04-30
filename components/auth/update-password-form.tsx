@@ -52,10 +52,9 @@ export function UpdatePasswordForm() {
     if (user) {
       await supabase.from("profiles").update({ full_name: fullName.trim() }).eq("id", user.id);
     }
-    const { data } = await supabase.auth.getSession();
     const role =
-      (data.session?.user.app_metadata as { user_role?: string })?.user_role ??
-      (data.session?.user.user_metadata as { role?: string })?.role ??
+      (user?.app_metadata as { user_role?: string })?.user_role ??
+      (user?.user_metadata as { role?: string })?.role ??
       "client";
     setLoading(false);
     router.replace(role === "coach" ? "/coach/dashboard" : "/client/dashboard");

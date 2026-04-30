@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import Link from "next/link";
 import { LoginSchema, type LoginInput } from "@/lib/schemas";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -40,7 +41,12 @@ export function LoginForm({ next }: { next?: string }) {
       </div>
 
       <div>
-        <Label htmlFor="password">Salasana</Label>
+        <div className="flex items-center justify-between">
+          <Label htmlFor="password">Salasana</Label>
+          <Link href="/forgot-password" className="text-sm text-muted-foreground underline">
+            Unohditko salasanan?
+          </Link>
+        </div>
         <Input id="password" type="password" autoComplete="current-password" {...register("password")} />
         {errors.password && <p className="mt-1 text-sm text-destructive">{errors.password.message}</p>}
       </div>

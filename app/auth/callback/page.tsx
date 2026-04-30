@@ -25,8 +25,6 @@ export default function AuthCallbackPage() {
         return;
       }
 
-      let session = null;
-
       if (accessToken && refreshToken) {
         const { data, error: setErr } = await supabase.auth.setSession({
           access_token: accessToken,
@@ -37,15 +35,13 @@ export default function AuthCallbackPage() {
           setTimeout(() => router.push("/login"), 1500);
           return;
         }
-        session = data.session;
       } else {
-        const { data, error: getErr } = await supabase.auth.getSession();
-        if (getErr || !data.session) {
+        const { data, error: getErr } = await supabase.auth.getUser();
+        if (getErr || !data.user) {
           setError("Linkki on virheellinen tai vanhentunut.");
           setTimeout(() => router.push("/login"), 1500);
           return;
         }
-        session = data.session;
       }
 
       if (typeof window !== "undefined" && window.location.hash) {
@@ -57,9 +53,10 @@ export default function AuthCallbackPage() {
         return;
       }
 
+      const { data: { user } } = await supabase.auth.getUser();
       const role =
-        (session.user.app_metadata as { user_role?: string })?.user_role ??
-        (session.user.user_metadata as { role?: string })?.role ??
+        (user?.app_metadata as { user_role?: string })?.user_role ??
+        (user?.user_metadata as { role?: string })?.role ??
         "client";
 
       router.replace(role === "coach" ? "/coach/dashboard" : "/client/dashboard");

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { getNextWorkout, getWeeklyVolume, getWeeklyCompletion } from "@/lib/queries/workouts";
+import { getNextWorkout, getWeeklyVolume, getWeeklyCompletion, getLatestPRs } from "@/lib/queries/workouts";
 import { usePrToast } from "@/hooks/use-pr-toast";
 import { ExerciseInfoDialog } from "@/components/client/exercise-info-dialog";
 
@@ -221,6 +221,12 @@ export function ClientDashboardView({ clientId, firstName }: { clientId: string;
     enabled: !!clientId,
     staleTime: 60_000,
   });
+  const latestPRs = useQuery({
+    queryKey: ["latest-prs", clientId],
+    queryFn: () => getLatestPRs(supabase, clientId),
+    enabled: !!clientId,
+    staleTime: 60_000,
+  });
 
   const now = new Date();
   const dateLabel = `${FI_DAYS[now.getDay()] ?? ""} ${now.getDate()}.${now.getMonth() + 1}.${now.getFullYear()}`;
@@ -361,10 +367,78 @@ export function ClientDashboardView({ clientId, firstName }: { clientId: string;
         </div>
       )}
 
-      {/* Weekly completion card */}
-      {wcTotal > 0 && (
+      {/* Weekly stats — 2-column grid */}
+      {(wcTotal > 0 || volume > 0) && (
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: wcTotal > 0 && volume > 0 ? "1fr 1fr" : "1fr",
+          gap: 12,
+          marginBottom: 20,
+          ...enterStyle(190),
+        }}>
+          {wcTotal > 0 && (
+            <Link
+              href="/client/history"
+              style={{
+                display: "block",
+                background: "var(--c-surface)",
+                border: "1px solid var(--c-border)",
+                borderRadius: 18,
+                padding: 16,
+                textDecoration: "none",
+                color: "inherit",
+              }}
+            >
+              <div style={{ fontSize: 10, color: "var(--c-text-muted)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 8 }}>
+                📅 Viikon treenit
+              </div>
+              <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: "-1px", color: wcPct === 100 ? "#3ECF8E" : "var(--c-pink)", lineHeight: 1 }}>
+                {wcPct}%
+              </div>
+              <div style={{ fontSize: 12, color: "var(--c-text-muted)", marginTop: 6, marginBottom: 10 }}>
+                {wcDone} / {wcTotal} tehty
+              </div>
+              <div style={{ height: 4, background: "rgba(255,255,255,0.08)", borderRadius: 2, overflow: "hidden" }}>
+                <div style={{
+                  height: "100%",
+                  width: `${wcPct}%`,
+                  background: wcPct === 100
+                    ? "linear-gradient(90deg,#3ECF8E,#2DB87A)"
+                    : "linear-gradient(90deg,var(--c-pink),rgba(155,77,202,1))",
+                  borderRadius: 2,
+                  minWidth: wcDone > 0 ? 4 : 0,
+                }} />
+              </div>
+            </Link>
+          )}
+
+          {volume > 0 && (
+            <div style={{
+              background: "var(--c-surface)",
+              border: "1px solid var(--c-border)",
+              borderRadius: 18,
+              padding: 16,
+            }}>
+              <div style={{ fontSize: 10, color: "var(--c-text-muted)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 8 }}>
+                🏋️ Viikon volyymi
+              </div>
+              <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: "-1px", color: "var(--c-pink)", lineHeight: 1 }}>
+                {volume >= 1000
+                  ? `${(volume / 1000).toLocaleString("fi-FI", { maximumFractionDigits: 1 })}t`
+                  : `${volume.toLocaleString("fi-FI")} kg`}
+              </div>
+              <div style={{ fontSize: 12, color: "var(--c-text-muted)", marginTop: 6, lineHeight: 1.4 }}>
+                {getWeightRef(volume).split("!")[0]!.trim() + "!"}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Recent PRs */}
+      {(latestPRs.data?.length ?? 0) > 0 && (
         <Link
-          href="/client/history"
+          href="/client/progress"
           style={{
             display: "block",
             background: "var(--c-surface)",
@@ -374,57 +448,27 @@ export function ClientDashboardView({ clientId, firstName }: { clientId: string;
             marginBottom: 20,
             textDecoration: "none",
             color: "inherit",
-            ...enterStyle(190),
+            ...enterStyle(260),
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-            <div style={{ fontSize: 11, color: "var(--c-text-muted)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "1px" }}>
-              📅 Viikon treenit
-            </div>
-            <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-0.5px", color: wcPct === 100 ? "#3ECF8E" : "var(--c-pink)" }}>
-              {wcPct}%
-            </div>
+          <div style={{ fontSize: 11, color: "var(--c-text-muted)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 14 }}>
+            🏆 Viimeisimmät ennätykset
           </div>
-          <div style={{ fontSize: 13, color: "var(--c-text-muted)", marginBottom: 10 }}>
-            {wcDone} / {wcTotal} tehty
-          </div>
-          <div style={{ height: 6, background: "rgba(255,255,255,0.08)", borderRadius: 3, overflow: "hidden", marginBottom: 12 }}>
-            <div style={{
-              height: "100%",
-              width: `${wcPct}%`,
-              background: wcPct === 100
-                ? "linear-gradient(90deg,#3ECF8E,#2DB87A)"
-                : "linear-gradient(90deg,var(--c-pink),rgba(155,77,202,1))",
-              borderRadius: 3,
-              minWidth: wcDone > 0 ? 6 : 0,
-            }} />
-          </div>
-          <div style={{ fontSize: 13, color: "var(--c-text-muted)", lineHeight: 1.5 }}>
-            {getCompletionFeedback(wcPct)}
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {latestPRs.data!.map((pr) => {
+              const name = (pr.exercises as { name: string } | null)?.name ?? "—";
+              const label = pr.reps === 1
+                ? `1RM · ${pr.weight} kg`
+                : `${pr.weight} kg × ${pr.reps}`;
+              return (
+                <div key={pr.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: "var(--c-text)" }}>{name}</div>
+                  <div style={{ fontSize: 13, color: "var(--c-pink)", fontWeight: 700, flexShrink: 0, marginLeft: 8 }}>{label}</div>
+                </div>
+              );
+            })}
           </div>
         </Link>
-      )}
-
-      {/* Weekly volume card */}
-      {volume > 0 && (
-        <div style={{
-          background: "var(--c-surface)",
-          border: "1px solid var(--c-border)",
-          borderRadius: 18,
-          padding: 20,
-          marginBottom: 20,
-          ...enterStyle(260),
-        }}>
-          <div style={{ fontSize: 11, color: "var(--c-text-muted)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 8 }}>
-            🏋️ Viikon volyymi
-          </div>
-          <div style={{ fontSize: 32, fontWeight: 800, letterSpacing: "-1px", color: "var(--c-pink)" }}>
-            {volume.toLocaleString("fi-FI")} kg
-          </div>
-          <div style={{ fontSize: 13, color: "var(--c-text-muted)", marginTop: 8, lineHeight: 1.5 }}>
-            {getWeightRef(volume)}
-          </div>
-        </div>
       )}
 
       {/* Week description */}

@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 
-const PUBLIC_PATHS = ["/", "/login", "/signup", "/auth"];
+const PUBLIC_PATHS = ["/", "/login", "/signup", "/auth", "/forgot-password"];
 const COACH_PREFIX = "/coach";
 const CLIENT_PREFIX = "/client";
 
