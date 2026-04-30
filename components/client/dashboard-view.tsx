@@ -76,7 +76,7 @@ const INTERVAL_MS = 24_000;
 const ANIM_MS = 480;
 
 function QuoteCard() {
-  const [current, setCurrent] = useState(0);
+  const [current, setCurrent] = useState(() => Math.floor(Math.random() * QUOTES.length));
   const [departing, setDeparting] = useState<number | null>(null);
   const [slideDir, setSlideDir] = useState<"left" | "right">("left");
   const animating = useRef(false);
