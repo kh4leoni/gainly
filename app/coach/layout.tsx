@@ -13,7 +13,7 @@ const nav = [
 export default async function CoachLayout({ children }: { children: React.ReactNode }) {
   const me = await getMeCached();
   return (
-    <AppShell title="Gainly" nav={nav} variant="coach" coachName={me?.full_name}>
+    <AppShell title="Gainly" nav={nav} variant="coach" me={me}>
       {children}
     </AppShell>
   );

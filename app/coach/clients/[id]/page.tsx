@@ -6,7 +6,7 @@ import { avatarColor } from "@/lib/utils";
 import { OhjelmoiButton } from "@/components/program-builder/ohjelmoi-button";
 import { ClientTrainingView } from "@/components/client-detail/client-training-view";
 import { RecordsSection } from "@/components/client-detail/pr-sections";
-import { MessageSquare, ChevronLeft, Check, Zap, LayoutGrid } from "lucide-react";
+import { MessageSquare, ChevronLeft, Check, Zap, LayoutGrid, Scale, TrendingUp, TrendingDown, Minus } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +15,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
   const supabase = await createClient();
 
   // Single scheduled_workouts query replaces two (upcoming + adherence)
-  const [profileRes, allScheduledRes, threadRes, activeProgRes, pastWorkoutsRes, prExercisesRes] = await Promise.all([
+  const [profileRes, allScheduledRes, threadRes, activeProgRes, pastWorkoutsRes, prExercisesRes, bwRes, waistRes] = await Promise.all([
     supabase.from("profiles").select("id, full_name, avatar_url, created_at").eq("id", id).single(),
     supabase
       .from("scheduled_workouts")
@@ -59,6 +59,18 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
       .from("personal_records")
       .select("exercise_id, exercises(id, name)")
       .eq("client_id", id),
+    supabase
+      .from("bodyweights")
+      .select("weight_kg, logged_at")
+      .eq("client_id", id)
+      .order("logged_at", { ascending: false })
+      .limit(30),
+    supabase
+      .from("waist_measurements")
+      .select("waist_cm, logged_at")
+      .eq("client_id", id)
+      .order("logged_at", { ascending: false })
+      .limit(30),
   ]);
 
   if (profileRes.error || !profileRes.data) notFound();
@@ -88,6 +100,16 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
 
   // Compute streak (consecutive days with completed workout, using completed_at)
   const streak = computeStreak((pastWorkoutsRes.data ?? []) as Array<{ completed_at: string | null; status: string }>);
+
+  const bwHistory = (bwRes.data ?? []) as { weight_kg: number; logged_at: string }[];
+  const latestBw = bwHistory[0] ?? null;
+  const prevBw = bwHistory[1] ?? null;
+  const bwDelta = latestBw && prevBw ? +(latestBw.weight_kg - prevBw.weight_kg).toFixed(1) : null;
+
+  const waistHistory = (waistRes.data ?? []) as { waist_cm: number; logged_at: string }[];
+  const latestWaist = waistHistory[0] ?? null;
+  const prevWaist = waistHistory[1] ?? null;
+  const waistDelta = latestWaist && prevWaist ? +(latestWaist.waist_cm - prevWaist.waist_cm).toFixed(1) : null;
 
   // Filter upcoming workouts to active week only from combined query
   const upcomingWorkouts = allScheduled.filter(
@@ -178,6 +200,84 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
             <span className="inline-flex items-center rounded-full bg-primary/15 px-3 py-1 text-xs font-semibold text-primary">
               {weekLabel}
             </span>
+          </div>
+        )}
+
+        {/* Bodyweight card */}
+        {bwHistory.length > 0 && (
+          <div className="card-enter card-enter-5 rounded-2xl border bg-card overflow-hidden">
+            <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b">
+              <div className="flex items-center gap-2">
+                <Scale className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-semibold">Kehonpaino</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-2xl font-bold text-primary">{latestBw!.weight_kg} kg</span>
+                {bwDelta !== null && (
+                  <span className={`flex items-center gap-0.5 text-xs font-semibold ${
+                    bwDelta > 0 ? "text-emerald-500" : bwDelta < 0 ? "text-rose-400" : "text-muted-foreground"
+                  }`}>
+                    {bwDelta > 0
+                      ? <TrendingUp className="h-3.5 w-3.5" />
+                      : bwDelta < 0
+                      ? <TrendingDown className="h-3.5 w-3.5" />
+                      : <Minus className="h-3.5 w-3.5" />}
+                    {bwDelta > 0 ? "+" : ""}{bwDelta} kg
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="divide-y max-h-52 overflow-y-auto">
+              {bwHistory.map((entry, i) => (
+                <div key={i} className="flex items-center justify-between px-4 py-2.5">
+                  <span className="text-sm text-muted-foreground">
+                    {new Date(entry.logged_at).toLocaleDateString("fi-FI", { day: "numeric", month: "numeric", year: "numeric" })}
+                  </span>
+                  <span className={`text-sm font-semibold ${i === 0 ? "text-foreground" : "text-muted-foreground"}`}>
+                    {entry.weight_kg} kg
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Waist card */}
+        {waistHistory.length > 0 && (
+          <div className="card-enter card-enter-6 rounded-2xl border bg-card overflow-hidden">
+            <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b">
+              <div className="flex items-center gap-2">
+                <Scale className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-semibold">Vyötärö</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-2xl font-bold text-primary">{latestWaist!.waist_cm} cm</span>
+                {waistDelta !== null && (
+                  <span className={`flex items-center gap-0.5 text-xs font-semibold ${
+                    waistDelta > 0 ? "text-rose-400" : waistDelta < 0 ? "text-emerald-500" : "text-muted-foreground"
+                  }`}>
+                    {waistDelta > 0
+                      ? <TrendingUp className="h-3.5 w-3.5" />
+                      : waistDelta < 0
+                      ? <TrendingDown className="h-3.5 w-3.5" />
+                      : <Minus className="h-3.5 w-3.5" />}
+                    {waistDelta > 0 ? "+" : ""}{waistDelta} cm
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="divide-y max-h-52 overflow-y-auto">
+              {waistHistory.map((entry, i) => (
+                <div key={i} className="flex items-center justify-between px-4 py-2.5">
+                  <span className="text-sm text-muted-foreground">
+                    {new Date(entry.logged_at).toLocaleDateString("fi-FI", { day: "numeric", month: "numeric", year: "numeric" })}
+                  </span>
+                  <span className={`text-sm font-semibold ${i === 0 ? "text-foreground" : "text-muted-foreground"}`}>
+                    {entry.waist_cm} cm
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 

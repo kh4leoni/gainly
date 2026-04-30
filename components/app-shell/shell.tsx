@@ -4,11 +4,11 @@ import Link from "next/link";
 import Image from "next/image";
 import type { ReactNode } from "react";
 import { NavLink } from "./nav-link";
-import { ThemeToggle } from "./theme-toggle";
-import { LogOut } from "lucide-react";
+import { CoachSettingsButton } from "./coach-settings";
 import { SyncBar } from "@/components/offline/sync-bar";
 
 type NavItem = { href: string; icon: ReactNode; label: string };
+type Me = { id: string; full_name: string | null; email?: string | null } | null;
 
 export function AppShell({
   title,
@@ -16,14 +16,14 @@ export function AppShell({
   children,
   rightSlot,
   variant = "coach",
-  coachName,
+  me,
 }: {
   title: string;
   nav: NavItem[];
   children: ReactNode;
   rightSlot?: ReactNode;
   variant?: "athlete" | "coach";
-  coachName?: string | null;
+  me?: Me;
 }) {
   return (
     <div className="min-h-dvh md:flex">
@@ -50,35 +50,17 @@ export function AppShell({
             <Link href="/" prefetch>
               <Image src="/fs%20collab.png" alt="fs collab" width={140} height={44} className="logo-adaptive" style={{ objectFit: "contain" }} />
             </Link>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-2">
               {rightSlot}
-              <ThemeToggle />
-              <form action="/auth/logout" method="post">
-                <button
-                  type="submit"
-                  className="icon-wiggle flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-[#FF1D8C] hover:text-white"
-                  aria-label="Kirjaudu ulos"
-                >
-                  <LogOut className="h-5 w-5" />
-                </button>
-              </form>
+              <CoachSettingsButton me={me ?? null} />
             </div>
           </div>
         </header>
         {/* Desktop top header */}
         <header className="hidden h-14 shrink-0 items-center justify-between border-b px-4 md:flex md:px-6">
-          <div className="ml-auto flex items-center gap-1">
+          <div className="ml-auto flex items-center gap-2">
             {rightSlot}
-            <ThemeToggle />
-            <form action="/auth/logout" method="post">
-              <button
-                type="submit"
-                className="icon-wiggle flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-[#FF1D8C] hover:text-white"
-                aria-label="Kirjaudu ulos"
-              >
-                <LogOut className="h-5 w-5" />
-              </button>
-            </form>
+            <CoachSettingsButton me={me ?? null} />
           </div>
         </header>
         <div className="relative h-0 z-30"><SyncBar /></div>
