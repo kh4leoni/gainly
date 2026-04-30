@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
+import { Collapse } from "@/components/ui/collapse";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -145,14 +146,14 @@ function DescriptionField({ id, value, onSave, placeholder }: {
         {open ? "Piilota kuvaus" : value ? "Näytä kuvaus" : "Lisää kuvaus"}
         <ChevronDown className={cn("h-2.5 w-2.5 transition-transform", open && "rotate-180")} />
       </button>
-      {open && (
+      <Collapse open={open}>
         <textarea
           key={`desc:${id}:${value ?? ""}`}
           className="w-full resize-none rounded border border-border bg-background px-2.5 py-1.5 text-sm text-muted-foreground placeholder:text-muted-foreground/50 outline-none focus:border-primary"
           rows={2} defaultValue={value ?? ""} placeholder={placeholder} autoFocus={!value}
           onBlur={(e) => { const v = e.target.value.trim() || null; if (v !== value) onSave(v); }}
         />
-      )}
+      </Collapse>
     </div>
   );
 }
@@ -288,7 +289,7 @@ function ExerciseRow({ pe, exercises, onUpdate, onAssign, onDelete, dragHandlePr
           <ChevronDown className={cn("h-2 w-2 transition-transform", showNotes && "rotate-180")} />
         </button>
       </div>
-      {showNotes && (
+      <Collapse open={showNotes}>
         <div className="px-9 pb-2.5">
           <input key={`pe-notes:${pe.id}:${pe.notes ?? ""}`}
             className="block h-7 w-full rounded border border-border bg-muted/30 px-2 text-[12.5px] text-muted-foreground outline-none focus:border-primary"
@@ -296,7 +297,7 @@ function ExerciseRow({ pe, exercises, onUpdate, onAssign, onDelete, dragHandlePr
             onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
             onBlur={(e) => { const v = e.target.value.trim() || null; if (v !== pe.notes) onUpdate({ id: pe.id, notes: v }); }} />
         </div>
-      )}
+      </Collapse>
     </div>
   );
 }
@@ -388,7 +389,7 @@ function WorkoutBlock({ day, exercises, onUpdate, onDelete, onAddExercise, onAss
           </button>
         </div>
       </div>
-      {!collapsed && (
+      <Collapse open={!collapsed}>
         <div className="space-y-3 p-2 md:p-3.5">
           <DescriptionField id={`day-${day.id}`} value={day.description}
             onSave={(v) => onUpdate({ description: v })} placeholder="Treenin kuvaus tai ohjeet asiakkaalle…" />
@@ -411,7 +412,7 @@ function WorkoutBlock({ day, exercises, onUpdate, onDelete, onAddExercise, onAss
             <p className="py-3 text-center text-sm text-muted-foreground">Lisää liike ylhäältä.</p>
           )}
         </div>
-      )}
+      </Collapse>
     </div>
   );
 }
@@ -556,7 +557,7 @@ function WeekCard({ week, exercises, onUpdate, onSetActive, onClearActive, onAdd
           </button>
         </div>
       </div>
-      {!collapsed && (
+      <Collapse open={!collapsed}>
         <div className="space-y-3 p-2 md:p-4">
           <DescriptionField id={`week-${week.id}`} value={week.description}
             onSave={(v) => onUpdate({ description: v })} placeholder="Viikon kuvaus tai ohjeet asiakkaalle…" />
@@ -584,7 +585,7 @@ function WeekCard({ week, exercises, onUpdate, onSetActive, onClearActive, onAdd
             </DndContext>
           )}
         </div>
-      )}
+      </Collapse>
     </div>
   );
 }
@@ -720,7 +721,7 @@ function BlockCard({ block, exercises, onUpdate, onDelete, onAddWeek, onDuplicat
             onSave={(v) => onUpdate({ description: v })} placeholder="Jakson kuvaus tai tavoite asiakkaalle…" />
         </div>
       </div>
-      {!isCollapsed && (
+      <Collapse open={!isCollapsed}>
         <div className="space-y-3 p-5">
           {(block.program_weeks ?? []).length === 0 ? (
             <p className="py-5 text-center text-sm text-muted-foreground">Ei viikkoja. Lisää viikko →</p>
@@ -750,7 +751,7 @@ function BlockCard({ block, exercises, onUpdate, onDelete, onAddWeek, onDuplicat
             </DndContext>
           )}
         </div>
-      )}
+      </Collapse>
     </div>
   );
 }

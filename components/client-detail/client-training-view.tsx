@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Collapse } from "@/components/ui/collapse";
 import { ChevronDown, ChevronRight, Pencil } from "lucide-react";
 import Link from "next/link";
 
@@ -202,7 +203,7 @@ export function ClientTrainingView({ upcomingWorkouts, pastWorkouts, weekDescrip
             </button>
           )}
         </div>
-        {(historyOpen || ohjelmoiHref) && (
+        <Collapse open={!!(historyOpen || ohjelmoiHref)}>
           <div className="border-t px-5 pb-5 pt-4">
             {historyByWeek.length === 0 ? (
               <p className="text-sm text-muted-foreground">Ei suoritettuja treenejä.</p>
@@ -223,7 +224,7 @@ export function ClientTrainingView({ upcomingWorkouts, pastWorkouts, weekDescrip
               </div>
             )}
           </div>
-        )}
+        </Collapse>
       </div>
     </div>
   );
@@ -287,7 +288,7 @@ function WorkoutRow({ workout }: { workout: WorkoutEntry }) {
         </div>
       </button>
 
-      {expanded && isCompleted && (
+      <Collapse open={expanded && isCompleted}>
         <div className="ml-5 mt-2 space-y-2">
           {wl?.notes && (
             <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2">
@@ -340,7 +341,7 @@ function WorkoutRow({ workout }: { workout: WorkoutEntry }) {
             <p className="text-xs text-muted-foreground">Ei kirjattuja sarjoja.</p>
           )}
         </div>
-      )}
+      </Collapse>
     </div>
   );
 }
