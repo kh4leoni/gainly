@@ -77,7 +77,7 @@ function RpeStepper({ value, onChange }: { value: number | null; onChange: (v: n
     <div className="flex items-center gap-1">
       <button type="button" onClick={dec}
         className="flex h-[22px] w-[22px] items-center justify-center rounded-full border border-border bg-background text-sm text-muted-foreground transition-colors hover:bg-muted">−</button>
-      <span className={cn("w-8 text-center text-[12.5px] font-medium tabular-nums", value !== null ? "text-foreground" : "text-muted-foreground")}>
+      <span className={cn("w-6 text-center text-[12.5px] font-medium tabular-nums md:w-8", value !== null ? "text-foreground" : "text-muted-foreground")}>
         {label}
       </span>
       <button type="button" onClick={inc}
@@ -93,11 +93,11 @@ function SetRow({ idx, cfg, onChange, onDelete, canDelete }: {
 }) {
   const repsNum = cfg.reps ? parseInt(cfg.reps, 10) : NaN;
   const showLabels = idx === 0;
-  const inp = "h-[26px] w-10 rounded border border-border bg-muted/30 text-center text-[13px] font-medium outline-none focus:border-primary";
+  const inp = "h-[26px] w-9 rounded border border-border bg-muted/30 text-center text-[13px] font-medium outline-none focus:border-primary md:w-10";
   const circleBtn = "flex h-[20px] w-[20px] items-center justify-center rounded-full border border-border bg-background text-xs text-muted-foreground hover:bg-muted";
 
   return (
-    <div className="grid grid-cols-[20px_auto_auto_auto_20px] items-end gap-3 px-3 py-1 pl-9">
+    <div className="grid grid-cols-[20px_auto_auto_auto_20px] items-end gap-1.5 px-2 py-1 pl-3 md:gap-3 md:pl-9">
       <span className="pb-[5px] text-[11px] font-bold text-muted-foreground/40">{idx + 1}</span>
       <div className="flex flex-col gap-1">
         {showLabels && <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Toistot</span>}
@@ -114,7 +114,7 @@ function SetRow({ idx, cfg, onChange, onDelete, canDelete }: {
         {showLabels && <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Kuorma</span>}
         <input type="number" inputMode="decimal" placeholder="—"
           defaultValue={cfg.weight ?? ""} key={`w-${idx}-${cfg.weight ?? ""}`}
-          className="h-[26px] w-16 rounded border border-border bg-muted/30 px-1.5 text-center text-[13px] font-medium outline-none focus:border-primary"
+          className="h-[26px] w-12 rounded border border-border bg-muted/30 px-1.5 text-center text-[13px] font-medium outline-none focus:border-primary md:w-16"
           onBlur={(e) => { const v = e.target.value ? Number(e.target.value) : null; if (v !== cfg.weight) onChange({ ...cfg, weight: v }); }} />
       </div>
       <div className="flex flex-col gap-1">
@@ -275,7 +275,7 @@ function ExerciseRow({ pe, exercises, onUpdate, onAssign, onDelete, dragHandlePr
           />
         ))}
       </div>
-      <div className="flex items-center gap-3 border-t border-border/40 px-3 py-2 pl-9">
+      <div className="flex items-center gap-3 border-t border-border/40 px-3 py-2 pl-3 md:pl-9">
         <button type="button" onClick={addSet}
           className="inline-flex items-center gap-1 rounded px-2 py-1 text-[12px] font-semibold text-primary transition-colors hover:bg-primary/10">
           <Plus className="h-3 w-3" /> Lisää sarja
@@ -367,12 +367,12 @@ function WorkoutBlock({ day, exercises, onUpdate, onDelete, onAddExercise, onAss
           className="shrink-0 text-muted-foreground transition-colors hover:text-foreground">
           {collapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
         </button>
-        <span className="min-w-[70px] shrink-0 text-[11px] font-bold uppercase tracking-widest text-primary">
+        <span className="shrink-0 text-[11px] font-bold uppercase tracking-widest text-primary">
           Treeni {day.day_number}
         </span>
         <input
           key={`day-name:${day.id}:${day.name ?? ""}`}
-          defaultValue={displayName} placeholder="Nimeä tämä treeni…"
+          defaultValue={displayName} placeholder="Nimeä…"
           className="h-[30px] flex-1 rounded border border-transparent bg-transparent px-2 text-[13.5px] font-medium text-foreground outline-none focus:border-border focus:bg-background"
           onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
           onBlur={(e) => { const v = e.target.value.trim() || null; if (v !== (displayName || null)) onUpdate({ name: v }); }}
@@ -389,7 +389,7 @@ function WorkoutBlock({ day, exercises, onUpdate, onDelete, onAddExercise, onAss
         </div>
       </div>
       {!collapsed && (
-        <div className="space-y-3 p-3.5">
+        <div className="space-y-3 p-2 md:p-3.5">
           <DescriptionField id={`day-${day.id}`} value={day.description}
             onSave={(v) => onUpdate({ description: v })} placeholder="Treenin kuvaus tai ohjeet asiakkaalle…" />
           {(day.program_exercises ?? []).length > 0 ? (
@@ -513,7 +513,7 @@ function WeekCard({ week, exercises, onUpdate, onSetActive, onClearActive, onAdd
           className="shrink-0 text-muted-foreground transition-colors hover:text-foreground">
           {collapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
         </button>
-        <span className="text-[13px] font-bold text-primary">Viikko {week.week_number}</span>
+        <span className="shrink-0 whitespace-nowrap text-[13px] font-bold text-primary">Viikko {week.week_number}</span>
         <input
           key={`week-name:${week.id}:${week.name ?? ""}`}
           defaultValue={week.name ?? ""} placeholder="Viikon nimi (valinnainen)…"
@@ -557,7 +557,7 @@ function WeekCard({ week, exercises, onUpdate, onSetActive, onClearActive, onAdd
         </div>
       </div>
       {!collapsed && (
-        <div className="space-y-3 p-4">
+        <div className="space-y-3 p-2 md:p-4">
           <DescriptionField id={`week-${week.id}`} value={week.description}
             onSave={(v) => onUpdate({ description: v })} placeholder="Viikon kuvaus tai ohjeet asiakkaalle…" />
           {(week.program_days ?? []).length === 0 ? (
@@ -668,7 +668,7 @@ function BlockCard({ block, exercises, onUpdate, onDelete, onAddWeek, onDuplicat
         confirmLabel="Poista jakso"
       />
       <div className={cn(
-        "px-4 pb-3 pt-4 bg-muted/20",
+        "px-3 pb-3 pt-4 bg-muted/20 md:px-5",
         "border-b border-border",
         isCollapsed ? "rounded-2xl" : "rounded-t-2xl"
       )}>
@@ -1371,23 +1371,23 @@ export function ProgramEditor({ programId }: { programId: string }) {
   return (
     <div className="flex flex-col">
       {/* Sticky topbar */}
-      <div className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-3 border-b bg-background px-6">
-        <div className="flex flex-1 items-center gap-2 text-sm">
-          <Link href="/coach/programs" className="text-muted-foreground transition-colors hover:text-foreground">
+      <div className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b bg-background px-3 md:gap-3 md:px-6">
+        <div className="flex min-w-0 flex-1 items-center gap-1.5 text-sm">
+          <Link href="/coach/programs" className="hidden shrink-0 text-muted-foreground transition-colors hover:text-foreground md:block">
             Ohjelmat
           </Link>
-          <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-          <span className="font-semibold">{program.title}</span>
+          <ChevronRight className="hidden h-3.5 w-3.5 shrink-0 text-muted-foreground md:block" />
+          <span className="truncate font-semibold">{program.title}</span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1.5 md:gap-2">
           {program.is_template && <AssignProgramButton programId={programId} />}
           <button type="button" onClick={() => addBlock.mutate()}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-sm font-medium transition-colors hover:bg-muted">
-            <Plus className="h-3.5 w-3.5" /> Lisää jakso
+            className="inline-flex items-center gap-1 rounded-lg border border-border bg-background px-2.5 py-1.5 text-sm font-medium transition-colors hover:bg-muted md:gap-1.5 md:px-3">
+            <Plus className="h-3.5 w-3.5" /><span className="hidden sm:inline">Lisää </span>jakso
           </button>
           {!program.is_template && (
             <button type="button" onClick={handleSave} disabled={rescheduleMutation.isPending}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-1.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50">
+              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50 md:px-4">
               {rescheduleMutation.isPending
                 ? <><span className="h-3 w-3 animate-spin rounded-full border-2 border-primary-foreground/40 border-t-primary-foreground" />Tallennetaan…</>
                 : saveLabel}
@@ -1397,7 +1397,7 @@ export function ProgramEditor({ programId }: { programId: string }) {
       </div>
 
       {/* Content */}
-      <div className="p-6 md:p-8">
+      <div className="p-3 md:p-6">
         <div className="space-y-5">
           {!hasActiveWeek && (program.program_blocks ?? []).length > 0 && (
             <div className="flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-600 dark:text-amber-400">
