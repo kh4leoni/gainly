@@ -21,7 +21,7 @@ export default async function ClientsPage() {
 
   const clientIds = rows.map((r: any) => r.client_id as string);
 
-  const [lastWorkoutsRes, pendingRes] = clientIds.length > 0
+  const [lastWorkoutsRes, pendingRes, bodyweightsRes] = clientIds.length > 0
     ? await Promise.all([
         supabase
           .from("scheduled_workouts")
@@ -35,8 +35,14 @@ export default async function ClientsPage() {
           .select("client_id, program_days(name, program_weeks(is_active))")
           .in("client_id", clientIds)
           .eq("status", "pending"),
+        supabase
+          .from("bodyweights")
+          .select("client_id, weight_kg, logged_at")
+          .in("client_id", clientIds)
+          .order("logged_at", { ascending: false })
+          .limit(clientIds.length * 10),
       ])
-    : [{ data: [] as any[] }, { data: [] as any[] }];
+    : [{ data: [] as any[] }, { data: [] as any[] }, { data: [] as any[] }];
 
   const lastByClient = new Map<string, any>();
   for (const w of lastWorkoutsRes.data ?? []) {
@@ -51,6 +57,13 @@ export default async function ClientsPage() {
     if (!cur.next) cur.next = w;
     cur.count++;
     pendingByClient.set(cid, cur);
+  }
+
+  const bwByClient = new Map<string, number>();
+  for (const row of bodyweightsRes.data ?? []) {
+    if (!bwByClient.has((row as any).client_id)) {
+      bwByClient.set((row as any).client_id, (row as any).weight_kg as number);
+    }
   }
 
   return (
@@ -82,6 +95,7 @@ export default async function ClientsPage() {
             const initials = name.split(" ").map((p: string) => p[0]).join("").slice(0, 2).toUpperCase();
             const gradient = avatarColor(name);
             const isActive = r.status === "active";
+            const latestBw = bwByClient.get(r.client_id) ?? null;
 
             return (
               <Link
@@ -118,9 +132,16 @@ export default async function ClientsPage() {
                         {isActive ? "Aktiivinen" : r.status === "pending" ? "Odottaa" : r.status}
                       </span>
                     </div>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      Liittynyt {new Date(profile.created_at).toLocaleDateString("fi-FI")}
-                    </p>
+                    <div className="mt-0.5 flex items-center gap-2">
+                      <p className="text-xs text-muted-foreground">
+                        Liittynyt {new Date(profile.created_at).toLocaleDateString("fi-FI")}
+                      </p>
+                      {latestBw != null && (
+                        <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                          {latestBw} kg
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
 

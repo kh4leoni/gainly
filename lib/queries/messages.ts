@@ -14,7 +14,7 @@ export async function getThreads(supabase: DB, userId: string) {
   return data ?? [];
 }
 
-export async function getMessages(supabase: DB, threadId: string, limit = 50) {
+export async function getMessages(supabase: DB, threadId: string, limit = 20) {
   const { data, error } = await supabase
     .from("messages")
     .select("id, thread_id, sender_id, content, created_at, read_at")
