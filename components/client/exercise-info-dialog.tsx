@@ -109,7 +109,7 @@ export function ExerciseInfoDialog({ exercises, title, trigger }: ExerciseInfoDi
     <Dialog onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent
-        className="max-h-[85vh] overflow-y-auto"
+        className="max-h-[85vh] flex flex-col overflow-hidden text-[#f0eef5]"
         style={{
           background: "#0f0f12",
           border: "1px solid rgba(255,255,255,0.12)",
@@ -123,10 +123,10 @@ export function ExerciseInfoDialog({ exercises, title, trigger }: ExerciseInfoDi
           "--c-text-muted": "rgba(240,238,245,0.48)",
         } as React.CSSProperties}
       >
-        <DialogHeader>
+        <DialogHeader style={{ flexShrink: 0 }}>
           <DialogTitle style={{ color: "#f0eef5" }}>{title ?? "Harjoitteet"}</DialogTitle>
         </DialogHeader>
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <div style={{ overflowY: "auto", flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
           {exercises.map((ex, i) => (
             <ExerciseAccordion
               key={i}
