@@ -81,11 +81,11 @@ export function AppShell({
             </form>
           </div>
         </header>
-        <SyncBar />
-        <main className="flex-1 pb-20 md:pb-0">{children}</main>
+        <div className="relative h-0 z-30"><SyncBar /></div>
+        <main className="flex-1 md:pb-0" style={{ paddingBottom: "calc(80px + env(safe-area-inset-bottom, 0px))" }}>{children}</main>
 
         {/* Mobile bottom nav */}
-        <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t bg-background pb-safe md:hidden">
+        <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t bg-background md:hidden" style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
           {nav.map((n) => (
             <NavLink key={n.href} {...n} variant={variant} />
           ))}
