@@ -73,7 +73,7 @@ export function SyncBadge({
           <polyline points="12 7 12 12 15 14" />
         </svg>
       )}
-      {isSynced ? "Synkr." : "Odottaa"}
+      {isSynced ? "Synkronoitu" : "Odottaa"}
     </span>
   );
 }
