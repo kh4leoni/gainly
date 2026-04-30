@@ -34,6 +34,64 @@ export type Database = {
   }
   public: {
     Tables: {
+      waist_measurements: {
+        Row: {
+          id: string
+          client_id: string
+          waist_cm: number
+          logged_at: string
+        }
+        Insert: {
+          id?: string
+          client_id: string
+          waist_cm: number
+          logged_at?: string
+        }
+        Update: {
+          id?: string
+          client_id?: string
+          waist_cm?: number
+          logged_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "waist_measurements_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bodyweights: {
+        Row: {
+          id: string
+          client_id: string
+          weight_kg: number
+          logged_at: string
+        }
+        Insert: {
+          id?: string
+          client_id: string
+          weight_kg: number
+          logged_at?: string
+        }
+        Update: {
+          id?: string
+          client_id?: string
+          weight_kg?: number
+          logged_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bodyweights_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       coach_clients: {
         Row: {
           client_id: string
@@ -250,22 +308,28 @@ export type Database = {
         Row: {
           avatar_url: string | null
           created_at: string
+          email: string | null
           full_name: string | null
           id: string
+          phone: string | null
           role: string
         }
         Insert: {
           avatar_url?: string | null
           created_at?: string
+          email?: string | null
           full_name?: string | null
           id: string
+          phone?: string | null
           role: string
         }
         Update: {
           avatar_url?: string | null
           created_at?: string
+          email?: string | null
           full_name?: string | null
           id?: string
+          phone?: string | null
           role?: string
         }
         Relationships: []
