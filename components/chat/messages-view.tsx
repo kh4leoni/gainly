@@ -452,6 +452,8 @@ function ChatPane({
     flexDirection: "column",
     gap: isCoach ? 12 : 10,
     background: isCoach ? "hsl(var(--background))" : undefined,
+    WebkitTransform: "translateZ(0)",
+    transform: "translateZ(0)",
   };
 
   const inputAreaStyle: React.CSSProperties = {
