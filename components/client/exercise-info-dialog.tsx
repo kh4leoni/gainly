@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Collapse } from "@/components/ui/collapse";
 
 export type ExerciseInfo = {
   name: string;
@@ -64,7 +65,7 @@ function ExerciseAccordion({ ex, expanded, onToggle }: { ex: ExerciseInfo; expan
         )}
       </button>
 
-      {expanded && hasContent && (
+      <Collapse open={expanded && hasContent}>
         <div style={{
           padding: "12px 16px 16px",
           display: "flex", flexDirection: "column", gap: 12,
@@ -87,7 +88,7 @@ function ExerciseAccordion({ ex, expanded, onToggle }: { ex: ExerciseInfo; expan
             </div>
           )}
         </div>
-      )}
+      </Collapse>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Collapse } from "@/components/ui/collapse";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { getPastWorkouts, type PastWorkout } from "@/lib/queries/workouts";
@@ -103,7 +104,7 @@ function WorkoutCard({ w }: { w: PastWorkout }) {
         </svg>
       </button>
 
-      {open && (
+      <Collapse open={open}>
         <div style={{ borderTop: "1px solid var(--c-border)", padding: "12px 16px 14px" }}>
           {wl?.notes && (
             <div style={{
@@ -174,7 +175,7 @@ function WorkoutCard({ w }: { w: PastWorkout }) {
             Avaa treeni
           </Link>
         </div>
-      )}
+      </Collapse>
     </div>
   );
 }

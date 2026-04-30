@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Collapse } from "@/components/ui/collapse";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
@@ -139,8 +140,8 @@ export function OhjelmaView({ clientId }: { clientId: string }) {
             </button>
 
             {/* Days */}
-            {open &&
-              week.days.map((day) => {
+            <Collapse open={open}>
+              {week.days.map((day) => {
                 const st = workoutStatus(day);
                 const exNames = (day.program_days?.program_exercises ?? [])
                   .slice()
@@ -216,6 +217,7 @@ export function OhjelmaView({ clientId }: { clientId: string }) {
                   </div>
                 );
               })}
+            </Collapse>
           </div>
         );
       })}
