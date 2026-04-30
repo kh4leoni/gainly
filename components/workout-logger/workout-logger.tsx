@@ -24,8 +24,6 @@ import {
   useLocalSetLogsAndDeleted,
   useLocalWorkoutLog,
 } from "@/lib/offline/reads";
-import { SyncBadge } from "@/components/offline/sync-badge";
-import { SyncBar } from "@/components/offline/sync-bar";
 
 // ── RPE ───────────────────────────────────────────────────────────────────────
 // Stored as numeric. "<6" is stored as 5 so the DB formula (coalesce rpe,10)
@@ -296,7 +294,6 @@ export function WorkoutLogger({ scheduledWorkoutId }: { scheduledWorkoutId: stri
 
   return (
     <div className="client-app" style={{ flex: 1, overflowY: "auto" }}>
-      <SyncBar />
       <div style={{ padding: "20px 14px 32px" }}>
       {/* Header */}
       <div style={{ marginBottom: 18 }}>
@@ -1004,19 +1001,25 @@ function SetTableRow({
           style={{
             width: 30, height: 30, borderRadius: "50%", padding: 0, flexShrink: 0,
             background: row.confirmed ? "rgba(62,207,142,0.15)" : "var(--c-surface2)",
-            border: `1px solid ${row.confirmed ? "rgba(62,207,142,0.4)" : "var(--c-border)"}`,
+            border: `1px solid ${row.confirmed && !row.synced ? "rgba(245,166,35,0.4)" : row.confirmed ? "rgba(62,207,142,0.4)" : "var(--c-border)"}`,
             cursor: "pointer",
             display: "flex", alignItems: "center", justifyContent: "center",
             transition: "all 0.2s",
           } as React.CSSProperties}
         >
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
-            stroke={row.confirmed ? "#3ECF8E" : "var(--c-text-subtle)"}
-            strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="20 6 9 17 4 12"/>
-          </svg>
+          {row.confirmed && !row.synced ? (
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
+              stroke="#F5A623" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 15 14" />
+            </svg>
+          ) : (
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
+              stroke={row.confirmed ? "#3ECF8E" : "var(--c-text-subtle)"}
+              strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+          )}
         </button>
-        {row.confirmed && !row.synced && <SyncBadge synced={false} size={12} variant="icon" />}
       </div>
     </div>
   );

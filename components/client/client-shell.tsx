@@ -97,6 +97,7 @@ export function ClientShell({ me, coachName, children }: { me: Me; coachName?: s
           justifyContent: "space-between",
           flexShrink: 0,
           background: "var(--c-surface)",
+          position: "relative",
         }}
       >
         <div style={{ lineHeight: 1 }}>
@@ -148,10 +149,8 @@ export function ClientShell({ me, coachName, children }: { me: Me; coachName?: s
             </button>
           </form>
         </div>
+        <SyncBar />
       </header>
-
-      {/* ── Offline / sync indicator ── */}
-      <SyncBar />
 
       {/* ── Content ── */}
       <main

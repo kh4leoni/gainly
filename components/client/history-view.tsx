@@ -5,7 +5,6 @@ import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { getPastWorkouts, type PastWorkout } from "@/lib/queries/workouts";
 import Link from "next/link";
-import { SyncBar } from "@/components/offline/sync-bar";
 import { SyncBadge } from "@/components/offline/sync-badge";
 import { useLocalCompletedNotInServer, useUnsyncedForWorkout } from "@/lib/offline/reads";
 
@@ -223,7 +222,6 @@ export function HistoryView({ clientId }: { clientId: string }) {
 
   return (
     <div style={{ flex: 1 }}>
-      <SyncBar />
       <div style={{ padding: "24px 16px 32px" }}>
       <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-0.5px", marginBottom: 4 }}>Historia</div>
       <div style={{ fontSize: 13, color: "var(--c-text-muted)", marginBottom: 24 }}>
