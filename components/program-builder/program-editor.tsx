@@ -380,7 +380,7 @@ function WorkoutBlock({ day, exercises, onUpdate, onDelete, onAddExercise, onAss
         <div className="ml-auto flex shrink-0 items-center gap-1.5">
           <button type="button" onClick={onAddExercise}
             className="inline-flex items-center gap-1 rounded px-2 py-1 text-[12px] font-semibold text-primary transition-colors hover:bg-primary/10">
-            <Plus className="h-3 w-3" /> Liike
+            <Plus className="h-3 w-3" /><span className="hidden md:inline">Liike</span>
           </button>
           <button type="button" onClick={() => setDeleteConfirm(true)}
             className="flex items-center justify-center rounded p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive">
@@ -517,7 +517,7 @@ function WeekCard({ week, exercises, onUpdate, onSetActive, onClearActive, onAdd
         <input
           key={`week-name:${week.id}:${week.name ?? ""}`}
           defaultValue={week.name ?? ""} placeholder="Viikon nimi (valinnainen)…"
-          className="h-[28px] flex-1 rounded border border-transparent bg-transparent px-2 text-[13.5px] text-foreground outline-none focus:border-border focus:bg-background"
+          className="h-[28px] min-w-0 flex-1 rounded border border-transparent bg-transparent px-2 text-[13.5px] text-foreground outline-none focus:border-border focus:bg-background"
           onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
           onBlur={(e) => { const v = e.target.value.trim() || null; if (v !== week.name) onUpdate({ name: v }); }}
         />
@@ -538,16 +538,16 @@ function WeekCard({ week, exercises, onUpdate, onSetActive, onClearActive, onAdd
               className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1 text-[12px] font-semibold text-foreground transition-colors hover:border-emerald-500/50 hover:bg-emerald-500/10 hover:text-emerald-600"
             >
               <Circle className="h-3 w-3 text-muted-foreground" />
-              Aseta aktiiviseksi
+              <span className="hidden md:inline">Aseta aktiiviseksi</span>
             </button>
           )}
           <button type="button" onClick={onDuplicate}
             className="inline-flex items-center gap-1 rounded px-2 py-1 text-[12px] font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
-            <Copy className="h-3 w-3" /> Monista
+            <Copy className="h-3 w-3" /><span className="hidden md:inline">Monista</span>
           </button>
           <button type="button" onClick={onAddWorkout}
             className="inline-flex items-center gap-1 rounded px-2 py-1 text-[12px] font-semibold text-primary transition-colors hover:bg-primary/10">
-            <Plus className="h-3 w-3" /> Treeni
+            <Plus className="h-3 w-3" /><span className="hidden md:inline">Treeni</span>
           </button>
           <button type="button"
             onClick={() => setDeleteConfirm(true)}
@@ -701,12 +701,12 @@ function BlockCard({ block, exercises, onUpdate, onDelete, onAddWeek, onDuplicat
           </div>
           <div className="flex shrink-0 items-center gap-1 mt-1">
             <button type="button" onClick={onDuplicate}
-              className="inline-flex items-center gap-1 rounded px-2.5 py-1 text-[13px] font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
-              <Copy className="h-3.5 w-3.5" /> Monista
+              className="inline-flex items-center gap-1 rounded px-2 py-1 text-[13px] font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground md:px-2.5">
+              <Copy className="h-3.5 w-3.5" /><span className="hidden md:inline">Monista</span>
             </button>
             <button type="button" onClick={onAddWeek}
-              className="inline-flex items-center gap-1 rounded px-2.5 py-1 text-[13px] font-semibold text-primary transition-colors hover:bg-primary/10">
-              <Plus className="h-3 w-3" /> Viikko
+              className="inline-flex items-center gap-1 rounded px-2 py-1 text-[13px] font-semibold text-primary transition-colors hover:bg-primary/10 md:px-2.5">
+              <Plus className="h-3 w-3" /><span className="hidden md:inline">Viikko</span>
             </button>
             <button type="button"
               onClick={() => setDeleteConfirm(true)}

@@ -43,9 +43,9 @@ export function AppShell({
       </aside>
 
       {/* Main */}
-      <div className="flex min-h-dvh flex-1 flex-col">
+      <div className="flex h-dvh flex-1 flex-col md:h-auto md:min-h-dvh">
         {/* Mobile top header */}
-        <header className="flex flex-col border-b md:hidden" style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 8px)" }}>
+        <header className="flex shrink-0 flex-col border-b md:hidden" style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 8px)" }}>
           <div className="flex items-center justify-between px-4 pb-2">
             <Link href="/" prefetch>
               <Image src="/fs%20collab.png" alt="fs collab" width={140} height={44} className="logo-adaptive" style={{ objectFit: "contain" }} />
@@ -66,7 +66,7 @@ export function AppShell({
           </div>
         </header>
         {/* Desktop top header */}
-        <header className="hidden h-14 items-center justify-between border-b px-4 md:flex md:px-6">
+        <header className="hidden h-14 shrink-0 items-center justify-between border-b px-4 md:flex md:px-6">
           <div className="ml-auto flex items-center gap-1">
             {rightSlot}
             <ThemeToggle />
@@ -82,10 +82,10 @@ export function AppShell({
           </div>
         </header>
         <div className="relative h-0 z-30"><SyncBar /></div>
-        <main className="flex-1 md:pb-0" style={{ paddingBottom: "calc(80px + env(safe-area-inset-bottom, 0px))" }}>{children}</main>
+        <main className="flex-1 overflow-y-auto md:overflow-visible md:pb-0">{children}</main>
 
-        {/* Mobile bottom nav */}
-        <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t bg-background md:hidden" style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
+        {/* Mobile bottom nav — not fixed, stays at bottom of h-dvh column */}
+        <nav className="shrink-0 flex border-t bg-background md:hidden" style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
           {nav.map((n) => (
             <NavLink key={n.href} {...n} variant={variant} />
           ))}
