@@ -283,8 +283,21 @@ export function MessagesView({ userId, initialThreadId, layout = "client" }: { u
   }
 
   // ─── Client layout ───────────────────────────────────────────────────────────
+  const repaintRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = repaintRef.current;
+    if (!el) return;
+    // After page-transition animation completes (~260ms), force iOS Safari repaint
+    const t = setTimeout(() => {
+      if (!el) return;
+      el.style.opacity = "0.9999";
+      requestAnimationFrame(() => { if (el) el.style.opacity = ""; });
+    }, 320);
+    return () => clearTimeout(t);
+  }, []);
+
   return (
-    <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden", width: "100%", WebkitTransform: "translateZ(0)", transform: "translateZ(0)" }}>
+    <div ref={repaintRef} style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden", width: "100%" }}>
       {/* Header */}
       {otherProfile ? (
         <div style={{
