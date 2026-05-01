@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useRef, useState, useEffect, useTransition } from "react";
-import { House, CalendarDots, Trophy, ClockCounterClockwise, ChatCircle, Sun, Moon, SignOut, PencilSimple, CaretDown } from "@phosphor-icons/react";
+import { House, CalendarDots, TrendUp, ClockCounterClockwise, ChatCircle, Sun, Moon, SignOut, PencilSimple, CaretDown } from "@phosphor-icons/react";
 import { useTheme } from "next-themes";
 import { SyncBar } from "@/components/offline/sync-bar";
 import { useWorkoutPrefetch } from "@/hooks/use-workout-prefetch";
@@ -16,7 +16,7 @@ import type { ReactNode } from "react";
 const NAV = [
   { href: "/client/dashboard", label: "Koti",       Icon: House },
   { href: "/client/ohjelma",   label: "Ohjelma",    Icon: CalendarDots },
-  { href: "/client/progress",  label: "Ennätykset", Icon: Trophy },
+  { href: "/client/progress",  label: "Gains",      Icon: TrendUp },
   { href: "/client/history",   label: "Historia",   Icon: ClockCounterClockwise },
   { href: "/client/messages",  label: "Viestit",    Icon: ChatCircle },
 ] as const;
@@ -656,6 +656,8 @@ export function ClientShell({
             background: "var(--c-surface)",
             flexShrink: 0,
             paddingBottom: "env(safe-area-inset-bottom, 0px)",
+            position: "relative",
+            overflow: "visible",
           }}
         >
           {NAV.map(({ href, label, Icon }) => {
@@ -691,11 +693,11 @@ export function ClientShell({
                     }}
                   />
                 )}
-                <Icon
+                {Icon && <Icon
                   size={24}
                   weight={active ? "fill" : "regular"}
                   color={active ? "var(--c-pink)" : "var(--c-text-muted)"}
-                />
+                />}
                 <span style={{ fontSize: 10, fontWeight: active ? 700 : 400, letterSpacing: "0.2px", color: active ? "var(--c-pink)" : "var(--c-text-subtle)" }}>
                   {label}
                 </span>
