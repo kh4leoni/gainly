@@ -412,6 +412,21 @@ export function ProgressView({
                     </div>
                   );
                 })}
+
+                {/* Competition total */}
+                {(() => {
+                  const thirds = BIG_THREE.map(({ key }) => {
+                    const e1rm = bigThreeE1rm[key];
+                    return e1rm != null ? attempts(e1rm, ATTEMPT_MODES[attemptMode].pcts)[2] ?? null : null;
+                  });
+                  const total = thirds.every(v => v != null) ? thirds.reduce((s, v) => s! + v!, 0) : null;
+                  return total != null ? (
+                    <div style={{ background: "var(--c-surface)", border: "1px solid var(--c-border)", borderRadius: 16, padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                      <div style={{ fontSize: 14, fontWeight: 700 }}>Yhteistulos (kilpailu)</div>
+                      <div style={{ fontSize: 22, fontWeight: 800, color: "var(--c-pink)" }}>{total} kg</div>
+                    </div>
+                  ) : null;
+                })()}
               </div>
             </div>
           </div>
