@@ -480,11 +480,9 @@ export function ClientShell({
     const prev = dirPrevRef.current;
     const prevIdx = navIndex(prev);
     const currIdx = navIndex(animKey);
-    dirRef.current = animKey.startsWith("/client/messages")
-      ? "c-msg-in"
-      : prevIdx !== -1 && currIdx !== -1 && prevIdx !== currIdx
-        ? currIdx > prevIdx ? "c-slide-right" : "c-slide-left"
-        : "c-ani";
+    dirRef.current = prevIdx !== -1 && currIdx !== -1 && prevIdx !== currIdx
+      ? currIdx > prevIdx ? "c-slide-right" : "c-slide-left"
+      : "c-ani";
     dirPrevRef.current = animKey;
   }
 
