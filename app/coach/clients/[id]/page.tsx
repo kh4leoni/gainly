@@ -6,6 +6,7 @@ import { avatarColor } from "@/lib/utils";
 import { OhjelmoiButton } from "@/components/program-builder/ohjelmoi-button";
 import { ClientTrainingView } from "@/components/client-detail/client-training-view";
 import { RecordsSection } from "@/components/client-detail/pr-sections";
+import { MeasurementChart } from "@/components/client/measurement-chart";
 import { MessageSquare, ChevronLeft, Check, Zap, LayoutGrid, Scale, TrendingUp, TrendingDown, Minus } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -203,9 +204,12 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
           </div>
         )}
 
+        {/* Measurement charts */}
+        {(bwHistory.length > 0 || waistHistory.length > 0) && (
+        <div className="grid grid-cols-2 gap-3">
         {/* Bodyweight card */}
         {bwHistory.length > 0 && (
-          <div className="card-enter card-enter-5 rounded-2xl border bg-card overflow-hidden">
+          <div className="card-enter card-enter-5 rounded-2xl border bg-card overflow-hidden min-w-0">
             <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b">
               <div className="flex items-center gap-2">
                 <Scale className="h-4 w-4 text-muted-foreground" />
@@ -227,6 +231,15 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
                 )}
               </div>
             </div>
+            <div className="px-4 pt-3 pb-1">
+              <MeasurementChart
+                data={bwHistory.map((e) => ({ value: e.weight_kg, logged_at: e.logged_at }))}
+                unit="kg"
+                color="#818cf8"
+                emptyText=""
+                height={110}
+              />
+            </div>
             <div className="divide-y max-h-52 overflow-y-auto">
               {bwHistory.map((entry, i) => (
                 <div key={i} className="flex items-center justify-between px-4 py-2.5">
@@ -244,7 +257,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
 
         {/* Waist card */}
         {waistHistory.length > 0 && (
-          <div className="card-enter card-enter-6 rounded-2xl border bg-card overflow-hidden">
+          <div className="card-enter card-enter-6 rounded-2xl border bg-card overflow-hidden min-w-0">
             <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b">
               <div className="flex items-center gap-2">
                 <Scale className="h-4 w-4 text-muted-foreground" />
@@ -266,6 +279,15 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
                 )}
               </div>
             </div>
+            <div className="px-4 pt-3 pb-1">
+              <MeasurementChart
+                data={waistHistory.map((e) => ({ value: e.waist_cm, logged_at: e.logged_at }))}
+                unit="cm"
+                color="#34d399"
+                emptyText=""
+                height={110}
+              />
+            </div>
             <div className="divide-y max-h-52 overflow-y-auto">
               {waistHistory.map((entry, i) => (
                 <div key={i} className="flex items-center justify-between px-4 py-2.5">
@@ -279,6 +301,8 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
               ))}
             </div>
           </div>
+        )}
+        </div>
         )}
 
         <ClientTrainingView
