@@ -1,11 +1,8 @@
-const S = "var(--c-surface2)";
-const S2 = "var(--c-surface3)";
-
 function Bone({ w = "100%", h = 14, r = 8, style }: { w?: string | number; h?: number; r?: number; style?: React.CSSProperties }) {
   return (
     <div
-      className="c-pulse"
-      style={{ width: w, height: h, borderRadius: r, background: S, flexShrink: 0, ...style }}
+      className="c-shimmer"
+      style={{ width: w, height: h, borderRadius: r, flexShrink: 0, ...style }}
     />
   );
 }
@@ -147,7 +144,7 @@ function ProgressSkeleton() {
         </div>
         {/* header row */}
         <div style={{ display: "grid", gridTemplateColumns: "40px 1fr 1fr", gap: 8, marginBottom: 10 }}>
-          {[1, 2, 3].map((i) => <Bone key={i} h={9} style={{ background: S2 }} />)}
+          {[1, 2, 3].map((i) => <Bone key={i} h={9} />)}
         </div>
         {[1, 2, 3, 4, 5].map((i) => (
           <div key={i} style={{ display: "grid", gridTemplateColumns: "40px 1fr 1fr", gap: 8, marginBottom: 8 }}>

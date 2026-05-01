@@ -20,11 +20,27 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   const pendingRef = useRef(pendingHref);
   pendingRef.current = pendingHref;
 
+  // Clear when pathname changes (normal nav completion)
   useEffect(() => {
     if (pendingRef.current !== null) {
       setPendingHref(null);
     }
   }, [pathname]);
+
+  // Clear when pendingHref already matches current pathname (clicking active tab)
+  useEffect(() => {
+    if (pendingHref !== null && pendingHref === pathname) {
+      setPendingHref(null);
+    }
+  }, [pendingHref, pathname]);
+
+  // Safety fallback: always clear after 3s (handles cancelled/failed navigations
+  // and double-clicks where React dedupes the setState call)
+  useEffect(() => {
+    if (pendingHref === null) return;
+    const t = setTimeout(() => setPendingHref(null), 3000);
+    return () => clearTimeout(t);
+  }, [pendingHref]);
 
   return (
     <NavContext.Provider value={{ pendingHref, setPendingHref }}>
