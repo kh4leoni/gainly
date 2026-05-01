@@ -280,13 +280,13 @@ export function ExerciseLibrary() {
   return (
     <div className="p-4 md:p-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Liikkeet</h1>
+        <h1 className="card-enter text-2xl font-semibold">Liikkeet</h1>
         <Button className="btn-spring" onClick={() => setCreateOpen(true)}>
           <Plus className="h-4 w-4" /> Lisää liike
         </Button>
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center gap-3">
+      <div className="card-enter card-enter-1 mt-4 flex flex-wrap items-center gap-3">
         <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -355,7 +355,7 @@ export function ExerciseLibrary() {
       </div>
 
       <div
-        className="mt-4 grid gap-2"
+        className="card-enter card-enter-2 mt-4 grid gap-2"
         style={{ gridTemplateColumns: "repeat(auto-fill, 157px)", gridAutoRows: "82px" }}
       >
         {filtered.map((e) => {

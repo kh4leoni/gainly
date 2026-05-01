@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 export function LoginForm({ next }: { next?: string }) {
   const router = useRouter();
   const [serverError, setServerError] = useState<string | null>(null);
+  const [isRedirecting, setIsRedirecting] = useState(false);
   const {
     register,
     handleSubmit,
@@ -28,6 +29,7 @@ export function LoginForm({ next }: { next?: string }) {
       setServerError(error.message);
       return;
     }
+    setIsRedirecting(true);
     router.push(next ?? "/");
     router.refresh();
   });
@@ -53,8 +55,8 @@ export function LoginForm({ next }: { next?: string }) {
 
       {serverError && <p className="text-sm text-destructive">{serverError}</p>}
 
-      <Button type="submit" disabled={isSubmitting} className="w-full">
-        {isSubmitting ? "Kirjaudutaan…" : "Kirjaudu sisään"}
+      <Button type="submit" disabled={isSubmitting || isRedirecting} className="w-full">
+        {isSubmitting || isRedirecting ? "Kirjaudutaan…" : "Kirjaudu sisään"}
       </Button>
     </form>
   );

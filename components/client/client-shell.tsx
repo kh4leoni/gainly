@@ -9,6 +9,7 @@ import { useTheme } from "next-themes";
 import { SyncBar } from "@/components/offline/sync-bar";
 import { useWorkoutPrefetch } from "@/hooks/use-workout-prefetch";
 import { logBodyweight, logWaist, updateProfileName } from "@/app/client/actions";
+import { usePendingNav } from "@/lib/nav-context";
 import type { ReactNode } from "react";
 
 const NAV = [
@@ -463,6 +464,7 @@ export function ClientShell({
   children: ReactNode;
 }) {
   const pathname = usePathname();
+  const { pendingHref, setPendingHref } = usePendingNav();
   const prevRef = useRef<string | undefined>(undefined);
   const dirRef = useRef(typeof window !== "undefined" && window.location.pathname.startsWith("/client/messages") ? "c-msg-in" : "c-ani");
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -634,11 +636,13 @@ export function ClientShell({
           }}
         >
           {NAV.map(({ href, label, Icon }) => {
-            const active = pathname.startsWith(href);
+            const checkHref = pendingHref ?? pathname;
+            const active = checkHref.startsWith(href);
             return (
               <Link
                 key={href}
                 href={href}
+                onClick={() => setPendingHref(href)}
                 style={{
                   flex: 1,
                   display: "flex",

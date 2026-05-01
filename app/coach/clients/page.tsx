@@ -69,17 +69,17 @@ export default async function ClientsPage() {
   return (
     <div className="p-4 md:p-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Asiakkaat</h1>
-        <InviteClientButton coachId={user.id} />
+        <h1 className="card-enter text-2xl font-semibold">Asiakkaat</h1>
+        <div className="card-enter card-enter-1"><InviteClientButton coachId={user.id} /></div>
       </div>
 
       {rows.length === 0 ? (
-        <div className="mt-16 flex flex-col items-center gap-3 text-center text-muted-foreground">
+        <div className="card-enter card-enter-2 mt-16 flex flex-col items-center gap-3 text-center text-muted-foreground">
           <UserRound className="h-12 w-12 opacity-20" />
           <p className="text-sm">Ei vielä linkitettyjä asiakkaita.</p>
         </div>
       ) : (
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="card-enter card-enter-2 mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {rows.map((r: any) => {
             const profile = r.profiles;
             const name: string = profile.full_name ?? "Unnamed";
