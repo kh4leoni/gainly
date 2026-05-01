@@ -611,22 +611,36 @@ export function ClientShell({
 
         {/* ── Content ── */}
         <main style={{ flex: 1, minHeight: 0, position: "relative", overflow: "hidden" }}>
+          {/* Outer: slide animation fires immediately on click, empty during transit */}
           <div
             key={animKey}
             className={dir}
             style={{
               position: "absolute",
               inset: 0,
-              display: "flex",
-              flexDirection: "column",
-              overflowY: isMessages ? "hidden" : "auto",
-              overflowX: "hidden",
-              overscrollBehavior: "contain",
+              background: "var(--c-bg)",
             }}
           >
-            <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: isMessages ? undefined : "100%" }}>
-              {children}
-            </div>
+            {/* Inner: fades in when RSC content arrives (pendingHref cleared) */}
+            {!pendingHref && (
+              <div
+                key={pathname}
+                className="c-fade"
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  display: "flex",
+                  flexDirection: "column",
+                  overflowY: isMessages ? "hidden" : "auto",
+                  overflowX: "hidden",
+                  overscrollBehavior: "contain",
+                }}
+              >
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: isMessages ? undefined : "100%" }}>
+                  {children}
+                </div>
+              </div>
+            )}
           </div>
         </main>
 
