@@ -64,7 +64,7 @@ export function AppShell({
           </div>
         </header>
         <div className="relative h-0 z-30"><SyncBar /></div>
-        <main className="flex-1 overflow-y-auto">{children}</main>
+        <main className="flex-1 overflow-y-auto flex flex-col">{children}</main>
 
         {/* Mobile bottom nav — not fixed, stays at bottom of h-dvh column */}
         <nav className="shrink-0 flex border-t bg-background md:hidden" style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
