@@ -48,17 +48,22 @@ html.light body:has(.client-app) { background: #f5f4f8; }
   --c-text: #f0eef5;
   --c-text-muted: rgba(240,238,245,0.48);
   --c-text-subtle: rgba(240,238,245,0.24);
+  --shimmer-base: #1e1e24;
+  --shimmer-shine: #2c2c34;
   color: var(--c-text);
   background: var(--c-bg);
   font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
   color-scheme: dark;
 }
+html.light .client-app { --shimmer-base: #e2e0ea; --shimmer-shine: #f5f4f8; }
 @keyframes c-fadeUp        { from{opacity:0;transform:translate3d(0,10px,0)} to{opacity:1;transform:translate3d(0,0,0)} }
 @keyframes c-fadeDown      { from{opacity:1;transform:translate3d(0,0,0)} to{opacity:0;transform:translate3d(0,8px,0)} }
 @keyframes c-fadeIn        { from{opacity:0} to{opacity:1} }
 @keyframes c-slideInRight  { from{transform:translate3d(100%,0,0)}  to{transform:translate3d(0,0,0)} }
 @keyframes c-slideInLeft   { from{transform:translate3d(-100%,0,0)} to{transform:translate3d(0,0,0)} }
 @keyframes c-pulse         { 0%,100%{opacity:1} 50%{opacity:0.5} }
+@keyframes shimmer         { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
+.c-shimmer { background:linear-gradient(90deg,var(--shimmer-base) 0%,var(--shimmer-base) 35%,var(--shimmer-shine) 50%,var(--shimmer-base) 65%,var(--shimmer-base) 100%); background-size:300% 100%; animation:shimmer 1.5s ease-in-out infinite; }
 @keyframes spin            { to{transform:rotate(360deg)} }
 @keyframes quote-in-right  { from{opacity:0;transform:translateX(64px)}  to{opacity:1;transform:none} }
 @keyframes quote-in-left   { from{opacity:0;transform:translateX(-64px)} to{opacity:1;transform:none} }
@@ -281,6 +286,10 @@ body:has(.client-app) {
     --block-foreground: 330 100% 90%;
     --block-bg: 330 20% 9%;
   }
+
+  /* Shimmer skeleton vars — coach (Tailwind light/dark) */
+  :root { --shimmer-base: #ebe9f0; --shimmer-shine: #f8f7fb; }
+  .dark { --shimmer-base: #1e1e23; --shimmer-shine: #2c2c34; }
 
   * { @apply border-border; }
   input[type="number"]::-webkit-inner-spin-button,

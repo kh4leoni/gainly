@@ -2,10 +2,13 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { NavLink } from "./nav-link";
 import { CoachSettingsButton } from "./coach-settings";
 import { SyncBar } from "@/components/offline/sync-bar";
+import { usePendingNav } from "@/lib/nav-context";
+import { CoachSkeleton } from "./coach-skeleton";
 
 type NavItem = { href: string; icon: ReactNode; label: string };
 type Me = { id: string; full_name: string | null; email?: string | null } | null;
@@ -25,6 +28,10 @@ export function AppShell({
   variant?: "athlete" | "coach";
   me?: Me;
 }) {
+  const pathname = usePathname();
+  const { pendingHref } = usePendingNav();
+  const coachPending = pendingHref?.startsWith("/coach/") ? pendingHref : null;
+
   return (
     <div className="min-h-dvh md:flex">
       {/* Sidebar (md+) */}
@@ -64,7 +71,15 @@ export function AppShell({
           </div>
         </header>
         <div className="relative h-0 z-30"><SyncBar /></div>
-        <main className="flex-1 overflow-y-auto">{children}</main>
+        <main className="flex-1 overflow-y-auto relative">
+          {coachPending ? (
+            <CoachSkeleton href={coachPending} />
+          ) : (
+            <div key={pathname} className="c-fade min-h-full">
+              {children}
+            </div>
+          )}
+        </main>
 
         {/* Mobile bottom nav — not fixed, stays at bottom of h-dvh column */}
         <nav className="shrink-0 flex border-t bg-background md:hidden" style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
