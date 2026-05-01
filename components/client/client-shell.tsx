@@ -465,8 +465,28 @@ export function ClientShell({
 }) {
   const pathname = usePathname();
   const { pendingHref, setPendingHref } = usePendingNav();
-  const prevRef = useRef<string | undefined>(undefined);
+
+  // animKey: changes immediately on click (pendingHref), stays fixed when content arrives
+  // so animation fires at click time and doesn't double-fire when RSC response lands
+  const animKeyRef = useRef(pathname);
+  const animKey = pendingHref ?? animKeyRef.current;
+  if (pendingHref) animKeyRef.current = pendingHref;
+
   const dirRef = useRef(typeof window !== "undefined" && window.location.pathname.startsWith("/client/messages") ? "c-msg-in" : "c-ani");
+  const dirPrevRef = useRef(pathname);
+
+  if (dirPrevRef.current !== animKey) {
+    const prev = dirPrevRef.current;
+    const prevIdx = navIndex(prev);
+    const currIdx = navIndex(animKey);
+    dirRef.current = animKey.startsWith("/client/messages")
+      ? "c-msg-in"
+      : prevIdx !== -1 && currIdx !== -1 && prevIdx !== currIdx
+        ? currIdx > prevIdx ? "c-slide-right" : "c-slide-left"
+        : "c-ani";
+    dirPrevRef.current = animKey;
+  }
+
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsClosing, setSettingsClosing] = useState(false);
   const settingsRef = useRef<HTMLDivElement>(null);
@@ -486,21 +506,6 @@ export function ClientShell({
     document.addEventListener("mousedown", handle);
     return () => document.removeEventListener("mousedown", handle);
   }, [settingsOpen, settingsClosing]);
-
-  if (prevRef.current !== pathname) {
-    const prev = prevRef.current;
-    if (prev !== undefined) {
-      const prevIdx = navIndex(prev);
-      const currIdx = navIndex(pathname);
-      const next = pathname.startsWith("/client/messages")
-        ? "c-msg-in"
-        : prevIdx !== -1 && currIdx !== -1 && prevIdx !== currIdx
-          ? currIdx > prevIdx ? "c-slide-right" : "c-slide-left"
-          : "c-ani";
-      dirRef.current = next;
-    }
-    prevRef.current = pathname;
-  }
 
   const dir = dirRef.current;
   const isMessages = pathname.startsWith("/client/messages");
@@ -607,7 +612,7 @@ export function ClientShell({
         {/* ── Content ── */}
         <main style={{ flex: 1, minHeight: 0, position: "relative", overflow: "hidden" }}>
           <div
-            key={pathname}
+            key={animKey}
             className={dir}
             style={{
               position: "absolute",
