@@ -71,11 +71,11 @@ export function AppShell({
           </div>
         </header>
         <div className="relative h-0 z-30"><SyncBar /></div>
-        <main className="flex-1 overflow-y-auto relative">
+        <main className="flex-1 overflow-y-auto relative flex flex-col">
           {coachPending ? (
             <CoachSkeleton href={coachPending} />
           ) : (
-            <div key={pathname} className="c-fade min-h-full">
+            <div key={pathname} className="c-fade flex-1 flex flex-col">
               {children}
             </div>
           )}
