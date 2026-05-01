@@ -10,6 +10,7 @@ import { SyncBar } from "@/components/offline/sync-bar";
 import { useWorkoutPrefetch } from "@/hooks/use-workout-prefetch";
 import { logBodyweight, logWaist, updateProfileName } from "@/app/client/actions";
 import { usePendingNav } from "@/lib/nav-context";
+import { RouteSkeleton } from "@/components/client/route-skeleton";
 import type { ReactNode } from "react";
 
 const NAV = [
@@ -611,7 +612,7 @@ export function ClientShell({
 
         {/* ── Content ── */}
         <main style={{ flex: 1, minHeight: 0, position: "relative", overflow: "hidden" }}>
-          {/* Outer: slide animation fires immediately on click, empty during transit */}
+          {/* Outer: slide animation fires immediately on click */}
           <div
             key={animKey}
             className={dir}
@@ -619,10 +620,15 @@ export function ClientShell({
               position: "absolute",
               inset: 0,
               background: "var(--c-bg)",
+              display: "flex",
+              flexDirection: "column",
             }}
           >
-            {/* Inner: fades in when RSC content arrives (pendingHref cleared) */}
-            {!pendingHref && (
+            {pendingHref ? (
+              /* Skeleton shown while RSC is in-flight */
+              <RouteSkeleton href={pendingHref} />
+            ) : (
+              /* Real content fades in when RSC arrives */
               <div
                 key={pathname}
                 className="c-fade"
