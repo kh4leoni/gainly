@@ -97,7 +97,7 @@ export function MessagesView({ userId, initialThreadId, layout = "client" }: { u
     }
 
     return (
-      <div style={{ flex: 1, display: "flex", overflow: "hidden", height: "100%", background: "hsl(var(--background))" }}>
+      <div className="card-enter" style={{ flex: 1, display: "flex", overflow: "hidden", height: "100%", background: "hsl(var(--background))" }}>
 
         {/* ── Thread list sidebar ── */}
         {showSidebar && <div style={{

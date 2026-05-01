@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { usePendingNav } from "@/lib/nav-context";
 
 export function NavLink({
   href,
@@ -16,12 +18,15 @@ export function NavLink({
   variant?: "athlete" | "coach";
 }) {
   const pathname = usePathname();
-  const active = pathname === href || pathname.startsWith(href + "/");
+  const { pendingHref, setPendingHref } = usePendingNav();
+  const checkHref = pendingHref ?? pathname;
+  const active = checkHref === href || checkHref.startsWith(href + "/");
   const isAthlete = variant === "athlete";
 
   return (
-    <a
+    <Link
       href={href}
+      onClick={() => setPendingHref(href)}
       className={cn(
         "group relative overflow-hidden",
         isAthlete && "icon-bounce",
@@ -45,6 +50,6 @@ export function NavLink({
       />
       <span className="relative">{icon}</span>
       <span className="relative">{label}</span>
-    </a>
+    </Link>
   );
 }
