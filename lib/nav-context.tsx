@@ -20,6 +20,13 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   const pendingRef = useRef(pendingHref);
   pendingRef.current = pendingHref;
 
+  // Save last app path for PWA resume
+  useEffect(() => {
+    if (pathname.startsWith("/client/") || pathname.startsWith("/coach/")) {
+      localStorage.setItem("gainly_last_path", pathname);
+    }
+  }, [pathname]);
+
   // Clear when pathname changes (normal nav completion)
   useEffect(() => {
     if (pendingRef.current !== null) {

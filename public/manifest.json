@@ -2,7 +2,7 @@
   "name": "Gainly",
   "short_name": "Gainly",
   "description": "Digital coaching platform for strength training",
-  "start_url": "/",
+  "start_url": "/resume",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
