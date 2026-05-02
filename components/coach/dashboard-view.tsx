@@ -277,7 +277,7 @@ export function CoachDashboardView() {
           icon={<MessageCircle size={18} />}
           value={data.unreadCount}
           label="Uusia viestejä"
-          sub="vastaamatta"
+          sub="lukemattomia"
           dotColor="#8b5cf6"
           href="/coach/messages"
           className="card-enter card-enter-5"

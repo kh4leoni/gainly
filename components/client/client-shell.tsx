@@ -456,12 +456,14 @@ export function ClientShell({
   coach,
   bwHistory = [],
   waistHistory = [],
+  unreadMessages = 0,
   children,
 }: {
   me: Me;
   coach?: Coach;
   bwHistory?: MeasurementEntry[];
   waistHistory?: MeasurementEntry[];
+  unreadMessages?: number;
   children: ReactNode;
 }) {
   const pathname = usePathname();
@@ -693,11 +695,24 @@ export function ClientShell({
                     }}
                   />
                 )}
-                {Icon && <Icon
-                  size={24}
-                  weight={active ? "fill" : "regular"}
-                  color={active ? "var(--c-pink)" : "var(--c-text-muted)"}
-                />}
+                <span style={{ position: "relative", display: "inline-flex" }}>
+                  {Icon && <Icon
+                    size={24}
+                    weight={active ? "fill" : "regular"}
+                    color={active ? "var(--c-pink)" : "var(--c-text-muted)"}
+                  />}
+                  {href === "/client/messages" && unreadMessages > 0 && (
+                    <span style={{
+                      position: "absolute", top: -4, right: -6,
+                      minWidth: 16, height: 16, borderRadius: 8,
+                      background: "#FF1D8C", color: "#fff",
+                      fontSize: 10, fontWeight: 700, lineHeight: "16px",
+                      textAlign: "center", padding: "0 3px",
+                    }}>
+                      {unreadMessages > 99 ? "99+" : unreadMessages}
+                    </span>
+                  )}
+                </span>
                 <span style={{ fontSize: 10, fontWeight: active ? 700 : 400, letterSpacing: "0.2px", color: active ? "var(--c-pink)" : "var(--c-text-subtle)" }}>
                   {label}
                 </span>

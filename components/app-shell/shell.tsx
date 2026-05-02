@@ -10,7 +10,7 @@ import { SyncBar } from "@/components/offline/sync-bar";
 import { usePendingNav } from "@/lib/nav-context";
 import { CoachSkeleton } from "./coach-skeleton";
 
-type NavItem = { href: string; icon: ReactNode; label: string };
+type NavItem = { href: string; icon: ReactNode; label: string; badge?: number };
 type Me = { id: string; full_name: string | null; email?: string | null } | null;
 
 export function AppShell({

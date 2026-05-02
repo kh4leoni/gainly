@@ -11,11 +11,13 @@ export function NavLink({
   icon,
   label,
   variant = "coach",
+  badge = 0,
 }: {
   href: string;
   icon: ReactNode;
   label: string;
   variant?: "athlete" | "coach";
+  badge?: number;
 }) {
   const pathname = usePathname();
   const { pendingHref, setPendingHref } = usePendingNav();
@@ -48,7 +50,20 @@ export function NavLink({
           transition: "opacity 280ms cubic-bezier(0.34, 1.56, 0.64, 1)",
         }}
       />
-      <span className="relative">{icon}</span>
+      <span className="relative">
+        {icon}
+        {badge > 0 && (
+          <span style={{
+            position: "absolute", top: -4, right: -6,
+            minWidth: 16, height: 16, borderRadius: 8,
+            background: "#FF1D8C", color: "#fff",
+            fontSize: 10, fontWeight: 700, lineHeight: "16px",
+            textAlign: "center", padding: "0 3px",
+          }}>
+            {badge > 99 ? "99+" : badge}
+          </span>
+        )}
+      </span>
       <span className="relative">{label}</span>
     </Link>
   );
