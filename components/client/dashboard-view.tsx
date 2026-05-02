@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { getNextWorkout, getWeeklyVolume, getWeeklyCompletion, getLatestPRs } from "@/lib/queries/workouts";
 import { usePrToast } from "@/hooks/use-pr-toast";
 import { ExerciseInfoDialog } from "@/components/client/exercise-info-dialog";
+import { usePendingNav } from "@/lib/nav-context";
 
 const FI_DAYS = ["sunnuntai","maanantai","tiistai","keskiviikko","torstai","perjantai","lauantai"];
 
@@ -201,6 +202,7 @@ function QuoteContent({ text }: { text: string }) {
 
 export function ClientDashboardView({ clientId, firstName }: { clientId: string; firstName: string | null }) {
   const supabase = createClient();
+  const { setPendingHref } = usePendingNav();
   usePrToast(clientId);
 
   const nextWorkout = useQuery({
@@ -331,6 +333,7 @@ export function ClientDashboardView({ clientId, firstName }: { clientId: string;
 
           <Link
             href={`/client/workout/${workout.id}`}
+            onClick={() => setPendingHref(`/client/workout/${workout.id}`)}
             style={{
               display: "block",
               width: "100%",

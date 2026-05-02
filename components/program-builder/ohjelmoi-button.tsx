@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { createProgram } from "@/lib/queries/programs";
 import { Button } from "@/components/ui/button";
 import { Pencil } from "lucide-react";
+import { usePendingNav } from "@/lib/nav-context";
 
 export function OhjelmoiButton({
   clientId,
@@ -18,11 +19,13 @@ export function OhjelmoiButton({
 }) {
   const router = useRouter();
   const [working, setWorking] = useState(false);
+  const { setPendingHref } = usePendingNav();
 
   async function handleOhjelmoi() {
     if (existingProgramId) {
-      router.push(`/coach/client-programs/${existingProgramId}/edit`);
-      router.refresh();
+      const href = `/coach/client-programs/${existingProgramId}/edit`;
+      setPendingHref(href);
+      router.push(href);
       return;
     }
     setWorking(true);
@@ -41,7 +44,9 @@ export function OhjelmoiButton({
         _client: clientId,
       });
       if (error) throw error;
-      router.push(`/coach/client-programs/${prog.id}/edit`);
+      const href = `/coach/client-programs/${prog.id}/edit`;
+      setPendingHref(href);
+      router.push(href);
       router.refresh();
     } catch (e) {
       console.error(e);
