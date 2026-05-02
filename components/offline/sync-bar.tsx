@@ -5,15 +5,18 @@ import { useUnsyncedCount } from "@/lib/offline/reads";
 import { subscribeSyncState, syncNow } from "@/lib/offline/sync";
 
 const MIN_RUNNING_MS = 1000;
+const SYNCED_LINGER_MS = 2000;
 const ENTER_MS = 320;
 const EXIT_MS = 200;
 
 export function SyncBar() {
   const pending = useUnsyncedCount();
   const [running, setRunning] = useState(false);
+  const [synced, setSynced] = useState(false);
   const [online, setOnline] = useState(true);
   const runningStartRef = useRef<number | null>(null);
   const runningTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const syncedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [rendered, setRendered] = useState(false);
   const [visible, setVisible] = useState(false);
@@ -28,24 +31,32 @@ export function SyncBar() {
     const unsub = subscribeSyncState((s) => {
       if (s.running) {
         runningStartRef.current = Date.now();
+        if (syncedTimerRef.current) clearTimeout(syncedTimerRef.current);
+        setSynced(false);
         setRunning(true);
       } else {
         const elapsed = runningStartRef.current ? Date.now() - runningStartRef.current : MIN_RUNNING_MS;
         const remaining = Math.max(0, MIN_RUNNING_MS - elapsed);
         if (runningTimerRef.current) clearTimeout(runningTimerRef.current);
-        runningTimerRef.current = setTimeout(() => setRunning(false), remaining);
+        runningTimerRef.current = setTimeout(() => {
+          setRunning(false);
+          setSynced(true);
+          if (syncedTimerRef.current) clearTimeout(syncedTimerRef.current);
+          syncedTimerRef.current = setTimeout(() => setSynced(false), SYNCED_LINGER_MS);
+        }, remaining);
       }
     });
     return () => {
       window.removeEventListener("online", on);
       window.removeEventListener("offline", off);
       if (runningTimerRef.current) clearTimeout(runningTimerRef.current);
+      if (syncedTimerRef.current) clearTimeout(syncedTimerRef.current);
       if (exitTimerRef.current) clearTimeout(exitTimerRef.current);
       unsub();
     };
   }, []);
 
-  const shouldShow = (pending ?? 0) > 0 || running || !online;
+  const shouldShow = (pending ?? 0) > 0 || running || synced || !online;
 
   useEffect(() => {
     if (exitTimerRef.current) clearTimeout(exitTimerRef.current);
@@ -61,7 +72,7 @@ export function SyncBar() {
   if (!rendered) return null;
 
   const isOffline = !online;
-  const canTap = !isOffline && !running && (pending ?? 0) > 0;
+  const canTap = !isOffline && !running && !synced && (pending ?? 0) > 0;
 
   const label = isOffline && (pending ?? 0) === 0
     ? "Offline"
@@ -69,7 +80,9 @@ export function SyncBar() {
       ? `${pending} offline`
       : running
         ? "Synkronoidaan…"
-        : `${pending} odottaa`;
+        : synced
+          ? "Synkronoitu"
+          : `${pending} odottaa`;
 
   return (
     <>
@@ -87,14 +100,16 @@ export function SyncBar() {
           gap: 6,
           padding: "6px 12px 6px 8px",
           borderRadius: 999,
-          background: isOffline ? "#1a1a1f" : "#1c1800",
-          border: `1px solid ${isOffline ? "rgba(255,255,255,0.1)" : "rgba(245,166,35,0.35)"}`,
+          background: isOffline ? "#1a1a1f" : synced ? "#0d1f14" : "#1c1800",
+          border: `1px solid ${isOffline ? "rgba(255,255,255,0.1)" : synced ? "rgba(34,197,94,0.4)" : "rgba(245,166,35,0.35)"}`,
           boxShadow: isOffline
             ? "0 2px 12px rgba(0,0,0,0.4)"
-            : "0 2px 12px rgba(245,166,35,0.2)",
+            : synced
+              ? "0 2px 12px rgba(34,197,94,0.2)"
+              : "0 2px 12px rgba(245,166,35,0.2)",
           fontSize: 12,
           fontWeight: 700,
-          color: isOffline ? "rgba(240,238,245,0.5)" : "#F5A623",
+          color: isOffline ? "rgba(240,238,245,0.5)" : synced ? "#22c55e" : "#F5A623",
           cursor: canTap ? "pointer" : "default",
           fontFamily: "inherit",
           transformOrigin: "center",
@@ -113,7 +128,7 @@ export function SyncBar() {
             height: 7,
             borderRadius: "50%",
             flexShrink: 0,
-            background: isOffline ? "#555" : "#F5A623",
+            background: isOffline ? "#555" : synced ? "#22c55e" : "#F5A623",
             animation: running ? "pulse 1.2s ease-in-out infinite" : undefined,
           }}
         />

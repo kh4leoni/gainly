@@ -701,7 +701,7 @@ export function ClientShell({
                     weight={active ? "fill" : "regular"}
                     color={active ? "var(--c-pink)" : "var(--c-text-muted)"}
                   />}
-                  {href === "/client/messages" && unreadMessages > 0 && (
+                  {href === "/client/messages" && unreadMessages > 0 && !pathname.startsWith("/client/messages") && (
                     <span style={{
                       position: "absolute", top: -4, right: -6,
                       minWidth: 16, height: 16, borderRadius: 8,
