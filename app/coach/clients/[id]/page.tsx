@@ -7,8 +7,9 @@ import { OhjelmoiButton } from "@/components/program-builder/ohjelmoi-button";
 import { ClientTrainingView } from "@/components/client-detail/client-training-view";
 import { RecordsSection } from "@/components/client-detail/pr-sections";
 import { MeasurementChart } from "@/components/client/measurement-chart";
-import { KilpailutyokaluCard, matchBigThree } from "@/components/client/kilpailutyokalu-card";
-import type { BigThreeKey } from "@/components/client/kilpailutyokalu-card";
+import { KilpailutyokaluCard } from "@/components/client/kilpailutyokalu-card";
+import { matchBigThree } from "@/lib/powerlifting";
+import type { BigThreeKey } from "@/lib/powerlifting";
 import { MessageSquare, ChevronLeft, Check, Zap, LayoutGrid, Scale, TrendingUp, TrendingDown, Minus } from "lucide-react";
 
 export const dynamic = "force-dynamic";
