@@ -5,8 +5,10 @@ import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { MeasurementChart } from "@/components/client/measurement-chart";
 import { getRecentPRs } from "@/lib/queries/workouts";
-import { derivedRepMax, roundKg, roundTo } from "@/lib/calc/one-rm";
+import { derivedRepMax, roundKg } from "@/lib/calc/one-rm";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { KilpailutyokaluCard, matchBigThree, BIG_THREE, ATTEMPT_MODES } from "@/components/client/kilpailutyokalu-card";
+import type { BigThreeKey } from "@/components/client/kilpailutyokalu-card";
 
 type Exercise = { id: string; name: string };
 type PR = {
@@ -24,36 +26,8 @@ function formatW(w: number | null) {
   return w % 1 === 0 ? `${w}` : `${w.toFixed(1)}`;
 }
 
-
 function latestValue(data: Measurement[]) {
   return data[0]?.value ?? null;
-}
-
-// Attempt pcts: [opener, 2nd, 3rd] relative to e1RM
-// Example e1RM 205kg → Normal: 185-195-205, Conservative: 182.5-192.5-202.5, Risky: 187.5-200-210
-const ATTEMPT_MODES = {
-  conservative: { label: "Turvallinen", pcts: [0.89, 0.94, 0.98] as const },
-  normal:       { label: "Normaali",    pcts: [0.90, 0.955, 1.00] as const },
-  risky:        { label: "Kova riski",  pcts: [0.915, 0.975, 1.03] as const },
-} as const;
-type AttemptMode = keyof typeof ATTEMPT_MODES;
-
-const BIG_THREE = [
-  { key: "squat", label: "Kyykky",         keywords: ["takakyykky", "kyykky"] },
-  { key: "bench", label: "Penkkipunnerrus", keywords: ["penkkipunnerrus"] },
-  { key: "dead",  label: "Maastaveto",      keywords: ["maastaveto"] },
-] as const;
-
-function matchBigThree(name: string) {
-  const n = name.toLowerCase();
-  for (const lift of BIG_THREE) {
-    if (lift.keywords.some((k) => n.includes(k))) return lift.key;
-  }
-  return null;
-}
-
-function attempts(e1rm: number, pcts: readonly [number, number, number]) {
-  return pcts.map((p) => roundTo(e1rm * p, 2.5));
 }
 
 export function ProgressView({
@@ -69,8 +43,6 @@ export function ProgressView({
 }) {
   const supabase = createClient();
   const [tab, setTab] = useState<"ennätykset" | "kehitys" | "voimanosto">("ennätykset");
-  const [attemptMode, setAttemptMode] = useState<AttemptMode>("normal");
-  const [planOpen, setPlanOpen] = useState(false);
   const [selId, setSelId] = useState(exercises[0]?.id ?? "");
   const [online, setOnline] = useState(true);
 
@@ -116,7 +88,7 @@ export function ProgressView({
     .sort((a, b) => b.e1rm - a.e1rm);
 
   // Big three e1RMs from PR data
-  const bigThreeE1rm: Record<string, number | null> = { squat: null, bench: null, dead: null };
+  const bigThreeE1rm: Record<BigThreeKey, number | null> = { squat: null, bench: null, dead: null };
   for (const [exId, e1rm] of topE1rmByExercise.entries()) {
     const name = byExercise.get(exId)!.values().next().value?.exercises?.name ?? "";
     const key = matchBigThree(name);
@@ -338,98 +310,7 @@ export function ProgressView({
           </div>
 
           {/* ── Section 2: Competition attempt planner ── */}
-          <div>
-            <button
-              onClick={() => setPlanOpen(o => !o)}
-              style={{
-                display: "flex", alignItems: "center", justifyContent: "space-between",
-                width: "100%", background: "none", border: "none", cursor: "pointer",
-                padding: 0, marginBottom: planOpen ? 10 : 0, fontFamily: "inherit",
-              }}
-            >
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "1px", color: "var(--c-text-muted)" }}>
-                Kilpailutyökalu
-              </div>
-              <div style={{ fontSize: 16, color: "var(--c-text-muted)", transition: "transform 0.2s", transform: planOpen ? "rotate(180deg)" : "rotate(0deg)" }}>
-                ▾
-              </div>
-            </button>
-
-            <div style={{
-              overflow: "hidden",
-              maxHeight: planOpen ? 800 : 0,
-              transition: "max-height 0.35s cubic-bezier(0.4,0,0.2,1)",
-            }}>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingTop: 2 }}>
-                {/* Mode selector */}
-                <div style={{ background: "var(--c-surface2)", borderRadius: 10, padding: 3, display: "flex" }}>
-                  {(Object.entries(ATTEMPT_MODES) as [AttemptMode, typeof ATTEMPT_MODES[AttemptMode]][]).map(([key, { label }]) => (
-                    <button
-                      key={key}
-                      onClick={() => setAttemptMode(key)}
-                      style={{
-                        flex: 1, padding: "7px 0", borderRadius: 8, border: "none",
-                        background: attemptMode === key ? "var(--c-surface)" : "transparent",
-                        fontWeight: 600, fontSize: 12, cursor: "pointer", fontFamily: "inherit",
-                        color: attemptMode === key ? "var(--c-text)" : "var(--c-text-muted)",
-                        boxShadow: attemptMode === key ? "0 1px 4px rgba(0,0,0,0.12)" : "none",
-                        transition: "all 0.15s",
-                      }}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-                {/* Lifts */}
-                {BIG_THREE.map(({ key, label }) => {
-                  const e1rm = bigThreeE1rm[key];
-                  const atts = e1rm != null ? attempts(e1rm, ATTEMPT_MODES[attemptMode].pcts) : null;
-                  return (
-                    <div key={key} style={{ background: "var(--c-surface)", border: "1px solid var(--c-border)", borderRadius: 16, padding: "14px 16px" }}>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: atts ? 12 : 0 }}>
-                        <div style={{ fontSize: 14, fontWeight: 700 }}>{label}</div>
-                        {e1rm != null
-                          ? <div style={{ fontSize: 12, color: "var(--c-text-muted)" }}>e1RM {formatW(roundKg(e1rm))} kg</div>
-                          : <div style={{ fontSize: 12, color: "var(--c-text-muted)" }}>Ei dataa</div>}
-                      </div>
-                      {atts && (
-                        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
-                          {atts.map((kg, i) => (
-                            <div key={i} style={{
-                              background: i === 2 ? "var(--c-pink-dim)" : "var(--c-surface2)",
-                              border: i === 2 ? "1px solid rgba(255,29,140,0.25)" : "1px solid transparent",
-                              borderRadius: 10, padding: "10px 8px", textAlign: "center",
-                            }}>
-                              <div style={{ fontSize: 10, fontWeight: 700, color: i === 2 ? "var(--c-pink)" : "var(--c-text-muted)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 4 }}>
-                                {i + 1}. nosto
-                              </div>
-                              <div style={{ fontSize: 18, fontWeight: 800, color: i === 2 ? "var(--c-pink)" : "var(--c-text)" }}>{kg}</div>
-                              <div style={{ fontSize: 10, color: "var(--c-text-subtle)" }}>kg</div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-
-                {/* Competition total */}
-                {(() => {
-                  const thirds = BIG_THREE.map(({ key }) => {
-                    const e1rm = bigThreeE1rm[key];
-                    return e1rm != null ? attempts(e1rm, ATTEMPT_MODES[attemptMode].pcts)[2] ?? null : null;
-                  });
-                  const total = thirds.every(v => v != null) ? thirds.reduce((s, v) => s! + v!, 0) : null;
-                  return total != null ? (
-                    <div style={{ background: "var(--c-surface)", border: "1px solid var(--c-border)", borderRadius: 16, padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                      <div style={{ fontSize: 14, fontWeight: 700 }}>Yhteistulos (kilpailu)</div>
-                      <div style={{ fontSize: 22, fontWeight: 800, color: "var(--c-pink)" }}>{total} kg</div>
-                    </div>
-                  ) : null;
-                })()}
-              </div>
-            </div>
-          </div>
+          <KilpailutyokaluCard bigThreeE1rm={bigThreeE1rm} />
         </div>
       )}
     </div>

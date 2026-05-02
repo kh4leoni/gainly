@@ -7,6 +7,8 @@ import { OhjelmoiButton } from "@/components/program-builder/ohjelmoi-button";
 import { ClientTrainingView } from "@/components/client-detail/client-training-view";
 import { RecordsSection } from "@/components/client-detail/pr-sections";
 import { MeasurementChart } from "@/components/client/measurement-chart";
+import { KilpailutyokaluCard, matchBigThree } from "@/components/client/kilpailutyokalu-card";
+import type { BigThreeKey } from "@/components/client/kilpailutyokalu-card";
 import { MessageSquare, ChevronLeft, Check, Zap, LayoutGrid, Scale, TrendingUp, TrendingDown, Minus } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -58,7 +60,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
     // Only exercises this client has PRs for — much smaller than all exercises
     supabase
       .from("personal_records")
-      .select("exercise_id, exercises(id, name)")
+      .select("exercise_id, estimated_1rm, exercises(id, name)")
       .eq("client_id", id),
     supabase
       .from("bodyweights")
@@ -84,6 +86,15 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
     if (ex && !exerciseMap.has(ex.id)) exerciseMap.set(ex.id, { id: ex.id, name: ex.name });
   }
   const exercises = Array.from(exerciseMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+
+  const bigThreeE1rm: Record<BigThreeKey, number | null> = { squat: null, bench: null, dead: null };
+  for (const row of prExercisesRes.data ?? []) {
+    const ex = (row as any).exercises;
+    const e1rm = (row as any).estimated_1rm as number | null;
+    if (!ex || e1rm == null) continue;
+    const key = matchBigThree(ex.name as string);
+    if (key && (bigThreeE1rm[key] == null || e1rm > bigThreeE1rm[key]!)) bigThreeE1rm[key] = e1rm;
+  }
 
   const name: string = profile.full_name ?? "Unnamed";
   const initials = name.split(" ").map((p: string) => p[0]).join("").slice(0, 2).toUpperCase();
@@ -314,6 +325,10 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
 
         <div className="card-enter card-enter-7">
           <RecordsSection clientId={id} exercises={exercises} />
+        </div>
+
+        <div className="card-enter rounded-2xl border bg-card p-4">
+          <KilpailutyokaluCard bigThreeE1rm={bigThreeE1rm} />
         </div>
       </div>
     </div>
