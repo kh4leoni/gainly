@@ -70,7 +70,17 @@ export function MessagesView({ userId, initialThreadId, layout = "client" }: { u
     return () => { supabase.removeChannel(channel); };
   }, [threadId, qc, supabase]);
 
-  // Mark read
+  // Mark all unread as read on mount (clears nav badge immediately)
+  useEffect(() => {
+    void supabase
+      .from("messages")
+      .update({ read_at: new Date().toISOString() })
+      .is("read_at", null)
+      .neq("sender_id", userId);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Mark read for active thread (keeps local query cache in sync)
   useEffect(() => {
     if (!threadId || !messages.data) return;
     const unread = messages.data.filter((m) => m.sender_id !== userId && !m.read_at).map((m) => m.id);
