@@ -69,20 +69,24 @@ export function SyncBar() {
     }
   }, [shouldShow]);
 
+  // Freeze display state while exit animation plays — prevents orange flash during fade-out
+  const displayRef = useRef({ synced: false, offline: false, pending: 0, running: false });
+  if (visible) displayRef.current = { synced, offline: !online, pending: pending ?? 0, running };
+  const d = displayRef.current;
+
   if (!rendered) return null;
 
-  const isOffline = !online;
-  const canTap = !isOffline && !running && !synced && (pending ?? 0) > 0;
+  const canTap = !d.offline && !d.running && !d.synced && d.pending > 0;
 
-  const label = isOffline && (pending ?? 0) === 0
+  const label = d.offline && d.pending === 0
     ? "Offline"
-    : isOffline
-      ? `${pending} offline`
-      : running
+    : d.offline
+      ? `${d.pending} offline`
+      : d.running
         ? "Synkronoidaan…"
-        : synced
+        : d.synced
           ? "Synkronoitu"
-          : `${pending} odottaa`;
+          : `${d.pending} odottaa`;
 
   return (
     <>
@@ -100,16 +104,16 @@ export function SyncBar() {
           gap: 6,
           padding: "6px 12px 6px 8px",
           borderRadius: 999,
-          background: isOffline ? "#1a1a1f" : synced ? "#0d1f14" : "#1c1800",
-          border: `1px solid ${isOffline ? "rgba(255,255,255,0.1)" : synced ? "rgba(34,197,94,0.4)" : "rgba(245,166,35,0.35)"}`,
-          boxShadow: isOffline
+          background: d.offline ? "#1a1a1f" : d.synced ? "#0d1f14" : "#1c1800",
+          border: `1px solid ${d.offline ? "rgba(255,255,255,0.1)" : d.synced ? "rgba(34,197,94,0.4)" : "rgba(245,166,35,0.35)"}`,
+          boxShadow: d.offline
             ? "0 2px 12px rgba(0,0,0,0.4)"
-            : synced
+            : d.synced
               ? "0 2px 12px rgba(34,197,94,0.2)"
               : "0 2px 12px rgba(245,166,35,0.2)",
           fontSize: 12,
           fontWeight: 700,
-          color: isOffline ? "rgba(240,238,245,0.5)" : synced ? "#22c55e" : "#F5A623",
+          color: d.offline ? "rgba(240,238,245,0.5)" : d.synced ? "#22c55e" : "#F5A623",
           cursor: canTap ? "pointer" : "default",
           fontFamily: "inherit",
           transformOrigin: "center",
@@ -121,17 +125,23 @@ export function SyncBar() {
           pointerEvents: visible ? "auto" : "none",
         }}
       >
-        <span
-          aria-hidden
-          style={{
-            width: 7,
-            height: 7,
-            borderRadius: "50%",
-            flexShrink: 0,
-            background: isOffline ? "#555" : synced ? "#22c55e" : "#F5A623",
-            animation: running ? "pulse 1.2s ease-in-out infinite" : undefined,
-          }}
-        />
+        {d.synced ? (
+          <svg aria-hidden width="11" height="9" viewBox="0 0 11 9" fill="none" style={{ flexShrink: 0 }}>
+            <path d="M1 4L4 7.5L10 1" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        ) : (
+          <span
+            aria-hidden
+            style={{
+              width: 7,
+              height: 7,
+              borderRadius: "50%",
+              flexShrink: 0,
+              background: d.offline ? "#555" : "#F5A623",
+              animation: d.running ? "pulse 1.2s ease-in-out infinite" : undefined,
+            }}
+          />
+        )}
         {label}
       </button>
     </>
