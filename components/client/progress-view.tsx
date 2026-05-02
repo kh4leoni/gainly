@@ -7,8 +7,9 @@ import { MeasurementChart } from "@/components/client/measurement-chart";
 import { getRecentPRs } from "@/lib/queries/workouts";
 import { derivedRepMax, roundKg } from "@/lib/calc/one-rm";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { KilpailutyokaluCard, matchBigThree, BIG_THREE, ATTEMPT_MODES } from "@/components/client/kilpailutyokalu-card";
-import type { BigThreeKey } from "@/components/client/kilpailutyokalu-card";
+import { KilpailutyokaluCard } from "@/components/client/kilpailutyokalu-card";
+import { matchBigThree, BIG_THREE, ATTEMPT_MODES } from "@/lib/powerlifting";
+import type { BigThreeKey } from "@/lib/powerlifting";
 
 type Exercise = { id: string; name: string };
 type PR = {
