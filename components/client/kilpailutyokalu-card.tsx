@@ -4,8 +4,6 @@ import { useState } from "react";
 import { roundKg } from "@/lib/calc/one-rm";
 import { ATTEMPT_MODES, BIG_THREE, calcAttempts } from "@/lib/powerlifting";
 import type { AttemptMode, BigThreeKey } from "@/lib/powerlifting";
-export type { AttemptMode, BigThreeKey } from "@/lib/powerlifting";
-export { matchBigThree } from "@/lib/powerlifting";
 
 function formatW(w: number | null) {
   if (w === null) return "—";
