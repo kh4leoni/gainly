@@ -185,6 +185,53 @@ function HistoriaSkeleton() {
   );
 }
 
+// ─── Workout Logger ───────────────────────────────────────────────────────────
+
+function WorkoutSkeleton() {
+  return (
+    <div style={{ flex: 1, padding: "20px 16px 32px", display: "flex", flexDirection: "column" }}>
+      {/* Back + date */}
+      <Bone w="25%" h={10} style={{ marginBottom: 16 }} />
+      {/* Day name */}
+      <Bone w="55%" h={26} r={10} style={{ marginBottom: 6 }} />
+      <Bone w="35%" h={10} style={{ marginBottom: 20 }} />
+      {/* Progress chips */}
+      <Row gap={8} style={{ marginBottom: 20 }}>
+        {[1, 2, 3, 4].map((i) => (
+          <Bone key={i} w={60} h={28} r={14} />
+        ))}
+      </Row>
+      {/* Exercise cards */}
+      {[1, 2, 3].map((i) => (
+        <div key={i} style={{
+          background: "var(--c-surface)",
+          border: "1px solid var(--c-border)",
+          borderRadius: 16,
+          marginBottom: 12,
+          overflow: "hidden",
+        }}>
+          {/* Exercise name row */}
+          <div style={{ padding: "14px 16px 10px", borderBottom: "1px solid var(--c-border)" }}>
+            <Bone w={`${45 + i * 10}%`} h={14} />
+          </div>
+          {/* Set rows */}
+          <div style={{ padding: "10px 16px 14px", display: "flex", flexDirection: "column", gap: 8 }}>
+            {[1, 2, 3].map((s) => (
+              <Row key={s} gap={12}>
+                <Bone w={20} h={12} />
+                <Bone w={56} h={28} r={8} />
+                <Bone w={56} h={28} r={8} />
+                <Bone w={56} h={28} r={8} />
+                <Bone w={20} h={20} r={6} style={{ marginLeft: "auto" }} />
+              </Row>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ─── Messages ─────────────────────────────────────────────────────────────────
 
 function MessagesSkeleton() {
@@ -222,5 +269,6 @@ export function RouteSkeleton({ href }: { href: string }) {
   if (href.startsWith("/client/progress"))  return <ProgressSkeleton />;
   if (href.startsWith("/client/history"))   return <HistoriaSkeleton />;
   if (href.startsWith("/client/messages"))  return <MessagesSkeleton />;
+  if (href.startsWith("/client/workout"))   return <WorkoutSkeleton />;
   return null;
 }
