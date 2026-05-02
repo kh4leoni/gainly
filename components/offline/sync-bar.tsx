@@ -69,9 +69,10 @@ export function SyncBar() {
     }
   }, [shouldShow]);
 
-  // Freeze display state while exit animation plays — prevents orange flash during fade-out
+  // Freeze display state while exit animation plays — prevents flash during fade-out.
+  // Gate on shouldShow (synchronous) not visible (async setState — lags one frame).
   const displayRef = useRef({ synced: false, offline: false, pending: 0, running: false });
-  if (visible) displayRef.current = { synced, offline: !online, pending: pending ?? 0, running };
+  if (shouldShow) displayRef.current = { synced, offline: !online, pending: pending ?? 0, running };
   const d = displayRef.current;
 
   if (!rendered) return null;
