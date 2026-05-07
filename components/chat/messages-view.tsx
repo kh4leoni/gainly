@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { getThreads, getMessages } from "@/lib/queries/messages";
+import { markThreadReadAction, markMessagesReadById } from "@/lib/actions/messages";
 import { uuid } from "@/lib/utils";
 
 type Message = { id: string; thread_id: string; sender_id: string; content: string; created_at: string; read_at: string | null };
@@ -54,7 +55,10 @@ export function MessagesView({ userId, initialThreadId, layout = "client" }: { u
     queryFn: () => getMessages(supabase, threadId!),
   });
 
-  // Realtime
+  // Realtime — append new messages and mark them read server-side if from the other party.
+  // No router.refresh: the page is server-rendered with mark-read on initial load,
+  // and the action's revalidatePath invalidates the layout's unread count for the
+  // next navigation. Refreshing the RSC mid-view causes scroll/render churn.
   useEffect(() => {
     if (!threadId) return;
     const channel = supabase
@@ -65,28 +69,27 @@ export function MessagesView({ userId, initialThreadId, layout = "client" }: { u
           if (old.some((m) => m.id === msg.id)) return old;
           return [...old, msg];
         });
+        if (msg.sender_id !== userId) {
+          markMessagesReadById([msg.id]).then(() => {
+            qc.invalidateQueries({ queryKey: ["unread-count", userId] });
+          });
+        }
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [threadId, qc, supabase]);
+  }, [threadId, qc, supabase, userId]);
 
-  // Mark all unread as read on mount (clears nav badge immediately)
+  // When the coach picks a different thread, mark that thread's messages read.
+  // (Initial-mount mark-read is done server-side in the page.)
   useEffect(() => {
-    void supabase
-      .from("messages")
-      .update({ read_at: new Date().toISOString() })
-      .is("read_at", null)
-      .neq("sender_id", userId);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Mark read for active thread (keeps local query cache in sync)
-  useEffect(() => {
-    if (!threadId || !messages.data) return;
-    const unread = messages.data.filter((m) => m.sender_id !== userId && !m.read_at).map((m) => m.id);
-    if (unread.length === 0) return;
-    void supabase.from("messages").update({ read_at: new Date().toISOString() }).in("id", unread);
-  }, [threadId, messages.data, userId, supabase]);
+    if (!threadId) return;
+    // Zero immediately so the nav badge drops without waiting for the network round-trip.
+    qc.setQueryData<number>(["unread-count", userId], 0);
+    markThreadReadAction(threadId).then(() => {
+      // Refetch to get the accurate count in case other threads still have unread.
+      void qc.invalidateQueries({ queryKey: ["unread-count", userId] });
+    });
+  }, [threadId, qc, userId]);
 
   type Thread = { id: string; coach_id: string; client_id: string; last_message_at: string | null; coach: Profile; client: Profile };
   const activeThread = (threads.data ?? []).find((t: any) => t.id === threadId) as Thread | undefined;

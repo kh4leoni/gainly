@@ -37,6 +37,37 @@ export async function getUnreadCount(supabase: DB, userId: string) {
   return count ?? 0;
 }
 
+export async function getMostRecentUnreadThreadId(supabase: DB, userId: string) {
+  const { data } = await supabase
+    .from("messages")
+    .select("thread_id")
+    .is("read_at", null)
+    .neq("sender_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return data?.thread_id ?? null;
+}
+
+export async function markThreadRead(supabase: DB, threadId: string, userId: string) {
+  const { error } = await supabase
+    .from("messages")
+    .update({ read_at: new Date().toISOString() })
+    .eq("thread_id", threadId)
+    .is("read_at", null)
+    .neq("sender_id", userId);
+  if (error) console.error("[markThreadRead]", error);
+}
+
+export async function markAllRead(supabase: DB, userId: string) {
+  const { error } = await supabase
+    .from("messages")
+    .update({ read_at: new Date().toISOString() })
+    .is("read_at", null)
+    .neq("sender_id", userId);
+  if (error) console.error("[markAllRead]", error);
+}
+
 export async function ensureThread(supabase: DB, coachId: string, clientId: string) {
   const { data: existing } = await supabase
     .from("threads")

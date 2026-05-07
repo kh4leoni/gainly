@@ -25,6 +25,7 @@ export function NavLink({
   const active = checkHref === href || checkHref.startsWith(href + "/");
   const isAthlete = variant === "athlete";
 
+
   return (
     <Link
       href={href}
@@ -52,7 +53,7 @@ export function NavLink({
       />
       <span className="relative">
         {icon}
-        {badge > 0 && (
+        {badge > 0 && !active && (
           <span style={{
             position: "absolute", top: -4, right: -6,
             minWidth: 16, height: 16, borderRadius: 8,

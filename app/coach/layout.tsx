@@ -4,6 +4,8 @@ import { getMeCached } from "@/lib/queries/profile.server";
 import { createClient } from "@/lib/supabase/server";
 import { getUnreadCount } from "@/lib/queries/messages";
 
+export const dynamic = "force-dynamic";
+
 export default async function CoachLayout({ children }: { children: React.ReactNode }) {
   const me = await getMeCached();
   const supabase = await createClient();

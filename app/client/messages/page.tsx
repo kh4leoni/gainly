@@ -1,7 +1,7 @@
 import { HydrationBoundary, dehydrate } from "@tanstack/react-query";
 import { createClient, getCachedUser } from "@/lib/supabase/server";
 import { getQueryClient } from "@/lib/get-query-client";
-import { getThreads, getMessages } from "@/lib/queries/messages";
+import { getThreads, getMessages, markAllRead } from "@/lib/queries/messages";
 import { MessagesView } from "@/components/chat/messages-view";
 
 export const dynamic = "force-dynamic";
@@ -16,6 +16,8 @@ export default async function ClientMessages({
   if (!user) return null;
   const supabase = await createClient();
   const qc = getQueryClient();
+
+  await markAllRead(supabase, user.id);
 
   const threads = await getThreads(supabase, user.id);
   const threadId = sp.thread ?? threads[0]?.id ?? null;

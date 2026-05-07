@@ -3,12 +3,16 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
+import { useEffect } from "react";
 import type { ReactNode } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { NavLink } from "./nav-link";
 import { CoachSettingsButton } from "./coach-settings";
 import { SyncBar } from "@/components/offline/sync-bar";
 import { usePendingNav } from "@/lib/nav-context";
 import { CoachSkeleton } from "./coach-skeleton";
+import { createClient } from "@/lib/supabase/client";
+import { getUnreadCount } from "@/lib/queries/messages";
 
 type NavItem = { href: string; icon: ReactNode; label: string; badge?: number };
 type Me = { id: string; full_name: string | null; email?: string | null } | null;
@@ -32,6 +36,34 @@ export function AppShell({
   const { pendingHref } = usePendingNav();
   const coachPending = pendingHref?.startsWith("/coach/") ? pendingHref : null;
 
+  const msgHref = nav.find(n => n.href.endsWith("/messages"))?.href ?? "";
+  const serverBadge = nav.find(n => n.href === msgHref)?.badge ?? 0;
+  const onMessages = !!msgHref && (pendingHref?.startsWith(msgHref) || pathname.startsWith(msgHref));
+
+  // Track unread count in React Query so it updates immediately when messages
+  // are marked read — without waiting for the router cache to invalidate.
+  const supabase = createClient();
+  const { data: liveUnread = serverBadge } = useQuery({
+    queryKey: ["unread-count", me?.id],
+    queryFn: () => me ? getUnreadCount(supabase, me.id) : Promise.resolve(0),
+    initialData: serverBadge,
+    initialDataUpdatedAt: Date.now(),
+    enabled: !!me?.id,
+    staleTime: 30_000,
+  });
+  const qc = useQueryClient();
+  useEffect(() => {
+    if (onMessages && me?.id) {
+      qc.setQueryData<number>(["unread-count", me.id], 0);
+    }
+  }, [onMessages, qc, me?.id]);
+
+  const msgBadge = onMessages ? 0 : liveUnread;
+
+  const navWithBadge = nav.map(n =>
+    n.href === msgHref ? { ...n, badge: msgBadge } : n
+  );
+
   return (
     <div className="min-h-dvh md:flex">
       {/* Sidebar (md+) */}
@@ -43,7 +75,7 @@ export function AppShell({
           </Link>
         </div>
         <nav className="flex flex-col gap-1 p-2">
-          {nav.map((n) => (
+          {navWithBadge.map((n) => (
             <NavLink key={n.href} {...n} variant={variant} />
           ))}
         </nav>
@@ -83,7 +115,7 @@ export function AppShell({
 
         {/* Mobile bottom nav — not fixed, stays at bottom of h-dvh column */}
         <nav className="shrink-0 flex border-t bg-background md:hidden" style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
-          {nav.map((n) => (
+          {navWithBadge.map((n) => (
             <NavLink key={n.href} {...n} variant={variant} />
           ))}
         </nav>
