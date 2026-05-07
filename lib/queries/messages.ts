@@ -14,16 +14,14 @@ export async function getThreads(supabase: DB, userId: string) {
   return data ?? [];
 }
 
-export async function getMessages(supabase: DB, threadId: string, limit = 20) {
+export async function getMessages(supabase: DB, threadId: string) {
   const { data, error } = await supabase
     .from("messages")
     .select("id, thread_id, sender_id, content, created_at, read_at")
     .eq("thread_id", threadId)
-    .order("created_at", { ascending: false })
-    .limit(limit);
+    .order("created_at", { ascending: true });
   if (error) throw error;
-  // return oldest-first for rendering
-  return (data ?? []).reverse();
+  return data ?? [];
 }
 
 export async function getUnreadCount(supabase: DB, userId: string) {

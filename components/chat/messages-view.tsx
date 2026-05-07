@@ -409,14 +409,34 @@ function ChatPane({
   const supabase = createClient();
   const [content, setContent] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  const atBottom = useRef(true);
   const isCoach = layout === "coach";
 
   const otherColor = avatarColor(otherProfile?.full_name ?? null);
   const otherInitials = nameInitials(otherProfile?.full_name ?? null);
 
+  // Track whether user is near the bottom so we don't hijack scroll when reading history.
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages.length]);
+    const list = listRef.current;
+    if (!list) return;
+    const onScroll = () => {
+      atBottom.current = list.scrollHeight - list.scrollTop - list.clientHeight < 80;
+    };
+    list.addEventListener("scroll", onScroll, { passive: true });
+    return () => list.removeEventListener("scroll", onScroll);
+  }, []);
+
+  // Scroll to bottom on new message only if already near bottom; always on thread switch.
+  const prevThreadId = useRef(threadId);
+  useEffect(() => {
+    const switched = prevThreadId.current !== threadId;
+    prevThreadId.current = threadId;
+    if (switched) atBottom.current = true;
+    if (atBottom.current) {
+      endRef.current?.scrollIntoView({ behavior: switched ? "instant" : "smooth" });
+    }
+  }, [messages.length, threadId]);
 
   async function send() {
     const text = content.trim();
@@ -456,33 +476,20 @@ function ChatPane({
     );
   }
 
-  const msgListStyle: React.CSSProperties = {
-    flex: 1,
-    minHeight: 0,
-    overflowY: "auto",
-    padding: isCoach ? "24px 28px" : "20px",
-    display: "flex",
-    flexDirection: "column",
-    gap: isCoach ? 12 : 10,
-    background: isCoach ? "hsl(var(--background))" : undefined,
-    WebkitTransform: "translateZ(0)",
-    transform: "translateZ(0)",
-  };
-
   const inputAreaStyle: React.CSSProperties = {
     padding: isCoach ? "14px 20px" : "12px 16px",
     borderTop: isCoach ? "1px solid hsl(var(--border))" : "1px solid var(--c-border)",
     display: "flex",
     gap: 10,
     alignItems: "center",
-    flexShrink: 0,
     background: isCoach ? "hsl(var(--card))" : "var(--c-surface)",
   };
 
   return (
-    <>
+    <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden", background: isCoach ? "hsl(var(--background))" : undefined }}>
       {/* Message list */}
-      <div style={msgListStyle}>
+      <div ref={listRef} style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: isCoach ? 12 : 10, padding: isCoach ? "24px 28px" : "20px" }}>
         {loading && (
           <div style={{ textAlign: "center", color: isCoach ? "hsl(var(--muted-foreground))" : "var(--c-text-muted)", fontSize: 13 }}>
             Ladataan...
@@ -545,10 +552,11 @@ function ChatPane({
           );
         })}
         <div ref={endRef} />
+        </div>
       </div>
 
       {/* Input */}
-      <div style={inputAreaStyle}>
+      <div style={{ ...inputAreaStyle, flexShrink: 0 }}>
         <input
           value={content}
           onChange={(e) => setContent(e.target.value)}
@@ -600,6 +608,6 @@ function ChatPane({
           </svg>
         </button>
       </div>
-    </>
+    </div>
   );
 }

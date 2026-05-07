@@ -25,7 +25,9 @@ const csp = [
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com",
   `img-src 'self' data: blob: ${supabaseStorageOrigin}`,
-  `connect-src 'self' ${supabaseOrigin} ${supabaseWsOrigin}`,
+  // In dev, also allow any LAN IP on Supabase's port so phone testing works
+  // regardless of whether NEXT_PUBLIC_SUPABASE_URL uses 127.0.0.1 or the machine's LAN IP.
+  `connect-src 'self' ${supabaseOrigin} ${supabaseWsOrigin}${isDev ? " http://*:54321 ws://*:54321" : ""}`,
   "worker-src 'self' blob:",
   "manifest-src 'self'",
   "frame-src https://www.youtube.com https://player.vimeo.com",

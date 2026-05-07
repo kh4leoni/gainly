@@ -490,7 +490,7 @@ export function ClientShell({
   const animKey = pendingHref ?? animKeyRef.current;
   if (pendingHref) animKeyRef.current = pendingHref;
 
-  const dirRef = useRef(typeof window !== "undefined" && window.location.pathname.startsWith("/client/messages") ? "c-msg-in" : "c-ani");
+  const dirRef = useRef("c-ani");
   const dirPrevRef = useRef(pathname);
 
   if (dirPrevRef.current !== animKey) {
@@ -657,7 +657,10 @@ export function ClientShell({
                   overscrollBehavior: "contain",
                 }}
               >
-                <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: isMessages ? undefined : "100%" }}>
+                <div style={isMessages
+                  ? { position: "absolute", inset: 0, display: "flex", flexDirection: "column" }
+                  : { flex: 1, display: "flex", flexDirection: "column", minHeight: "100%" }
+                }>
                   {children}
                 </div>
               </div>
