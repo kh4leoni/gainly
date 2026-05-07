@@ -1,7 +1,7 @@
 import { HydrationBoundary, dehydrate } from "@tanstack/react-query";
 import { createClient, getCachedUser } from "@/lib/supabase/server";
 import { getQueryClient } from "@/lib/get-query-client";
-import { getThreads, getMessages, ensureThread } from "@/lib/queries/messages";
+import { getThreads, getMessages, ensureThread, getMostRecentUnreadThreadId, markThreadRead } from "@/lib/queries/messages";
 import { MessagesView } from "@/components/chat/messages-view";
 
 export const dynamic = "force-dynamic";
@@ -22,8 +22,15 @@ export default async function CoachMessages({
     threadId = await ensureThread(supabase, user.id, sp.with);
   }
 
-  const threads = await getThreads(supabase, user.id);
-  threadId = threadId ?? threads[0]?.id ?? null;
+  const [threads, unreadThreadId] = await Promise.all([
+    getThreads(supabase, user.id),
+    threadId ? Promise.resolve(null) : getMostRecentUnreadThreadId(supabase, user.id),
+  ]);
+  threadId = threadId ?? unreadThreadId ?? threads[0]?.id ?? null;
+
+  if (threadId) {
+    await markThreadRead(supabase, threadId, user.id);
+  }
 
   await qc.prefetchQuery({ queryKey: ["threads", user.id], queryFn: () => Promise.resolve(threads) });
   if (threadId) {

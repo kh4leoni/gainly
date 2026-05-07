@@ -4,12 +4,15 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useRef, useState, useEffect, useTransition } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { House, CalendarDots, TrendUp, ClockCounterClockwise, ChatCircle, Sun, Moon, SignOut, PencilSimple, CaretDown } from "@phosphor-icons/react";
 import { useTheme } from "next-themes";
 import { SyncBar } from "@/components/offline/sync-bar";
 import { useWorkoutPrefetch } from "@/hooks/use-workout-prefetch";
 import { logBodyweight, logWaist, updateProfileName } from "@/app/client/actions";
 import { usePendingNav } from "@/lib/nav-context";
+import { createClient } from "@/lib/supabase/client";
+import { getUnreadCount } from "@/lib/queries/messages";
 import { RouteSkeleton } from "@/components/client/route-skeleton";
 import type { ReactNode } from "react";
 
@@ -468,6 +471,18 @@ export function ClientShell({
 }) {
   const pathname = usePathname();
   const { pendingHref, setPendingHref } = usePendingNav();
+  const onMessages = pathname.startsWith("/client/messages") || !!pendingHref?.startsWith("/client/messages");
+
+  const supabase = createClient();
+  const { data: liveUnread = unreadMessages } = useQuery({
+    queryKey: ["unread-count", me?.id],
+    queryFn: () => me ? getUnreadCount(supabase, me.id) : Promise.resolve(0),
+    initialData: unreadMessages,
+    initialDataUpdatedAt: Date.now(),
+    enabled: !!me?.id,
+    staleTime: 30_000,
+  });
+  const unread = onMessages ? 0 : liveUnread;
 
   // animKey: changes immediately on click (pendingHref), stays fixed when content arrives
   // so animation fires at click time and doesn't double-fire when RSC response lands
@@ -701,7 +716,7 @@ export function ClientShell({
                     weight={active ? "fill" : "regular"}
                     color={active ? "var(--c-pink)" : "var(--c-text-muted)"}
                   />}
-                  {href === "/client/messages" && unreadMessages > 0 && !pathname.startsWith("/client/messages") && !pendingHref?.startsWith("/client/messages") && (
+                  {href === "/client/messages" && unread > 0 && (
                     <span style={{
                       position: "absolute", top: -4, right: -6,
                       minWidth: 16, height: 16, borderRadius: 8,
@@ -709,7 +724,7 @@ export function ClientShell({
                       fontSize: 10, fontWeight: 700, lineHeight: "16px",
                       textAlign: "center", padding: "0 3px",
                     }}>
-                      {unreadMessages > 99 ? "99+" : unreadMessages}
+                      {unread > 99 ? "99+" : unread}
                     </span>
                   )}
                 </span>
