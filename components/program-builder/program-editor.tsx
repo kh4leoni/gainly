@@ -1133,9 +1133,11 @@ export function ProgramEditor({ programId }: { programId: string }) {
   // ── Day mutations ──
   const addWorkout = useMutation({
     mutationFn: async (weekId: string) => {
-      const allWeeks = (program?.program_blocks ?? []).flatMap((b) => b.program_weeks ?? []);
-      const week = allWeeks.find((w) => w.id === weekId);
-      const next = (week?.program_days?.length ?? 0) + 1;
+      const { data: last, error: fetchErr } = await supabase
+        .from("program_days").select("day_number").eq("week_id", weekId)
+        .order("day_number", { ascending: false }).limit(1).maybeSingle();
+      if (fetchErr) throw fetchErr;
+      const next = (last?.day_number ?? 0) + 1;
       const { error } = await supabase.from("program_days").insert({ week_id: weekId, day_number: next, name: null });
       if (error) throw error;
     },
