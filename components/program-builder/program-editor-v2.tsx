@@ -156,6 +156,12 @@ function configsFromExercise(pe: ProgramExerciseRow): SetConfig[] {
   }));
 }
 
+function fmtNum(n: number): string {
+  return Number.isInteger(n) ? String(n) : String(n);
+}
+
+// Summary range: collapses when all values are equal. Used in the Exercises
+// column / neighbor cards where vertical space is tight.
 function repsLabel(cfgs: SetConfig[]): string {
   if (cfgs.length === 0) return "—";
   const nums = cfgs.map((s) => (s.reps ? parseInt(s.reps, 10) : NaN)).filter((n) => !isNaN(n));
@@ -181,29 +187,43 @@ function rpeLabel(cfgs: SetConfig[]): string {
   return min === max ? `@${min}` : `@${min}-${max}`;
 }
 
-function achievedRepsLabel(logs: CompletedSet[]): string {
-  if (logs.length === 0) return "—";
-  const ns = logs.map((l) => l.reps).filter((n): n is number => typeof n === "number");
-  if (ns.length === 0) return `${logs.length}×—`;
-  const min = Math.min(...ns);
-  const max = Math.max(...ns);
-  return min === max ? `${logs.length}×${min}` : `${logs.length}×${min}-${max}`;
+// Per-set inline summary used in phase-overview cells.
+// Each set rendered as "{weight}kg @{rpe}" (or "{reps}×{weight}kg @{rpe}" when
+// reps vary across sets). Shared parts are pulled out to a prefix:
+//   uniform reps + has weights → "4×8 · 100 @7, 100 @7, 105 @8 kg"
+//   uniform reps + bodyweight → "4×8 · @7, @7, @8 (oma p.)"
+//   varying reps + has weights → "5×100 @7, 5×100 @7, 8×80 @7 kg"
+type SetDatum = { reps: string | null; weight: number | null; rpe: number | null };
+
+// Per-set inline summary: each set rendered as "reps/weight/rpe", sets
+// separated by ", ". "kg" unit appended once at the end when any weights
+// are present.
+//   "5/100/7, 5/100/7, 5/105/8, 5/105/8 kg"
+function buildSetsLine(items: SetDatum[]): string {
+  if (items.length === 0) return "—";
+  const anyWeight = items.some((s) => typeof s.weight === "number" && s.weight > 0);
+  const tokens = items.map((s) => {
+    const reps = s.reps && s.reps.trim() !== "" ? s.reps : "—";
+    const w = typeof s.weight === "number" && s.weight > 0 ? fmtNum(s.weight) : "—";
+    const rpe = typeof s.rpe === "number" ? fmtNum(s.rpe) : "—";
+    return `${reps}×${w}@${rpe}`;
+  });
+  const list = tokens.join(", ");
+  return anyWeight ? `${list} kg` : list;
 }
 
-function achievedWeightLabel(logs: CompletedSet[]): string {
-  const ws = logs.map((l) => l.weight).filter((w): w is number => typeof w === "number" && w > 0);
-  if (ws.length === 0) return "oma p.";
-  const min = Math.min(...ws);
-  const max = Math.max(...ws);
-  return min === max ? `${min}kg` : `${min}-${max}kg`;
+function plannedSetsLine(cfgs: SetConfig[]): string {
+  return buildSetsLine(cfgs.map((s) => ({ reps: s.reps, weight: s.weight, rpe: s.rpe })));
 }
 
-function achievedRpeLabel(logs: CompletedSet[]): string {
-  const rs = logs.map((l) => l.rpe).filter((r): r is number => typeof r === "number");
-  if (rs.length === 0) return "—";
-  const avg = rs.reduce((a, b) => a + b, 0) / rs.length;
-  const rounded = Math.round(avg * 2) / 2;
-  return String(rounded);
+function achievedSetsLine(logs: CompletedSet[]): string {
+  return buildSetsLine(
+    logs.map((l) => ({
+      reps: l.reps != null ? String(l.reps) : null,
+      weight: l.weight,
+      rpe: l.rpe,
+    }))
+  );
 }
 
 function shortenExName(name: string): string {
@@ -1774,9 +1794,7 @@ function OverviewExerciseRow({
   logs: CompletedSet[];
 }) {
   const cfgs = configsFromExercise(ex);
-  const reps = repsLabel(cfgs);
-  const plannedW = weightLabel(cfgs);
-  const plannedR = rpeLabel(cfgs);
+  const plannedLine = plannedSetsLine(cfgs);
   const exName = ex.exercises?.name ?? "—";
   const plannedColor = isDone ? "var(--fg-3)" : "var(--fg-2)";
   const hasLogs = isDone && logs.length > 0;
@@ -1789,45 +1807,24 @@ function OverviewExerciseRow({
         style={{
           fontFamily: "ui-monospace, JetBrains Mono, monospace",
           fontSize: 9.5,
-          display: "flex",
-          justifyContent: "space-between",
-          gap: 4,
+          color: plannedColor,
+          lineHeight: 1.35,
         }}
       >
-        <span style={{ color: plannedColor, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-          {reps}
-          <span style={{ opacity: 0.6 }}> · </span>
-          {plannedW}
-        </span>
-        <span style={{ flex: "0 0 auto", color: plannedColor }}>{plannedR}</span>
+        {plannedLine}
       </div>
       {hasLogs && (
         <div
           style={{
             fontFamily: "ui-monospace, JetBrains Mono, monospace",
             fontSize: 9.5,
-            display: "flex",
-            justifyContent: "space-between",
-            gap: 4,
+            color: accent,
+            fontWeight: 600,
+            lineHeight: 1.35,
           }}
         >
-          <span
-            style={{
-              color: accent,
-              fontWeight: 600,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
-            <span style={{ marginRight: 3 }}>✓</span>
-            {achievedRepsLabel(logs)}
-            <span style={{ opacity: 0.55 }}> · </span>
-            {achievedWeightLabel(logs)}
-          </span>
-          <span style={{ flex: "0 0 auto", color: accent, fontWeight: 600 }}>
-            @{achievedRpeLabel(logs)}
-          </span>
+          <span style={{ marginRight: 3 }}>✓</span>
+          {achievedSetsLine(logs)}
         </div>
       )}
     </div>
