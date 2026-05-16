@@ -109,6 +109,69 @@ export async function getProgramFull(supabase: DB, programId: string): Promise<P
   return raw;
 }
 
+export type CompletedSet = {
+  program_exercise_id: string | null;
+  set_number: number | null;
+  reps: number | null;
+  weight: number | null;
+  rpe: number | null;
+};
+
+export type ScheduledWorkoutCompletion = {
+  day_id: string;
+  status: string;
+  completed_at: string | null;
+  scheduled_date: string | null;
+  set_logs: CompletedSet[];
+};
+
+export type ProgramCompletion = {
+  // Map keyed by program_day.id
+  byDayId: Record<string, ScheduledWorkoutCompletion>;
+};
+
+export async function getProgramCompletion(
+  supabase: DB,
+  programId: string,
+  clientId: string
+): Promise<ProgramCompletion> {
+  const { data, error } = await supabase
+    .from("scheduled_workouts")
+    .select(`
+      id, day_id, status, completed_at, scheduled_date,
+      workout_logs (
+        set_logs (
+          program_exercise_id, set_number, reps, weight, rpe
+        )
+      )
+    `)
+    .eq("program_id", programId)
+    .eq("client_id", clientId);
+  if (error) throw error;
+  const byDayId: Record<string, ScheduledWorkoutCompletion> = {};
+  for (const sw of (data ?? []) as Array<{
+    day_id: string | null;
+    status: string;
+    completed_at: string | null;
+    scheduled_date: string | null;
+    workout_logs: Array<{ set_logs: CompletedSet[] }> | null;
+  }>) {
+    if (!sw.day_id) continue;
+    const set_logs: CompletedSet[] = [];
+    for (const wl of sw.workout_logs ?? []) {
+      for (const s of wl.set_logs ?? []) set_logs.push(s);
+    }
+    byDayId[sw.day_id] = {
+      day_id: sw.day_id,
+      status: sw.status,
+      completed_at: sw.completed_at,
+      scheduled_date: sw.scheduled_date,
+      set_logs,
+    };
+  }
+  return { byDayId };
+}
+
 export async function createProgram(
   supabase: DB,
   input: { coach_id: string; title: string; description?: string | null; client_id?: string | null }

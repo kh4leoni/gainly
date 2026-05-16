@@ -1383,6 +1383,15 @@ export function ProgramEditor({ programId }: { programId: string }) {
           <span className="truncate font-semibold">{program.title}</span>
         </div>
         <div className="flex shrink-0 items-center gap-1.5 md:gap-2">
+          {!program.is_template && (
+            <Link
+              href={`/coach/client-programs/${programId}/edit-v2`}
+              className="hidden md:inline-flex items-center gap-1 rounded-lg border border-dashed border-primary/40 px-2.5 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
+              title="Kokeile uutta ohjelmointinäkymää"
+            >
+              Kokeile v2 →
+            </Link>
+          )}
           {program.is_template && <AssignProgramButton programId={programId} />}
           <button type="button" onClick={() => addBlock.mutate()}
             className="inline-flex items-center gap-1 rounded-lg border border-border bg-background px-2.5 py-1.5 text-sm font-medium transition-colors hover:bg-muted md:gap-1.5 md:px-3">
