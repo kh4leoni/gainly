@@ -575,6 +575,57 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
 
   const [pendingDeleteWeek, setPendingDeleteWeek] = useState<{ id: string; label: string } | null>(null);
 
+  const deleteDay = useMutation({
+    mutationFn: async ({ dayId, weekId }: { dayId: string; weekId: string }) => {
+      // Delete the day
+      const { error: delErr } = await supabase.from("program_days").delete().eq("id", dayId);
+      if (delErr) throw delErr;
+      // Renumber remaining days in this week to 1..N (two-phase to avoid
+      // unique (week_id, day_number) collisions)
+      const wk = (program?.program_blocks ?? [])
+        .flatMap((b) => b.program_weeks)
+        .find((w) => w.id === weekId);
+      const remaining = (wk?.program_days ?? [])
+        .filter((d) => d.id !== dayId)
+        .sort((a, b) => a.day_number - b.day_number);
+      if (remaining.length === 0) return;
+      const r1 = await Promise.all(remaining.map((d, i) =>
+        supabase.from("program_days").update({ day_number: 1000 + i }).eq("id", d.id)
+      ));
+      const e1 = r1.find((r) => r.error)?.error;
+      if (e1) throw e1;
+      const r2 = await Promise.all(remaining.map((d, i) =>
+        supabase.from("program_days").update({ day_number: i + 1 }).eq("id", d.id)
+      ));
+      const e2 = r2.find((r) => r.error)?.error;
+      if (e2) throw e2;
+    },
+    onMutate: async ({ dayId, weekId }) => {
+      await qc.cancelQueries({ queryKey: ["program", programId] });
+      const prev = qc.getQueryData<ProgramFull>(["program", programId]);
+      qc.setQueryData(["program", programId], (old: ProgramFull) => {
+        if (!old) return old;
+        const next = structuredClone(old);
+        for (const b of next.program_blocks ?? [])
+          for (const w of b.program_weeks ?? []) {
+            if (w.id !== weekId) continue;
+            w.program_days = (w.program_days ?? [])
+              .filter((d) => d.id !== dayId)
+              .sort((a, b) => a.day_number - b.day_number)
+              .map((d, i) => ({ ...d, day_number: i + 1 }));
+          }
+        return next;
+      });
+      return { prev };
+    },
+    onError: (_e, _p, ctx) => {
+      if (ctx?.prev) qc.setQueryData(["program", programId], ctx.prev);
+    },
+    onSettled: invalidate,
+  });
+
+  const [pendingDeleteDay, setPendingDeleteDay] = useState<{ id: string; weekId: string; label: string } | null>(null);
+
   const reorderDays = useMutation({
     mutationFn: async ({ orderedIds }: { weekId: string; orderedIds: string[] }) => {
       // Two-phase to avoid unique constraint collisions on (week_id, day_number)
@@ -892,6 +943,27 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
       />
 
       <ConfirmDialog
+        open={!!pendingDeleteDay}
+        onOpenChange={(o) => { if (!o) setPendingDeleteDay(null); }}
+        title="Poistetaanko treeni?"
+        description={`Treeni "${pendingDeleteDay?.label ?? ""}" liikkeineen poistetaan pysyvästi. Loput viikon treenit numeroidaan uudelleen.`}
+        confirmLabel="Poista treeni"
+        onConfirm={() => {
+          if (!pendingDeleteDay) return;
+          const { id: did, weekId } = pendingDeleteDay;
+          if (did === selDayId) {
+            const wk = weeks.find((w) => w.id === weekId);
+            const remaining = (wk?.program_days ?? []).filter((d) => d.id !== did);
+            const fallback = remaining.sort((a, b) => a.day_number - b.day_number)[0] ?? null;
+            setSelDayId(fallback?.id ?? null);
+            setSelExIdx(0);
+          }
+          deleteDay.mutate({ dayId: did, weekId });
+          setPendingDeleteDay(null);
+        }}
+      />
+
+      <ConfirmDialog
         open={!!pendingDeleteWeek}
         onOpenChange={(o) => { if (!o) setPendingDeleteWeek(null); }}
         title="Poistetaanko viikko?"
@@ -927,6 +999,9 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
             }}
             onAddDay={() => addDay.mutate(week.id)}
             onReorder={(orderedIds) => reorderDays.mutate({ weekId: week.id, orderedIds })}
+            onRequestDeleteDay={(d) =>
+              setPendingDeleteDay({ id: d.id, weekId: week.id, label: dayDisplayName(d) })
+            }
           />
         )}
         {day && (
@@ -2048,6 +2123,7 @@ function SessionsColumn({
   onSelect,
   onAddDay,
   onReorder,
+  onRequestDeleteDay,
 }: {
   week: Week;
   selDayId: string | null;
@@ -2056,6 +2132,7 @@ function SessionsColumn({
   onSelect: (dayId: string) => void;
   onAddDay: () => void;
   onReorder: (orderedIds: string[]) => void;
+  onRequestDeleteDay: (day: Day) => void;
 }) {
   const sensors = useDndSensors();
 
@@ -2095,6 +2172,7 @@ function SessionsColumn({
               completion={completion}
               showCompletion={showCompletion}
               onSelect={() => onSelect(d.id)}
+              onDelete={() => onRequestDeleteDay(d)}
             />
           ))}
         </SC>
@@ -2109,12 +2187,14 @@ function SortableSessionRow({
   completion,
   showCompletion,
   onSelect,
+  onDelete,
 }: {
   day: Day;
   selected: boolean;
   completion: ProgramCompletion | undefined;
   showCompletion: boolean;
   onSelect: () => void;
+  onDelete: () => void;
 }) {
   const { setNodeRef, transform, transition, isDragging, attributes, listeners } = useSortable({ id: day.id });
   const style: CSSProperties = {
@@ -2209,6 +2289,30 @@ function SortableSessionRow({
             {day.program_exercises.length} liikettä · {cfgs} sarjaa
           </div>
         </div>
+        <button
+          className="mv2-row-del"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete();
+          }}
+          title="Poista treeni"
+          aria-label="Poista treeni"
+          style={{
+            width: 18,
+            height: 18,
+            borderRadius: 4,
+            background: "transparent",
+            border: "none",
+            color: "var(--fg-3)",
+            cursor: "pointer",
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 0,
+          }}
+        >
+          <X size={12} />
+        </button>
         <ChevronRight size={13} style={{ color: selected ? "var(--accent-fg)" : "var(--fg-3)" }} />
       </div>
     </div>
@@ -3623,6 +3727,10 @@ function Mv2Style() {
       .mv2 .mv2-week-del:hover,
       .mv2 .mv2-week-del:focus-visible { opacity: 1; }
       .mv2 .mv2-week-del:hover { background: rgba(255,90,90,0.12) !important; color: #ff6b6b !important; }
+      .mv2 .mv2-row-del { opacity: 0; transition: opacity 0.12s, background 0.12s, color 0.12s; }
+      .mv2 .mv2-row:hover .mv2-row-del,
+      .mv2 .mv2-row-del:focus-visible { opacity: 1; }
+      .mv2 .mv2-row-del:hover { background: rgba(255,90,90,0.12) !important; color: #ff6b6b !important; }
     `}</style>
   );
 }
