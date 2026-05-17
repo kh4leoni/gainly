@@ -57,6 +57,29 @@ html.light body:has(.client-app) { background: #f5f4f8; }
 }
 html.light .client-app { --shimmer-base: #e2e0ea; --shimmer-shine: #f5f4f8; }
 
+/* ── Press feedback for all client-side buttons + links ──────────────────────
+   Scale + brightness combo. Works in dark/light without per-element colors. */
+.client-app button:not(:disabled):active,
+.client-app a:active,
+.client-app [role="button"]:active,
+.client-app [role="link"]:active,
+.client-themed button:not(:disabled):active,
+.client-themed a:active,
+.client-themed [role="button"]:active {
+  transform: scale(0.96);
+  filter: brightness(0.9);
+  transition: transform 60ms ease-out, filter 60ms ease-out;
+}
+.client-app button,
+.client-app a,
+.client-app [role="button"],
+.client-app [role="link"],
+.client-themed button,
+.client-themed a,
+.client-themed [role="button"] {
+  transition: transform 140ms ease-out, filter 140ms ease-out;
+}
+
 /* ── Themed portaled content (dialogs, popovers rendered outside .client-app) ──
    Apply this class to any portaled element that should adopt client-app tokens
    regardless of where the Radix portal mounts it. */
