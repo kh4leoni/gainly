@@ -7,6 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { getClientSchedule, type ScheduleDay } from "@/lib/queries/workouts";
 import { ExerciseInfoDialog } from "@/components/client/exercise-info-dialog";
+import { stripCopySuffix } from "@/lib/utils";
 
 type WeekGroup = {
   weekId: string;
@@ -199,7 +200,7 @@ function WeekCard({ wg, defaultOpen, expanded, setExpanded }: {
         <Chevron open={open} />
         <div style={{ flex: 1, textAlign: "left", minWidth: 0 }}>
           <div style={{ fontWeight: 700, fontSize: 13 }}>
-            {wg.name?.trim() || `Viikko ${wg.weekNumber}`}
+            {stripCopySuffix(wg.name) || `Viikko ${wg.weekNumber}`}
           </div>
           {wg.description && (
             <div style={{ fontSize: 11, color: "var(--c-text-muted)", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -254,7 +255,7 @@ function BlockCard({ bg, defaultOpen, expanded, setExpanded }: {
             Jakso {bg.blockNumber || ""}
           </div>
           <div style={{ fontWeight: 700, fontSize: 14, color: "var(--c-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {bg.name?.trim() || `Jakso ${bg.blockNumber}`}
+            {stripCopySuffix(bg.name) || `Jakso ${bg.blockNumber}`}
           </div>
           <div style={{ fontSize: 11, color: "var(--c-text-muted)", marginTop: 2 }}>
             {bg.weeks.length} viikkoa · {bg.workoutCount} treeniä

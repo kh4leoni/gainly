@@ -33,6 +33,14 @@ export function relativeTime(iso: string) {
   return rtf.format(-Math.round(diff / 86400), "day");
 }
 
+// Strip the "(kopio)" suffix that the coach editor appends to duplicated
+// blocks/weeks. Used in client-facing views so the athlete doesn't see a
+// week named e.g. "Voima (kopio)".
+export function stripCopySuffix(name: string | null | undefined): string | null {
+  if (!name) return name ?? null;
+  return name.replace(/\s*\(kopio\)\s*$/i, "").trim() || null;
+}
+
 export function uuid() {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
   // fallback (tests, old browsers)
