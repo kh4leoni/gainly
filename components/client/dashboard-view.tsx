@@ -171,7 +171,7 @@ function QuoteCard() {
       </div>
 
       {/* Auto-advance progress bar */}
-      <div style={{ height: 2, background: "rgba(255,255,255,0.08)", borderRadius: 1, overflow: "hidden", marginTop: 18 }}>
+      <div style={{ height: 2, background: "var(--c-surface3)", borderRadius: 1, overflow: "hidden", marginTop: 18 }}>
         <div
           key={`p-${current}`}
           style={{
@@ -401,7 +401,7 @@ export function ClientDashboardView({ clientId, firstName }: { clientId: string;
               <div style={{ fontSize: 12, color: "var(--c-text-muted)", marginTop: 6, marginBottom: 10 }}>
                 {wcDone} / {wcTotal} tehty
               </div>
-              <div style={{ height: 4, background: "rgba(255,255,255,0.08)", borderRadius: 2, overflow: "hidden" }}>
+              <div style={{ height: 4, background: "var(--c-surface3)", borderRadius: 2, overflow: "hidden" }}>
                 <div style={{
                   height: "100%",
                   width: `${wcPct}%`,

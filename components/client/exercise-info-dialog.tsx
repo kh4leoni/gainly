@@ -32,8 +32,8 @@ function ExerciseAccordion({ ex, expanded, onToggle }: { ex: ExerciseInfo; expan
   return (
     <div style={{
       borderRadius: 12,
-      border: "1px solid rgba(255,255,255,0.12)",
-      borderLeft: expanded ? "3px solid var(--c-pink)" : "3px solid rgba(255,255,255,0.08)",
+      border: "1px solid var(--c-border-hover)",
+      borderLeft: expanded ? "3px solid var(--c-pink)" : "3px solid var(--c-border)",
       overflow: "hidden",
       background: "var(--c-surface2)",
       boxShadow: expanded ? "0 4px 20px rgba(255,29,140,0.07)" : "0 2px 8px rgba(0,0,0,0.18)",
@@ -47,7 +47,7 @@ function ExerciseAccordion({ ex, expanded, onToggle }: { ex: ExerciseInfo; expan
         style={{
           width: "100%", padding: "14px 16px",
           display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
-          background: expanded ? "var(--c-surface3)" : hovered && hasContent ? "rgba(255,255,255,0.03)" : "var(--c-surface2)",
+          background: expanded ? "var(--c-surface3)" : hovered && hasContent ? "var(--c-surface3)" : "var(--c-surface2)",
           cursor: hasContent ? "pointer" : "default",
           border: 0, textAlign: "left",
           transition: "background 0.15s",
@@ -70,7 +70,7 @@ function ExerciseAccordion({ ex, expanded, onToggle }: { ex: ExerciseInfo; expan
           padding: "12px 16px 16px",
           display: "flex", flexDirection: "column", gap: 12,
           background: "var(--c-surface3)",
-          borderTop: "1px solid rgba(255,255,255,0.06)",
+          borderTop: "1px solid var(--c-border)",
         }}>
           {src && (
             <div style={{ position: "relative", paddingTop: "56.25%", borderRadius: 10, overflow: "hidden", background: "#000" }}>
@@ -110,22 +110,14 @@ export function ExerciseInfoDialog({ exercises, title, trigger }: ExerciseInfoDi
     <Dialog onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent
-        className="max-h-[85vh] flex flex-col overflow-hidden text-[#f0eef5]"
+        className="client-themed max-h-[85vh] flex flex-col overflow-hidden"
         style={{
-          background: "#0f0f12",
-          border: "1px solid rgba(255,255,255,0.12)",
-          "--c-surface": "#0f0f12",
-          "--c-surface2": "#161619",
-          "--c-surface3": "#1e1e23",
-          "--c-border": "rgba(255,255,255,0.07)",
-          "--c-border-hover": "rgba(255,255,255,0.13)",
-          "--c-pink": "#FF1D8C",
-          "--c-text": "#f0eef5",
-          "--c-text-muted": "rgba(240,238,245,0.48)",
+          background: "var(--c-surface)",
+          border: "1px solid var(--c-border)",
         } as React.CSSProperties}
       >
         <DialogHeader style={{ flexShrink: 0 }}>
-          <DialogTitle style={{ color: "#f0eef5" }}>{title ?? "Harjoitteet"}</DialogTitle>
+          <DialogTitle style={{ color: "var(--c-text)" }}>{title ?? "Harjoitteet"}</DialogTitle>
         </DialogHeader>
         <div style={{ overflowY: "auto", flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
           {exercises.map((ex, i) => (

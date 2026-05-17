@@ -56,6 +56,38 @@ html.light body:has(.client-app) { background: #f5f4f8; }
   color-scheme: dark;
 }
 html.light .client-app { --shimmer-base: #e2e0ea; --shimmer-shine: #f5f4f8; }
+
+/* ── Themed portaled content (dialogs, popovers rendered outside .client-app) ──
+   Apply this class to any portaled element that should adopt client-app tokens
+   regardless of where the Radix portal mounts it. */
+.client-themed {
+  --c-pink: #FF1D8C;
+  --c-pink-dim: rgba(255,29,140,0.12);
+  --c-green: #3ECF8E;
+  --c-bg: #070708;
+  --c-surface: #0f0f12;
+  --c-surface2: #161619;
+  --c-surface3: #1e1e23;
+  --c-border: rgba(255,255,255,0.07);
+  --c-border-hover: rgba(255,255,255,0.13);
+  --c-text: #f0eef5;
+  --c-text-muted: rgba(240,238,245,0.48);
+  --c-text-subtle: rgba(240,238,245,0.24);
+  color-scheme: dark;
+  color: var(--c-text);
+}
+html.light .client-themed {
+  --c-bg: #f5f4f8;
+  --c-surface: #ffffff;
+  --c-surface2: #f0eef5;
+  --c-surface3: #e8e6ef;
+  --c-border: rgba(0,0,0,0.08);
+  --c-border-hover: rgba(0,0,0,0.15);
+  --c-text: #1a1820;
+  --c-text-muted: rgba(26,24,32,0.55);
+  --c-text-subtle: rgba(26,24,32,0.3);
+  color-scheme: light;
+}
 @keyframes c-fadeUp        { from{opacity:0;transform:translate3d(0,10px,0)} to{opacity:1;transform:translate3d(0,0,0)} }
 @keyframes c-fadeDown      { from{opacity:1;transform:translate3d(0,0,0)} to{opacity:0;transform:translate3d(0,8px,0)} }
 @keyframes c-fadeIn        { from{opacity:0} to{opacity:1} }

@@ -392,7 +392,7 @@ export function WorkoutLogger({ scheduledWorkoutId }: { scheduledWorkoutId: stri
               opacity: complete.isPending ? 0.6 : 1, transition: "all 0.2s",
             }}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+            <svg width="40%" height="40%" viewBox="0 0 24 24" fill="none"
               stroke={allSetsConfirmed ? "white" : "var(--c-text-muted)"}
               strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="20 6 9 17 4 12"/>
@@ -778,7 +778,7 @@ function ExerciseBlock({ programExercise, workoutLogId }: { programExercise: any
                 transition: "all 0.15s",
               }}
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="40%" height="40%" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
               </svg>
             </button>
@@ -821,8 +821,8 @@ function ExerciseBlock({ programExercise, workoutLogId }: { programExercise: any
       {/* ── Table ── */}
       <div style={{ paddingBottom: 4 }}>
         <div style={{
-          display: "grid", gridTemplateColumns: "20px 1fr 1fr 1fr 44px",
-          gap: 3, padding: "0 8px 6px",
+          display: "grid", gridTemplateColumns: "16px minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr) clamp(34px, 9vw, 44px)",
+          gap: 2, padding: "0 clamp(4px, 1.5vw, 8px) 6px",
           borderBottom: "1px solid var(--c-border)",
         }}>
           <span style={{ fontSize: 10, color: "var(--c-text-subtle)", fontWeight: 600 }}>#</span>
@@ -899,7 +899,8 @@ function StepperCell({
         disabled={!active || disabled}
         aria-label={kind === "plus" ? "Lisää" : "Vähennä"}
         style={{
-          width: 38, height: 38, borderRadius: "50%", flexShrink: 0,
+          width: "clamp(22px, 6.5vw, 28px)", height: "clamp(22px, 6.5vw, 28px)",
+          borderRadius: "50%", flexShrink: 0,
           background: (!active || disabled) ? "transparent" : "var(--c-surface3)",
           border: `1px solid ${(!active || disabled) ? "transparent" : "var(--c-border)"}`,
           cursor: (!active || disabled) ? "default" : "pointer",
@@ -908,7 +909,7 @@ function StepperCell({
           transition: "background 0.1s",
         }}
       >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+        <svg width="55%" height="55%" viewBox="0 0 24 24" fill="none"
           stroke={stroke} strokeWidth="3" strokeLinecap="round">
           <line x1="5" y1="12" x2="19" y2="12" />
           {kind === "plus" && <line x1="12" y1="5" x2="12" y2="19" />}
@@ -919,7 +920,7 @@ function StepperCell({
 
   const centerStyle: React.CSSProperties = {
     flex: 1, textAlign: "center", lineHeight: 1,
-    fontSize: 13, fontWeight: 700,
+    fontSize: "clamp(11px, 3.2vw, 13px)", fontWeight: 700,
     color: display === "–" ? "var(--c-text-subtle)" : "var(--c-text)",
     background: disabled ? "transparent" : "var(--c-surface2)",
     border: `1px solid ${disabled ? "transparent" : "var(--c-border)"}`,
@@ -988,8 +989,8 @@ function SetTableRow({
 
   return (
     <div style={{
-      display: "grid", gridTemplateColumns: "20px 1fr 1fr 1fr 44px",
-      gap: 3, padding: "6px 8px",
+      display: "grid", gridTemplateColumns: "16px minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr) clamp(34px, 9vw, 44px)",
+      gap: 2, padding: "6px clamp(4px, 1.5vw, 8px)",
       borderBottom: "1px solid var(--c-border)",
       background: row.isPr ? "rgba(245,166,35,0.05)" : "transparent",
       opacity: row.confirmed ? 0.7 : 1,
@@ -1042,7 +1043,8 @@ function SetTableRow({
           onClick={row.confirmed ? onUnconfirm : onConfirm}
           title={row.confirmed ? "Peru sarja" : "Merkitse tehdyksi"}
           style={{
-            width: 40, height: 40, borderRadius: "50%", padding: 0, flexShrink: 0,
+            width: "clamp(34px, 9vw, 40px)", height: "clamp(34px, 9vw, 40px)",
+            borderRadius: "50%", padding: 0, flexShrink: 0,
             background: row.confirmed ? "rgba(62,207,142,0.15)" : "var(--c-surface2)",
             border: `1px solid ${row.confirmed && !row.synced ? "rgba(245,166,35,0.4)" : row.confirmed ? "rgba(62,207,142,0.4)" : "var(--c-border)"}`,
             cursor: "pointer",
@@ -1051,12 +1053,12 @@ function SetTableRow({
           } as React.CSSProperties}
         >
           {row.confirmed && !row.synced ? (
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+            <svg width="40%" height="40%" viewBox="0 0 24 24" fill="none"
               stroke="#F5A623" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 15 14" />
             </svg>
           ) : (
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+            <svg width="40%" height="40%" viewBox="0 0 24 24" fill="none"
               stroke={row.confirmed ? "#3ECF8E" : "var(--c-text-subtle)"}
               strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="20 6 9 17 4 12"/>
