@@ -105,16 +105,16 @@ export function SyncBar() {
           gap: 6,
           padding: "6px 12px 6px 8px",
           borderRadius: 999,
-          background: d.offline ? "#1a1a1f" : d.synced ? "#0d1f14" : "#1c1800",
-          border: `1px solid ${d.offline ? "rgba(255,255,255,0.1)" : d.synced ? "rgba(34,197,94,0.4)" : "rgba(245,166,35,0.35)"}`,
+          background: d.offline ? "#3a3a42" : d.synced ? "#22c55e" : "#F5A623",
+          border: "none",
           boxShadow: d.offline
             ? "0 2px 12px rgba(0,0,0,0.4)"
             : d.synced
-              ? "0 2px 12px rgba(34,197,94,0.2)"
-              : "0 2px 12px rgba(245,166,35,0.2)",
+              ? "0 2px 12px rgba(34,197,94,0.35)"
+              : "0 2px 12px rgba(245,166,35,0.35)",
           fontSize: 12,
           fontWeight: 700,
-          color: d.offline ? "rgba(240,238,245,0.5)" : d.synced ? "#22c55e" : "#F5A623",
+          color: d.offline ? "#f0eef5" : "#0a0a0c",
           cursor: canTap ? "pointer" : "default",
           fontFamily: "inherit",
           transformOrigin: "center",
@@ -128,7 +128,7 @@ export function SyncBar() {
       >
         {d.synced ? (
           <svg aria-hidden width="11" height="9" viewBox="0 0 11 9" fill="none" style={{ flexShrink: 0 }}>
-            <path d="M1 4L4 7.5L10 1" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M1 4L4 7.5L10 1" stroke="#0a0a0c" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         ) : (
           <span
@@ -138,7 +138,7 @@ export function SyncBar() {
               height: 7,
               borderRadius: "50%",
               flexShrink: 0,
-              background: d.offline ? "#555" : "#F5A623",
+              background: d.offline ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.35)",
               animation: d.running ? "pulse 1.2s ease-in-out infinite" : undefined,
             }}
           />
