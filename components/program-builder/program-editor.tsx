@@ -1101,7 +1101,8 @@ export function ProgramEditor({ programId }: { programId: string }) {
       const block = program?.program_blocks?.find((b) => b.id === blockId);
       const week = block?.program_weeks?.find((w) => w.id === weekId);
       if (!week) throw new Error("Week not found");
-      const newWeekNumber = (block?.program_weeks?.length ?? 0) + 1;
+      const newWeekNumber =
+        Math.max(0, ...((block?.program_weeks ?? []).map((w) => w.week_number))) + 1;
       const { data: newWeek, error: weekErr } = await supabase
         .from("program_weeks")
         .insert({ program_id: programId, block_id: blockId, week_number: newWeekNumber, name: week.name ? `${week.name} (kopio)` : null, description: week.description, is_active: false })
