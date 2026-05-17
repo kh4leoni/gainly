@@ -93,30 +93,30 @@ export function PlateLoaderDialog({
     <Dialog>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent
-        className="max-h-[85vh] flex flex-col overflow-hidden text-[#f0eef5]"
+        className="client-themed max-h-[85vh] flex flex-col overflow-hidden"
         style={{
-          background: "#0f0f12",
-          border: "1px solid rgba(255,255,255,0.12)",
+          background: "var(--c-surface)",
+          border: "1px solid var(--c-border)",
         } as React.CSSProperties}
       >
         <DialogHeader style={{ flexShrink: 0 }}>
-          <DialogTitle style={{ color: "#f0eef5" }}>Levyt — {exerciseName}</DialogTitle>
+          <DialogTitle style={{ color: "var(--c-text)" }}>Levyt — {exerciseName}</DialogTitle>
         </DialogHeader>
 
         <div style={{ overflowY: "auto", flex: 1, padding: "4px 2px 2px" }}>
           {/* Top: set + target weight */}
           <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 10 }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: "rgba(240,238,245,0.5)", textTransform: "uppercase", letterSpacing: "0.8px" }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: "var(--c-text-muted)", textTransform: "uppercase", letterSpacing: "0.8px" }}>
               {nextSetNumber != null ? `Sarja ${nextSetNumber}` : "Seuraava sarja"}
             </span>
-            <span style={{ fontSize: 26, fontWeight: 800, letterSpacing: "-0.5px" }}>
+            <span style={{ fontSize: 26, fontWeight: 800, letterSpacing: "-0.5px", color: "var(--c-text)" }}>
               {nextSetWeight != null ? `${nextSetWeight} kg` : "—"}
             </span>
           </div>
 
           {/* Bar selector */}
           <div style={{ marginBottom: 12 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: "rgba(240,238,245,0.4)", textTransform: "uppercase", letterSpacing: "0.6px", marginBottom: 6 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: "var(--c-text-subtle)", textTransform: "uppercase", letterSpacing: "0.6px", marginBottom: 6 }}>
               Tanko
             </div>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -127,9 +127,9 @@ export function PlateLoaderDialog({
                   onClick={() => setBarKg(b.kg)}
                   style={{
                     fontSize: 11, fontWeight: 600, padding: "6px 10px", borderRadius: 18,
-                    border: `1px solid ${barKg === b.kg ? "#FF1D8C" : "rgba(255,255,255,0.12)"}`,
-                    background: barKg === b.kg ? "rgba(255,29,140,0.12)" : "#161619",
-                    color: barKg === b.kg ? "#FF1D8C" : "rgba(240,238,245,0.7)",
+                    border: `1px solid ${barKg === b.kg ? "var(--c-pink)" : "var(--c-border)"}`,
+                    background: barKg === b.kg ? "var(--c-pink-dim)" : "var(--c-surface2)",
+                    color: barKg === b.kg ? "var(--c-pink)" : "var(--c-text-muted)",
                     cursor: "pointer", fontFamily: "inherit",
                   }}
                 >
@@ -141,7 +141,7 @@ export function PlateLoaderDialog({
 
           {/* Max plate selector */}
           <div style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: "rgba(240,238,245,0.4)", textTransform: "uppercase", letterSpacing: "0.6px", marginBottom: 6 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: "var(--c-text-subtle)", textTransform: "uppercase", letterSpacing: "0.6px", marginBottom: 6 }}>
               Suurin levy
             </div>
             <div style={{ display: "flex", gap: 6 }}>
@@ -152,9 +152,9 @@ export function PlateLoaderDialog({
                   onClick={() => setMaxPlateKg(kg)}
                   style={{
                     fontSize: 11, fontWeight: 600, padding: "6px 12px", borderRadius: 18,
-                    border: `1px solid ${maxPlateKg === kg ? "#FF1D8C" : "rgba(255,255,255,0.12)"}`,
-                    background: maxPlateKg === kg ? "rgba(255,29,140,0.12)" : "#161619",
-                    color: maxPlateKg === kg ? "#FF1D8C" : "rgba(240,238,245,0.7)",
+                    border: `1px solid ${maxPlateKg === kg ? "var(--c-pink)" : "var(--c-border)"}`,
+                    background: maxPlateKg === kg ? "var(--c-pink-dim)" : "var(--c-surface2)",
+                    color: maxPlateKg === kg ? "var(--c-pink)" : "var(--c-text-muted)",
                     cursor: "pointer", fontFamily: "inherit",
                   }}
                 >
@@ -167,8 +167,8 @@ export function PlateLoaderDialog({
           {nextSetWeight == null ? (
             <div style={{
               padding: "20px 14px", textAlign: "center",
-              border: "1px dashed rgba(255,255,255,0.12)", borderRadius: 12,
-              color: "rgba(240,238,245,0.5)", fontSize: 13,
+              border: "1px dashed var(--c-border)", borderRadius: 12,
+              color: "var(--c-text-muted)", fontSize: 13,
             }}>
               Aseta painon tavoite sarjalle ensin.
             </div>
@@ -184,8 +184,8 @@ export function PlateLoaderDialog({
             <>
               {/* Plate visual — plates only */}
               <div style={{
-                background: "#161619",
-                border: "1px solid rgba(255,255,255,0.07)",
+                background: "var(--c-surface2)",
+                border: "1px solid var(--c-border)",
                 borderRadius: 12, padding: "18px 14px",
                 display: "flex", alignItems: "center", justifyContent: "center",
                 gap: 2, minHeight: 160, overflowX: "auto",
@@ -207,7 +207,7 @@ export function PlateLoaderDialog({
                   </div>
                 ))}
                 {plates.length === 0 && (
-                  <div style={{ fontSize: 12, color: "rgba(240,238,245,0.4)", marginLeft: 12 }}>
+                  <div style={{ fontSize: 12, color: "var(--c-text-muted)", marginLeft: 12 }}>
                     Pelkkä tanko
                   </div>
                 )}
@@ -225,10 +225,10 @@ export function PlateLoaderDialog({
                           background: PLATE_COLOR[p as PlateKg],
                           border: "1px solid rgba(0,0,0,0.3)", flexShrink: 0,
                         }} />
-                        <span style={{ fontWeight: 600, color: "#f0eef5" }}>
+                        <span style={{ fontWeight: 600, color: "var(--c-text)" }}>
                           {count} × {p} kg
                         </span>
-                        <span style={{ color: "rgba(240,238,245,0.5)", fontSize: 12 }}>
+                        <span style={{ color: "var(--c-text-muted)", fontSize: 12 }}>
                           / puoli
                         </span>
                       </div>
