@@ -954,7 +954,7 @@ function StepperCell({
         disabled={!active || disabled}
         aria-label={kind === "plus" ? "Lisää" : "Vähennä"}
         style={{
-          width: "clamp(34px, 9vw, 42px)", height: "clamp(34px, 9vw, 42px)",
+          width: "clamp(28px, 7.5vw, 36px)", height: "clamp(28px, 7.5vw, 36px)",
           borderRadius: "50%", flexShrink: 0,
           background: (!active || disabled) ? "transparent" : "var(--c-surface3)",
           border: `1px solid ${(!active || disabled) ? "transparent" : "var(--c-border)"}`,
@@ -964,7 +964,7 @@ function StepperCell({
           transition: "background 0.1s",
         }}
       >
-        <svg width="50%" height="50%" viewBox="0 0 24 24" fill="none"
+        <svg width="55%" height="55%" viewBox="0 0 24 24" fill="none"
           stroke={stroke} strokeWidth="3" strokeLinecap="round">
           <line x1="5" y1="12" x2="19" y2="12" />
           {kind === "plus" && <line x1="12" y1="5" x2="12" y2="19" />}
