@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Collapse } from "@/components/ui/collapse";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
@@ -8,28 +8,6 @@ import { getPastWorkouts, type PastWorkout } from "@/lib/queries/workouts";
 import Link from "next/link";
 import { SyncBadge } from "@/components/offline/sync-badge";
 import { useLocalCompletedNotInServer, useUnsyncedForWorkout } from "@/lib/offline/reads";
-
-function groupByWeek(workouts: PastWorkout[]): Array<{ label: string; workouts: PastWorkout[] }> {
-  const map = new Map<string, PastWorkout[]>();
-  for (const w of workouts) {
-    const ts = w.completed_at ?? "";
-    const d = ts ? new Date(ts) : new Date(0);
-    const day = d.getDay();
-    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-    d.setDate(diff);
-    const key = d.toISOString().slice(0, 10);
-    if (!map.has(key)) map.set(key, []);
-    map.get(key)!.push(w);
-  }
-  return Array.from(map.entries()).map(([key, ws]) => {
-    const start = new Date(key);
-    const end = new Date(key);
-    end.setDate(end.getDate() + 6);
-    const opts: Intl.DateTimeFormatOptions = { day: "numeric", month: "numeric" };
-    const label = `${start.toLocaleDateString("fi-FI", opts)}–${end.toLocaleDateString("fi-FI", opts)}`;
-    return { label, workouts: ws };
-  });
-}
 
 function groupSetsByExercise(sets: PastWorkout["workout_logs"][number]["set_logs"]) {
   const order: string[] = [];
@@ -62,34 +40,34 @@ function WorkoutCard({ w }: { w: PastWorkout }) {
   const unsynced = useUnsyncedForWorkout(w.id);
 
   const dateStr = w.completed_at
-    ? new Date(w.completed_at).toLocaleDateString("fi-FI", { weekday: "short", day: "numeric", month: "numeric" })
+    ? new Date(w.completed_at).toLocaleDateString("fi-FI", { weekday: "short", day: "numeric", month: "numeric", year: "numeric" })
     : "";
 
   return (
     <div style={{
       background: "var(--c-surface)",
       border: "1px solid var(--c-border)",
-      borderRadius: 16,
+      borderRadius: 12,
       overflow: "hidden",
     }}>
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
         style={{
-          width: "100%", textAlign: "left", padding: "14px 16px",
+          width: "100%", textAlign: "left", padding: "12px 14px",
           background: "none", border: "none", cursor: "pointer", fontFamily: "inherit",
           display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
         }}
       >
         <div style={{ minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
             <span style={{ fontSize: 10, color: "var(--c-green)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.8px" }}>
               ✓ Tehty
             </span>
             <span style={{ fontSize: 11, color: "var(--c-text-muted)" }}>{dateStr}</span>
             <SyncBadge synced={!unsynced} size={11} />
           </div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: "var(--c-text)", marginBottom: 3 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "var(--c-text)", marginBottom: 2 }}>
             {w.program_days?.name ?? "Treeni"}
           </div>
           {exNames.length > 0 && (
@@ -105,7 +83,7 @@ function WorkoutCard({ w }: { w: PastWorkout }) {
       </button>
 
       <Collapse open={open}>
-        <div style={{ borderTop: "1px solid var(--c-border)", padding: "12px 16px 14px" }}>
+        <div style={{ borderTop: "1px solid var(--c-border)", padding: "12px 14px 14px" }}>
           {wl?.notes && (
             <div style={{
               background: "rgba(255,29,140,0.07)", border: "1px solid rgba(255,29,140,0.18)",
@@ -206,6 +184,144 @@ function LocalOnlyCard({ completedAt }: { completedAt: string | null }) {
   );
 }
 
+// ── Hierarchical grouping: Program → Block → Week → Workouts ──────────────────
+type WeekGroup = {
+  id: string;
+  weekNumber: number;
+  name: string | null;
+  workouts: PastWorkout[];
+};
+type BlockGroup = {
+  id: string;
+  blockNumber: number;
+  name: string | null;
+  weeks: WeekGroup[];
+  workoutCount: number;
+};
+type ProgramGroup = {
+  id: string;
+  title: string;
+  blocks: BlockGroup[];
+  workoutCount: number;
+  latestAt: number;
+};
+
+function buildHierarchy(workouts: PastWorkout[]): { programs: ProgramGroup[]; orphans: PastWorkout[] } {
+  const orphans: PastWorkout[] = [];
+  const progMap = new Map<string, ProgramGroup>();
+
+  for (const w of workouts) {
+    const week = w.program_days?.program_weeks;
+    const block = week?.program_blocks;
+    const prog = block?.programs;
+    if (!week || !block || !prog) {
+      orphans.push(w);
+      continue;
+    }
+    let pg = progMap.get(prog.id);
+    if (!pg) {
+      pg = { id: prog.id, title: prog.title, blocks: [], workoutCount: 0, latestAt: 0 };
+      progMap.set(prog.id, pg);
+    }
+    let bg = pg.blocks.find((b) => b.id === block.id);
+    if (!bg) {
+      bg = { id: block.id, blockNumber: block.block_number, name: block.name, weeks: [], workoutCount: 0 };
+      pg.blocks.push(bg);
+    }
+    let wg = bg.weeks.find((x) => x.id === week.id);
+    if (!wg) {
+      wg = { id: week.id, weekNumber: week.week_number, name: week.name, workouts: [] };
+      bg.weeks.push(wg);
+    }
+    wg.workouts.push(w);
+    bg.workoutCount += 1;
+    pg.workoutCount += 1;
+    const t = w.completed_at ? new Date(w.completed_at).getTime() : 0;
+    if (t > pg.latestAt) pg.latestAt = t;
+  }
+
+  for (const pg of progMap.values()) {
+    pg.blocks.sort((a, b) => b.blockNumber - a.blockNumber);
+    for (const bg of pg.blocks) {
+      bg.weeks.sort((a, b) => b.weekNumber - a.weekNumber);
+      for (const wg of bg.weeks) {
+        wg.workouts.sort((a, b) => {
+          const ta = a.completed_at ? new Date(a.completed_at).getTime() : 0;
+          const tb = b.completed_at ? new Date(b.completed_at).getTime() : 0;
+          return tb - ta;
+        });
+      }
+    }
+  }
+  const programs = Array.from(progMap.values()).sort((a, b) => b.latestAt - a.latestAt);
+  return { programs, orphans };
+}
+
+function CollapseSection({
+  title, subtitle, count, defaultOpen, accent, children,
+}: {
+  title: string;
+  subtitle?: string;
+  count: number;
+  defaultOpen?: boolean;
+  accent?: string;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(!!defaultOpen);
+  return (
+    <div style={{
+      background: "var(--c-surface)",
+      border: "1px solid var(--c-border)",
+      borderRadius: 14,
+      overflow: "hidden",
+    }}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        style={{
+          width: "100%", textAlign: "left", padding: "12px 14px",
+          background: "none", border: "none", cursor: "pointer", fontFamily: "inherit",
+          display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
+        }}
+      >
+        <div style={{ minWidth: 0, display: "flex", alignItems: "center", gap: 10 }}>
+          {accent && (
+            <span style={{ width: 4, height: 28, borderRadius: 2, background: accent, flexShrink: 0 }} />
+          )}
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "var(--c-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {title}
+            </div>
+            {subtitle && (
+              <div style={{ fontSize: 11, color: "var(--c-text-muted)", marginTop: 2 }}>
+                {subtitle}
+              </div>
+            )}
+          </div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+          <span style={{
+            fontSize: 11, fontWeight: 700, color: "var(--c-text-muted)",
+            background: "var(--c-surface2)", border: "1px solid var(--c-border)",
+            padding: "3px 8px", borderRadius: 20,
+          }}>
+            {count}
+          </span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--c-text-muted)" strokeWidth="2" strokeLinecap="round"
+            style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </div>
+      </button>
+      <Collapse open={open}>
+        <div style={{ borderTop: "1px solid var(--c-border)", padding: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+          {children}
+        </div>
+      </Collapse>
+    </div>
+  );
+}
+
 export function HistoryView({ clientId }: { clientId: string }) {
   const supabase = createClient();
 
@@ -219,7 +335,7 @@ export function HistoryView({ clientId }: { clientId: string }) {
   const serverIds = workouts.map((w) => w.id);
   const localOnly = useLocalCompletedNotInServer(clientId, serverIds);
 
-  const weeks = groupByWeek(workouts);
+  const { programs, orphans } = useMemo(() => buildHierarchy(workouts), [workouts]);
 
   return (
     <div style={{ flex: 1 }}>
@@ -256,16 +372,45 @@ export function HistoryView({ clientId }: { clientId: string }) {
         </div>
       )}
 
-      {weeks.map(({ label, workouts: wws }) => (
-        <div key={label} style={{ marginBottom: 24 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--c-text-muted)", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 10 }}>
-            {label}
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {wws.map((w) => <WorkoutCard key={w.id} w={w} />)}
-          </div>
-        </div>
-      ))}
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {programs.map((pg, pi) => (
+          <CollapseSection
+            key={pg.id}
+            title={pg.title}
+            subtitle={`${pg.blocks.length} jaksoa`}
+            count={pg.workoutCount}
+            defaultOpen={pi === 0}
+            accent="var(--c-pink)"
+          >
+            {pg.blocks.map((bg, bi) => (
+              <CollapseSection
+                key={bg.id}
+                title={bg.name?.trim() || `Jakso ${bg.blockNumber}`}
+                subtitle={`${bg.weeks.length} viikkoa`}
+                count={bg.workoutCount}
+                defaultOpen={pi === 0 && bi === 0}
+              >
+                {bg.weeks.map((wg, wi) => (
+                  <CollapseSection
+                    key={wg.id}
+                    title={wg.name?.trim() || `Viikko ${wg.weekNumber}`}
+                    count={wg.workouts.length}
+                    defaultOpen={pi === 0 && bi === 0 && wi === 0}
+                  >
+                    {wg.workouts.map((w) => <WorkoutCard key={w.id} w={w} />)}
+                  </CollapseSection>
+                ))}
+              </CollapseSection>
+            ))}
+          </CollapseSection>
+        ))}
+
+        {orphans.length > 0 && (
+          <CollapseSection title="Muut treenit" count={orphans.length} subtitle="Ohjelmasta poistetut">
+            {orphans.map((w) => <WorkoutCard key={w.id} w={w} />)}
+          </CollapseSection>
+        )}
+      </div>
       </div>
     </div>
   );
