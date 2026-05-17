@@ -96,6 +96,18 @@ export type PastWorkout = {
   completed_at: string | null;
   program_days: {
     name: string | null;
+    day_number: number;
+    program_weeks: {
+      id: string;
+      week_number: number;
+      name: string | null;
+      program_blocks: {
+        id: string;
+        block_number: number;
+        name: string | null;
+        programs: { id: string; title: string } | null;
+      } | null;
+    } | null;
     program_exercises: Array<{ order_idx: number; exercises: { name: string } | null }>;
   } | null;
   workout_logs: Array<{
@@ -111,13 +123,20 @@ export type PastWorkout = {
   }>;
 };
 
-export async function getPastWorkouts(supabase: DB, clientId: string, limit = 60): Promise<PastWorkout[]> {
+export async function getPastWorkouts(supabase: DB, clientId: string, limit = 200): Promise<PastWorkout[]> {
   const { data, error } = await supabase
     .from("scheduled_workouts")
     .select(`
       id, completed_at,
       program_days (
-        name,
+        name, day_number,
+        program_weeks (
+          id, week_number, name,
+          program_blocks (
+            id, block_number, name,
+            programs ( id, title )
+          )
+        ),
         program_exercises ( order_idx, exercises ( name ) )
       ),
       workout_logs (
