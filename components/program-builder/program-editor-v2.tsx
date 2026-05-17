@@ -798,6 +798,51 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
     onSettled: invalidate,
   });
 
+  const renameWeek = useMutation({
+    mutationFn: async ({ weekId, name }: { weekId: string; name: string | null }) => {
+      const { error } = await supabase.from("program_weeks").update({ name }).eq("id", weekId);
+      if (error) throw error;
+    },
+    onMutate: async ({ weekId, name }) => {
+      await qc.cancelQueries({ queryKey: ["program", programId] });
+      const prev = qc.getQueryData<ProgramFull>(["program", programId]);
+      qc.setQueryData(["program", programId], (old: ProgramFull) => {
+        if (!old) return old;
+        const next = structuredClone(old);
+        for (const b of next.program_blocks ?? [])
+          for (const w of b.program_weeks ?? [])
+            if (w.id === weekId) w.name = name;
+        return next;
+      });
+      return { prev };
+    },
+    onError: (_e, _p, ctx) => { if (ctx?.prev) qc.setQueryData(["program", programId], ctx.prev); },
+    onSettled: invalidate,
+  });
+
+  const renameDay = useMutation({
+    mutationFn: async ({ dayId, name }: { dayId: string; name: string | null }) => {
+      const { error } = await supabase.from("program_days").update({ name }).eq("id", dayId);
+      if (error) throw error;
+    },
+    onMutate: async ({ dayId, name }) => {
+      await qc.cancelQueries({ queryKey: ["program", programId] });
+      const prev = qc.getQueryData<ProgramFull>(["program", programId]);
+      qc.setQueryData(["program", programId], (old: ProgramFull) => {
+        if (!old) return old;
+        const next = structuredClone(old);
+        for (const b of next.program_blocks ?? [])
+          for (const w of b.program_weeks ?? [])
+            for (const d of w.program_days ?? [])
+              if (d.id === dayId) d.name = name;
+        return next;
+      });
+      return { prev };
+    },
+    onError: (_e, _p, ctx) => { if (ctx?.prev) qc.setQueryData(["program", programId], ctx.prev); },
+    onSettled: invalidate,
+  });
+
   const duplicateWeek = useMutation({
     mutationFn: async ({ weekId, blockId }: { weekId: string; blockId: string }) => {
       const b = program?.program_blocks?.find((x) => x.id === blockId);
@@ -1156,6 +1201,7 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
             onRequestDeleteDay={(d) =>
               setPendingDeleteDay({ id: d.id, weekId: week.id, label: dayDisplayName(d) })
             }
+            onRenameWeek={(name) => renameWeek.mutate({ weekId: week.id, name })}
           />
         )}
         {day && (
@@ -1165,6 +1211,7 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
             onSelect={setSelExIdx}
             onAdd={() => addExerciseMut.mutate(day.id)}
             onReorder={(orderedIds) => reorderExercises.mutate({ dayId: day.id, orderedIds })}
+            onRenameDay={(name) => renameDay.mutate({ dayId: day.id, name })}
           />
         )}
 
@@ -2319,6 +2366,7 @@ function SessionsColumn({
   onAddDay,
   onReorder,
   onRequestDeleteDay,
+  onRenameWeek,
 }: {
   week: Week;
   selDayId: string | null;
@@ -2328,6 +2376,7 @@ function SessionsColumn({
   onAddDay: () => void;
   onReorder: (orderedIds: string[]) => void;
   onRequestDeleteDay: (day: Day) => void;
+  onRenameWeek: (name: string | null) => void;
 }) {
   const sensors = useDndSensors();
 
@@ -2343,7 +2392,17 @@ function SessionsColumn({
 
   return (
     <ColumnShell
-      title={`Vk ${week.week_number} — ${week.name?.trim() || `Viikko ${week.week_number}`}`}
+      title={
+        <>
+          <span style={{ color: "var(--fg-3)", flexShrink: 0 }}>Vk {week.week_number}</span>
+          <span style={{ color: "var(--fg-3)", flexShrink: 0 }}>·</span>
+          <EditableTitle
+            value={week.name}
+            fallback={`Viikko ${week.week_number}`}
+            onSave={onRenameWeek}
+          />
+        </>
+      }
       subtitle="TREENIT"
       action={
         <Mv2Button kind="ghost" size="sm" onClick={onAddDay}>
@@ -2522,12 +2581,14 @@ function ExercisesColumn({
   onSelect,
   onAdd,
   onReorder,
+  onRenameDay,
 }: {
   day: Day;
   selExIdx: number;
   onSelect: (idx: number) => void;
   onAdd: () => void;
   onReorder: (orderedIds: string[]) => void;
+  onRenameDay: (name: string | null) => void;
 }) {
   const c = dayColor(day.day_number);
   const sensors = useDndSensors();
@@ -2546,7 +2607,13 @@ function ExercisesColumn({
 
   return (
     <ColumnShell
-      title={dayDisplayName(day)}
+      title={
+        <EditableTitle
+          value={day.name}
+          fallback={`Treeni ${day.day_number}`}
+          onSave={onRenameDay}
+        />
+      }
       subtitle={`T${day.day_number}`}
       titleColor={c.fg}
       action={
@@ -2646,6 +2713,88 @@ function SortableExerciseRow({
   );
 }
 
+function EditableTitle({
+  value,
+  fallback,
+  onSave,
+}: {
+  value: string | null;
+  fallback: string;
+  onSave: (next: string | null) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [val, setVal] = useState(value ?? "");
+
+  useEffect(() => { setVal(value ?? ""); }, [value]);
+
+  function commit() {
+    const next = val.trim();
+    const normalized = next === "" ? null : next;
+    setEditing(false);
+    if (normalized !== (value?.trim() || null)) onSave(normalized);
+  }
+
+  if (editing) {
+    return (
+      <input
+        autoFocus
+        value={val}
+        placeholder={fallback}
+        onChange={(e) => setVal(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); }
+          else if (e.key === "Escape") { setVal(value ?? ""); setEditing(false); }
+        }}
+        style={{
+          width: "100%",
+          minWidth: 0,
+          fontFamily: "inherit",
+          fontSize: "inherit",
+          fontWeight: "inherit",
+          color: "inherit",
+          background: "var(--bg-2)",
+          border: "1px solid var(--accent-line)",
+          borderRadius: 4,
+          padding: "1px 5px",
+          outline: "none",
+        }}
+      />
+    );
+  }
+  const display = value?.trim() || fallback;
+  const isEmpty = !value?.trim();
+  return (
+    <button
+      type="button"
+      onClick={() => setEditing(true)}
+      title="Klikkaa muokataksesi nimeä"
+      style={{
+        background: "transparent",
+        border: "1px solid transparent",
+        padding: "1px 5px",
+        margin: "0 -5px",
+        cursor: "text",
+        fontFamily: "inherit",
+        fontSize: "inherit",
+        fontWeight: "inherit",
+        color: isEmpty ? "var(--fg-2)" : "inherit",
+        textAlign: "left",
+        borderRadius: 4,
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        whiteSpace: "nowrap",
+        width: "100%",
+        minWidth: 0,
+      }}
+      onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--line)"; }}
+      onMouseLeave={(e) => { e.currentTarget.style.borderColor = "transparent"; }}
+    >
+      {display}
+    </button>
+  );
+}
+
 function ColumnShell({
   title,
   subtitle,
@@ -2654,7 +2803,7 @@ function ColumnShell({
   width,
   children,
 }: {
-  title: string;
+  title: ReactNode;
   subtitle?: string;
   titleColor?: string;
   action?: ReactNode;
@@ -2686,9 +2835,10 @@ function ColumnShell({
                 fontSize: 13.5,
                 fontWeight: 600,
                 color: titleColor || "var(--fg-0)",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
+                minWidth: 0,
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
               }}
             >
               {title}
