@@ -1234,8 +1234,7 @@ function formatDurationSec(s: number | null | undefined): string {
   const h = Math.floor(s / 3600);
   const m = Math.floor((s % 3600) / 60);
   const sec = s % 60;
-  if (h > 0) return `${h}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
-  return `${m}:${String(sec).padStart(2, "0")}`;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
 }
 
 type CardioRowState = {
@@ -1431,7 +1430,7 @@ function CardioExerciseBlock({ programExercise, workoutLogId }: { programExercis
               {tracks.duration && (
                 <input
                   type="text" inputMode="numeric"
-                  placeholder="mm:ss"
+                  placeholder="hh:mm:ss"
                   value={row.duration}
                   onChange={(e) => setRows((prev) => prev.map((r, idx) => idx === i ? { ...r, duration: e.target.value, confirmed: false, setLogId: null } : r))}
                   style={cardioInputStyle(row.confirmed)}

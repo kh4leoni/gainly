@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { MeasurementChart } from "@/components/client/measurement-chart";
-import { getRecentPRs } from "@/lib/queries/workouts";
+import { getRecentPRs, getCardioRecords, type CardioRecord } from "@/lib/queries/workouts";
 import { derivedRepMax, roundKg } from "@/lib/calc/one-rm";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { KilpailutyokaluCard } from "@/components/client/kilpailutyokalu-card";
@@ -62,6 +62,13 @@ export function ProgressView({
     staleTime: 60_000,
     enabled: online,
   }) as { data: PR[] | undefined };
+
+  const cardioPRs = useQuery({
+    queryKey: ["cardio-prs", clientId],
+    queryFn: () => getCardioRecords(supabase, clientId),
+    staleTime: 60_000,
+    enabled: online,
+  });
 
   const selExName = exercises.find((e) => e.id === selId)?.name ?? "";
 
@@ -226,6 +233,20 @@ export function ProgressView({
                   </button>
                 ))}
               </div>
+
+              {/* ── Kardio-ennätykset ── */}
+              {(cardioPRs.data?.length ?? 0) > 0 && (
+                <>
+                  <div style={{ fontSize: 12, color: "var(--c-text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "1px", margin: "26px 0 10px" }}>
+                    Kardio-ennätykset
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {sortCardioPRs(cardioPRs.data ?? []).map((pr) => (
+                      <CardioPRRow key={pr.id} pr={pr} />
+                    ))}
+                  </div>
+                </>
+              )}
             </>
           )}
         </>
@@ -314,6 +335,66 @@ export function ProgressView({
           <KilpailutyokaluCard bigThreeE1rm={bigThreeE1rm} />
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Cardio PR helpers ────────────────────────────────────────────────────────
+const BUCKET_ORDER: CardioRecord["bucket"][] = ["cooper", "1km", "5km", "10km", "21km", "42km"];
+const BUCKET_LABEL: Record<CardioRecord["bucket"], string> = {
+  cooper: "Cooper (12 min)",
+  "1km": "1 km",
+  "5km": "5 km",
+  "10km": "10 km",
+  "21km": "½-maraton (21 km)",
+  "42km": "Maraton (42 km)",
+};
+
+function sortCardioPRs(prs: CardioRecord[]): CardioRecord[] {
+  return [...prs].sort(
+    (a, b) => BUCKET_ORDER.indexOf(a.bucket) - BUCKET_ORDER.indexOf(b.bucket),
+  );
+}
+
+function formatDur(s: number | null): string {
+  if (s == null) return "—";
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+}
+
+function formatKm(m: number | null): string {
+  if (m == null) return "—";
+  return (m / 1000).toFixed(2).replace(/\.?0+$/, "") + " km";
+}
+
+function CardioPRRow({ pr }: { pr: CardioRecord }) {
+  const isCooper = pr.bucket === "cooper";
+  const primary = isCooper ? formatKm(pr.distance_m) : formatDur(pr.duration_s);
+  const secondary = isCooper ? formatDur(pr.duration_s) : formatKm(pr.distance_m);
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        padding: "14px 16px",
+        background: "var(--c-surface)",
+        border: "1px solid var(--c-border)",
+        borderRadius: 14,
+      }}
+    >
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontWeight: 700, fontSize: 14 }}>{BUCKET_LABEL[pr.bucket]}</div>
+        <div style={{ fontSize: 11, color: "var(--c-text-muted)", marginTop: 2 }}>
+          {pr.exercises?.name ?? "—"} · {new Date(pr.achieved_at).toLocaleDateString("fi-FI")}
+        </div>
+      </div>
+      <div style={{ textAlign: "right" }}>
+        <div style={{ fontWeight: 700, color: "var(--c-pink)", fontSize: 15 }}>{primary}</div>
+        <div style={{ fontSize: 11, color: "var(--c-text-muted)", marginTop: 2 }}>{secondary}</div>
+      </div>
     </div>
   );
 }

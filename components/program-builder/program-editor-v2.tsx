@@ -1860,6 +1860,15 @@ function DayRow({
   selDayId: string | null;
   onPick: (weekId: string, dayId: string) => void;
 }) {
+  // Find the first non-empty day name across weeks for this day_number
+  const rowLabel = (() => {
+    for (const w of weeks) {
+      const d = w.program_days.find((x) => x.day_number === dayNumber);
+      const n = d?.name?.trim();
+      if (n) return n;
+    }
+    return `Treeni ${dayNumber}`;
+  })();
   return (
     <>
       <div
@@ -1867,14 +1876,18 @@ function DayRow({
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          fontSize: 10,
-          color: "var(--fg-3)",
-          fontWeight: 700,
-          letterSpacing: "0.05em",
-          fontFamily: "ui-monospace, monospace",
+          textAlign: "center",
+          fontSize: 12,
+          color: "var(--fg-2)",
+          fontWeight: 600,
+          padding: "0 4px",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
         }}
+        title={rowLabel}
       >
-        T{dayNumber}
+        {rowLabel}
       </div>
       {weeks.map((w) => {
         const d = w.program_days.find((d) => d.day_number === dayNumber);
@@ -1959,7 +1972,7 @@ function OverviewCell({
       >
         <span
           style={{
-            fontSize: 11,
+            fontSize: 12.5,
             fontWeight: 600,
             color: selected ? "var(--fg-0)" : "var(--fg-1)",
             overflow: "hidden",
@@ -1975,7 +1988,7 @@ function OverviewCell({
             style={{
               flex: "0 0 auto",
               color: "var(--green)",
-              fontSize: 9.5,
+              fontSize: 10.5,
               fontWeight: 700,
               letterSpacing: "0.05em",
               display: "inline-flex",
@@ -1983,7 +1996,7 @@ function OverviewCell({
               gap: 2,
             }}
           >
-            <Check size={9} /> TEHTY
+            <Check size={10} /> TEHTY
           </span>
         )}
         {status === "today" && (
@@ -1991,7 +2004,7 @@ function OverviewCell({
             style={{
               flex: "0 0 auto",
               color: "var(--accent-fg)",
-              fontSize: 9.5,
+              fontSize: 10.5,
               fontWeight: 700,
               letterSpacing: "0.05em",
             }}
@@ -2029,19 +2042,19 @@ function OverviewExerciseRow({
   const cfgs = configsFromExercise(ex);
   const plannedLine = plannedSetsLine(cfgs);
   const exName = ex.exercises?.name ?? "—";
-  const plannedColor = isDone ? "var(--fg-3)" : "var(--fg-2)";
+  const plannedColor = isDone ? "var(--fg-2)" : "var(--fg-1)";
   const hasLogs = isDone && logs.length > 0;
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 1, lineHeight: 1.25 }}>
-      <div style={{ fontSize: 10.5, color: "var(--fg-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 2, lineHeight: 1.3 }}>
+      <div style={{ fontSize: 12.5, fontWeight: 500, color: "var(--fg-0)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
         {shortenExName(exName)}
       </div>
       <div
         style={{
           fontFamily: "ui-monospace, JetBrains Mono, monospace",
-          fontSize: 9.5,
+          fontSize: 11.5,
           color: plannedColor,
-          lineHeight: 1.35,
+          lineHeight: 1.4,
         }}
       >
         {plannedLine}
@@ -2050,10 +2063,10 @@ function OverviewExerciseRow({
         <div
           style={{
             fontFamily: "ui-monospace, JetBrains Mono, monospace",
-            fontSize: 9.5,
+            fontSize: 11.5,
             color: accent,
             fontWeight: 600,
-            lineHeight: 1.35,
+            lineHeight: 1.4,
           }}
         >
           <span style={{ marginRight: 3 }}>✓</span>
@@ -2212,6 +2225,7 @@ function PhaseRibbon({
                     }}
                     style={{
                       flex: 1,
+                      minWidth: 0,
                       height: 22,
                       borderRadius: 4,
                       background: c.bg,
@@ -2222,11 +2236,22 @@ function PhaseRibbon({
                       position: "relative",
                       opacity: status === "future" ? 0.55 : 1,
                       cursor: "pointer",
+                      padding: "0 4px",
                     }}
                     title={dayDisplayName(d)}
                   >
-                    <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 8.5, color: c.fg, fontWeight: 600 }}>
-                      {dayBadge(d)}
+                    <span
+                      style={{
+                        fontSize: 9.5,
+                        color: c.fg,
+                        fontWeight: 600,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        minWidth: 0,
+                      }}
+                    >
+                      {dayDisplayName(d)}
                     </span>
                     {status === "done" && (
                       <span
@@ -2816,7 +2841,8 @@ function ExerciseDetail({
         <CardioTargetsPanel ex={ex} onUpdate={onUpdateExercise} />
       )}
 
-      {/* Three-week comparison */}
+      {/* Three-week comparison — only meaningful for lifting */}
+      {ex.exercises?.kind !== "cardio" && ex.exercises?.kind !== "free" && (
       <div style={{ display: "flex", gap: 12, alignItems: "stretch" }}>
         <div style={{ flex: "0 0 154px", minWidth: 0 }}>
           <NeighborWeekCard
@@ -2857,10 +2883,11 @@ function ExerciseDetail({
           />
         </div>
       </div>
+      )}
 
-      {/* Bottom row */}
-      <div style={{ display: "grid", gridTemplateColumns: showProgression ? "1fr 1fr" : "1fr", gap: 14 }}>
-        {showProgression && (
+      {/* Bottom row — progression panel hidden for non-lifting */}
+      <div style={{ display: "grid", gridTemplateColumns: (showProgression && ex.exercises?.kind !== "cardio" && ex.exercises?.kind !== "free") ? "1fr 1fr" : "1fr", gap: 14 }}>
+        {showProgression && ex.exercises?.kind !== "cardio" && ex.exercises?.kind !== "free" && (
           <div
             style={{
               background: "var(--bg-1)",
@@ -3977,7 +4004,7 @@ function CardioTargetsPanel({
         )}
         {tracks.duration && (
           <CardioTargetField
-            label="Aika (mm:ss)"
+            label="Aika (hh:mm:ss)"
             value={ex.target_duration_s != null ? formatTargetDuration(ex.target_duration_s) : ""}
             onCommit={(v) => {
               const trimmed = v.trim();
@@ -3985,7 +4012,7 @@ function CardioTargetsPanel({
               const sec = parseTargetDuration(trimmed);
               onUpdate({ id: ex.id, target_duration_s: sec });
             }}
-            placeholder="25:00"
+            placeholder="00:25:00"
             inputMode="text"
           />
         )}
@@ -4068,6 +4095,5 @@ function formatTargetDuration(s: number): string {
   const h = Math.floor(s / 3600);
   const m = Math.floor((s % 3600) / 60);
   const sec = s % 60;
-  if (h > 0) return `${h}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
-  return `${m}:${String(sec).padStart(2, "0")}`;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
 }

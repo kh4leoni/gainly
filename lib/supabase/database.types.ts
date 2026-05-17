@@ -63,6 +63,61 @@ export type Database = {
           },
         ]
       }
+      cardio_records: {
+        Row: {
+          achieved_at: string
+          bucket: string
+          client_id: string
+          distance_m: number | null
+          duration_s: number | null
+          exercise_id: string
+          id: string
+          set_log_id: string | null
+        }
+        Insert: {
+          achieved_at?: string
+          bucket: string
+          client_id: string
+          distance_m?: number | null
+          duration_s?: number | null
+          exercise_id: string
+          id?: string
+          set_log_id?: string | null
+        }
+        Update: {
+          achieved_at?: string
+          bucket?: string
+          client_id?: string
+          distance_m?: number | null
+          duration_s?: number | null
+          exercise_id?: string
+          id?: string
+          set_log_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cardio_records_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cardio_records_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cardio_records_set_log_id_fkey"
+            columns: ["set_log_id"]
+            isOneToOne: false
+            referencedRelation: "set_logs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       coach_clients: {
         Row: {
           client_id: string
@@ -843,6 +898,13 @@ export type Database = {
         }
         Returns: boolean
       }
+      cardio_bucket_for: {
+        Args: {
+          p_distance_m: number
+          p_duration_s: number
+        }
+        Returns: string
+      }
       coach_dashboard: {
         Args: {
           _coach?: string
@@ -892,6 +954,14 @@ export type Database = {
           day: string
           best_1rm: number
         }[]
+      }
+      recompute_cardio_bucket: {
+        Args: {
+          p_client: string
+          p_exercise: string
+          p_bucket: string
+        }
+        Returns: undefined
       }
       recompute_pr_bucket: {
         Args: {
