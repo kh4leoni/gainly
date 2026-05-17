@@ -321,7 +321,7 @@ function MeasurementSection({ label, unit, max, initialHistory, onSave }: {
   );
 }
 
-type Coach = { name: string | null; email: string | null; phone: string | null } | null;
+type Coach = { name: string | null; email: string | null; phone: string | null; coBrandLabel?: string | null } | null;
 
 function SettingsPanel({ me, coach, bwHistory, waistHistory, closing, onAnimationEnd }: {
   me: Me;
@@ -572,7 +572,14 @@ export function ClientShell({
           ref={settingsRef}
         >
           <div style={{ lineHeight: 1 }}>
-            <Image src="/fs%20collab.png" alt="fs collab" width={140} height={44} className="logo-adaptive" style={{ objectFit: "contain" }} />
+            <Image
+              src={coach?.coBrandLabel ? "/fs%20collab.png" : "/LOGO_gainly.png"}
+              alt={coach?.coBrandLabel ? `Gainly × ${coach.coBrandLabel}` : "Gainly"}
+              width={140}
+              height={44}
+              className="logo-adaptive"
+              style={{ objectFit: "contain" }}
+            />
           </div>
 
           {/* Pill button — opens settings */}
