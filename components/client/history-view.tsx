@@ -8,6 +8,7 @@ import { getPastWorkouts, type PastWorkout } from "@/lib/queries/workouts";
 import Link from "next/link";
 import { SyncBadge } from "@/components/offline/sync-badge";
 import { useLocalCompletedNotInServer, useUnsyncedForWorkout } from "@/lib/offline/reads";
+import { stripCopySuffix } from "@/lib/utils";
 
 function groupSetsByExercise(sets: PastWorkout["workout_logs"][number]["set_logs"]) {
   const order: string[] = [];
@@ -385,7 +386,7 @@ export function HistoryView({ clientId }: { clientId: string }) {
             {pg.blocks.map((bg, bi) => (
               <CollapseSection
                 key={bg.id}
-                title={bg.name?.trim() || `Jakso ${bg.blockNumber}`}
+                title={stripCopySuffix(bg.name) || `Jakso ${bg.blockNumber}`}
                 subtitle={`${bg.weeks.length} viikkoa`}
                 count={bg.workoutCount}
                 defaultOpen={pi === 0 && bi === 0}
@@ -393,7 +394,7 @@ export function HistoryView({ clientId }: { clientId: string }) {
                 {bg.weeks.map((wg, wi) => (
                   <CollapseSection
                     key={wg.id}
-                    title={wg.name?.trim() || `Viikko ${wg.weekNumber}`}
+                    title={stripCopySuffix(wg.name) || `Viikko ${wg.weekNumber}`}
                     count={wg.workouts.length}
                     defaultOpen={pi === 0 && bi === 0 && wi === 0}
                   >
