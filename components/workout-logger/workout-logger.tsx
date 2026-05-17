@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { getScheduledWorkout } from "@/lib/queries/workouts";
 import { toast } from "@/components/ui/use-toast";
 import { ExerciseInfoDialog } from "@/components/client/exercise-info-dialog";
+import { PlateLoaderDialog } from "@/components/client/plate-loader-dialog";
 import {
   completeWorkout,
   deleteSet,
@@ -729,6 +730,42 @@ function ExerciseBlock({ programExercise, workoutLogId }: { programExercise: any
                 }
               />
             )}
+            {(() => {
+              const idx = firstOpenIdx >= 0 ? firstOpenIdx : rows.length - 1;
+              const rawW = rows[idx]?.weight;
+              const parsed = rawW && rawW.trim() !== "" ? parseFloat(rawW) : NaN;
+              const w = Number.isFinite(parsed) ? parsed : (headerCfgs[idx]?.weight ?? null);
+              return (
+                <PlateLoaderDialog
+                  exerciseName={programExercise.exercises?.name ?? "Harjoitus"}
+                  nextSetNumber={idx + 1}
+                  nextSetWeight={w}
+                  trigger={
+                    <button
+                      type="button"
+                      title="Laske levyt"
+                      style={{
+                        flexShrink: 0, height: 30, padding: "0 10px",
+                        borderRadius: 15, border: "1px solid var(--c-border)",
+                        background: "var(--c-surface2)",
+                        color: "var(--c-text-muted)",
+                        display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 5,
+                        cursor: "pointer", fontFamily: "inherit",
+                        fontSize: 11, fontWeight: 700,
+                        transition: "all 0.15s",
+                      }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <rect x="3" y="6" width="3" height="12" rx="0.5" />
+                        <rect x="8" y="3" width="4" height="18" rx="0.5" />
+                        <rect x="14" y="9" width="7" height="6" rx="0.5" />
+                      </svg>
+                      Levyt
+                    </button>
+                  }
+                />
+              );
+            })()}
             <button
               type="button"
               onClick={() => { setNoteOpen((o) => !o); }}
