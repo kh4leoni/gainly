@@ -184,6 +184,7 @@ export function ExerciseLibrary() {
   const [cInstructions, setCInstructions] = useState("");
   const [cSelectedGroups, setCSelectedGroups] = useState<Set<string>>(new Set());
   const [cVideoUrl, setCVideoUrl] = useState("");
+  const [cKind, setCKind] = useState<"lifting" | "cardio" | "free">("lifting");
 
   // edit dialog
   const [editExercise, setEditExercise] = useState<Exercise | null>(null);
@@ -191,6 +192,7 @@ export function ExerciseLibrary() {
   const [eInstructions, setEInstructions] = useState("");
   const [eSelectedGroups, setESelectedGroups] = useState<Set<string>>(new Set());
   const [eVideoUrl, setEVideoUrl] = useState("");
+  const [eKind, setEKind] = useState<"lifting" | "cardio" | "free">("lifting");
 
   // video preview dialog
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
@@ -240,12 +242,19 @@ export function ExerciseLibrary() {
         instructions: cInstructions || null,
         muscle_groups: Array.from(cSelectedGroups),
         video_path: cVideoUrl.trim() || null,
+        kind: cKind,
+        tracks_weight: cKind === "lifting",
+        tracks_reps: cKind === "lifting",
+        tracks_distance: cKind === "cardio",
+        tracks_duration: cKind === "cardio",
+        tracks_hr: false,
       });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["exercises"] });
       setCreateOpen(false);
       setCName(""); setCInstructions(""); setCSelectedGroups(new Set()); setCVideoUrl("");
+      setCKind("lifting");
       toast({ title: "Liike lisätty" });
     },
     onError: (e: any) => toast({ title: "Epäonnistui", description: e.message, variant: "destructive" }),
@@ -259,6 +268,12 @@ export function ExerciseLibrary() {
         instructions: eInstructions || null,
         video_path: eVideoUrl.trim() || null,
         muscle_groups: Array.from(eSelectedGroups),
+        kind: eKind,
+        tracks_weight: eKind === "lifting",
+        tracks_reps: eKind === "lifting",
+        tracks_distance: eKind === "cardio",
+        tracks_duration: eKind === "cardio",
+        tracks_hr: false,
       });
     },
     onSuccess: () => {
@@ -275,6 +290,7 @@ export function ExerciseLibrary() {
     setEInstructions(e.instructions ?? "");
     setESelectedGroups(new Set((e.muscle_groups ?? []).map((m) => m.toLowerCase())));
     setEVideoUrl(e.video_path ?? "");
+    setEKind(((e as any).kind as "lifting" | "cardio" | "free") ?? "lifting");
   }
 
   return (
@@ -444,9 +460,15 @@ export function ExerciseLibrary() {
               <Input value={cName} onChange={(e) => setCName(e.target.value)} />
             </div>
             <div>
-              <Label>Lihasryhmät</Label>
-              <MuscleGroupPicker selected={cSelectedGroups} onChange={setCSelectedGroups} tags={pickerTags} />
+              <Label>Tyyppi</Label>
+              <KindPicker value={cKind} onChange={setCKind} />
             </div>
+            {cKind !== "free" && (
+              <div>
+                <Label>Lihasryhmät</Label>
+                <MuscleGroupPicker selected={cSelectedGroups} onChange={setCSelectedGroups} tags={pickerTags} />
+              </div>
+            )}
             <div>
               <Label>Ohjeet</Label>
               <Textarea value={cInstructions} onChange={(e) => setCInstructions(e.target.value)} />
@@ -475,9 +497,15 @@ export function ExerciseLibrary() {
               <Input value={eName} onChange={(e) => setEName(e.target.value)} />
             </div>
             <div>
-              <Label>Lihasryhmät</Label>
-              <MuscleGroupPicker selected={eSelectedGroups} onChange={setESelectedGroups} tags={pickerTags} />
+              <Label>Tyyppi</Label>
+              <KindPicker value={eKind} onChange={setEKind} />
             </div>
+            {eKind !== "free" && (
+              <div>
+                <Label>Lihasryhmät</Label>
+                <MuscleGroupPicker selected={eSelectedGroups} onChange={setESelectedGroups} tags={pickerTags} />
+              </div>
+            )}
             <div>
               <Label>Ohjeet</Label>
               <Textarea value={eInstructions} onChange={(e) => setEInstructions(e.target.value)} />
@@ -511,6 +539,36 @@ export function ExerciseLibrary() {
           </div>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+function KindPicker({
+  value, onChange,
+}: { value: "lifting" | "cardio" | "free"; onChange: (v: "lifting" | "cardio" | "free") => void }) {
+  const opts: Array<{ kind: "lifting" | "cardio" | "free"; label: string; desc: string }> = [
+    { kind: "lifting", label: "Voima", desc: "Painot, toistot, RPE" },
+    { kind: "cardio",  label: "Kardio", desc: "Matka, aika, syke" },
+    { kind: "free",    label: "Vapaa",  desc: "Pelkkä kuvaus, ei kenttiä" },
+  ];
+  return (
+    <div className="flex gap-2 flex-wrap">
+      {opts.map((o) => {
+        const sel = value === o.kind;
+        return (
+          <button
+            key={o.kind}
+            type="button"
+            onClick={() => onChange(o.kind)}
+            className={`flex-1 min-w-[100px] rounded-md border px-3 py-2 text-left text-xs ${
+              sel ? "border-pink-500 bg-pink-500/10" : "border-border bg-background"
+            }`}
+          >
+            <div className="font-semibold text-sm">{o.label}</div>
+            <div className="text-[11px] text-muted-foreground">{o.desc}</div>
+          </button>
+        );
+      })}
     </div>
   );
 }

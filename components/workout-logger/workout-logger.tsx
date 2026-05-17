@@ -8,6 +8,7 @@ import { getScheduledWorkout } from "@/lib/queries/workouts";
 import { toast } from "@/components/ui/use-toast";
 import { ExerciseInfoDialog } from "@/components/client/exercise-info-dialog";
 import { PlateLoaderDialog } from "@/components/client/plate-loader-dialog";
+import { SyncBadge } from "@/components/offline/sync-badge";
 import {
   completeWorkout,
   deleteSet,
@@ -187,7 +188,13 @@ export function WorkoutLogger({ scheduledWorkoutId }: { scheduledWorkoutId: stri
     if (id) setCountByPe.set(id, (setCountByPe.get(id) ?? 0) + 1);
   }
   const targetsByPe = exercises.map((pe: any) => {
-    const target = pe.set_configs?.length ?? pe.sets ?? 3;
+    const kind = pe.exercises?.kind ?? "lifting";
+    const target =
+      kind === "free"
+        ? 1
+        : kind === "cardio"
+          ? (pe.sets ?? 1)
+          : (pe.set_configs?.length ?? pe.sets ?? 3);
     const done = setCountByPe.get(pe.id) ?? 0;
     return { id: pe.id, target, done, name: pe.exercises?.name ?? "Harjoitus" };
   });
@@ -458,8 +465,20 @@ function resolveInitialRows(pe: any): RowState[] {
   }));
 }
 
-// ── Exercise block ────────────────────────────────────────────────────────────
+// ── Exercise block dispatcher ─────────────────────────────────────────────────
 function ExerciseBlock({ programExercise, workoutLogId }: { programExercise: any; workoutLogId: string | null }) {
+  const kind: string = programExercise.exercises?.kind ?? "lifting";
+  if (kind === "free") {
+    return <FreeExerciseBlock programExercise={programExercise} workoutLogId={workoutLogId} />;
+  }
+  if (kind === "cardio") {
+    return <CardioExerciseBlock programExercise={programExercise} workoutLogId={workoutLogId} />;
+  }
+  return <LiftingExerciseBlock programExercise={programExercise} workoutLogId={workoutLogId} />;
+}
+
+// ── Lifting block (original ExerciseBlock) ────────────────────────────────────
+function LiftingExerciseBlock({ programExercise, workoutLogId }: { programExercise: any; workoutLogId: string | null }) {
   const supabase = createClient();
   const qc = useQueryClient();
 
@@ -1068,4 +1087,403 @@ function SetTableRow({
       </div>
     </div>
   );
+}
+
+// ── Free-text exercise block ──────────────────────────────────────────────────
+// For non-trackable workouts: coach writes a description (e.g. "10 min lämmittely,
+// 4-8 min @ 4:00/km, 10 min verkka"), client reads it and toggles Tehty.
+function FreeExerciseBlock({ programExercise, workoutLogId }: { programExercise: any; workoutLogId: string | null }) {
+  const supabase = createClient();
+
+  const { sets: localSets, deletedIds } = useLocalSetLogsAndDeleted(workoutLogId);
+  const { data: serverSets = [] } = useQuery({
+    queryKey: ["set_logs", workoutLogId, programExercise.id],
+    enabled: !!workoutLogId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("set_logs")
+        .select("id, workout_log_id, exercise_id, program_exercise_id, set_number, weight, reps, rpe, is_pr, estimated_1rm, updated_at")
+        .eq("workout_log_id", workoutLogId!)
+        .eq("program_exercise_id", programExercise.id);
+      if (error) throw error;
+      if (data) await hydrateSetLogs(data);
+      return data ?? [];
+    },
+  });
+  const merged = useMemo(
+    () =>
+      mergeById(
+        serverSets,
+        localSets.filter((s) => s.program_exercise_id === programExercise.id),
+      ).filter((s) => !deletedIds.has(s.id)),
+    [serverSets, localSets, deletedIds, programExercise.id],
+  );
+  const marker = merged[0] ?? null;
+  const done = !!marker;
+  const synced = marker ? localSets.find((l) => l.id === marker.id)?.synced !== 0 : true;
+  const description: string = (programExercise.free_text || programExercise.notes) ?? "";
+  const exerciseName = programExercise.exercises?.name ?? "Harjoitus";
+
+  async function toggle() {
+    if (!workoutLogId || !programExercise.exercise_id) return;
+    if (done && marker) {
+      await deleteSet(marker.id, workoutLogId);
+    } else {
+      await logSet({
+        workout_log_id: workoutLogId,
+        program_exercise_id: programExercise.id,
+        exercise_id: programExercise.exercise_id,
+        set_number: 1,
+        weight: null,
+        reps: null,
+        rpe: null,
+      });
+    }
+  }
+
+  return (
+    <div style={{
+      background: "var(--c-surface)",
+      border: `1px solid ${done ? "rgba(62,207,142,0.25)" : "var(--c-border)"}`,
+      borderRadius: 18, overflow: "hidden", padding: "14px 16px",
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: description ? 10 : 0 }}>
+        <div style={{
+          width: 36, height: 36, borderRadius: "50%", flexShrink: 0,
+          border: `2px solid ${done ? "#3ECF8E" : "var(--c-border)"}`,
+          background: done ? "rgba(62,207,142,0.12)" : "var(--c-surface2)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}>
+          {done ? (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3ECF8E" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+          ) : (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--c-text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="9" />
+            </svg>
+          )}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontWeight: 700, fontSize: 15, color: "var(--c-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {exerciseName}
+          </div>
+          {!description && (
+            <div style={{ fontSize: 11, color: "var(--c-text-muted)", marginTop: 2 }}>
+              Vapaa harjoitus
+            </div>
+          )}
+        </div>
+        {done && (
+          <SyncBadge synced={synced} size={11} />
+        )}
+      </div>
+
+      {description && (
+        <div style={{
+          background: "var(--c-surface2)", border: "1px solid var(--c-border)",
+          borderRadius: 10, padding: "10px 12px", marginBottom: 12,
+          fontSize: 13, color: "var(--c-text)", lineHeight: 1.55, whiteSpace: "pre-wrap",
+        }}>
+          {description}
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={toggle}
+        style={{
+          width: "100%", padding: "12px",
+          borderRadius: 12,
+          background: done ? "rgba(62,207,142,0.10)" : "var(--c-surface2)",
+          border: `1px solid ${done ? "rgba(62,207,142,0.4)" : "var(--c-border)"}`,
+          color: done ? "var(--c-green)" : "var(--c-text)",
+          fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit",
+          display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+        }}
+      >
+        {done ? (
+          <>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+            Tehty — peru
+          </>
+        ) : (
+          "Merkitse tehdyksi"
+        )}
+      </button>
+    </div>
+  );
+}
+
+// ── Cardio block ──────────────────────────────────────────────────────────────
+function parseDurationStr(s: string): number | null {
+  const trimmed = s.trim();
+  if (!trimmed) return null;
+  const parts = trimmed.split(":").map((p) => p.trim());
+  if (parts.some((p) => p === "" || !/^\d+$/.test(p))) return null;
+  const nums = parts.map((p) => parseInt(p, 10));
+  if (nums.length === 1) return nums[0]!;
+  if (nums.length === 2) return nums[0]! * 60 + nums[1]!;
+  if (nums.length === 3) return nums[0]! * 3600 + nums[1]! * 60 + nums[2]!;
+  return null;
+}
+function formatDurationSec(s: number | null | undefined): string {
+  if (s == null) return "";
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  if (h > 0) return `${h}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+  return `${m}:${String(sec).padStart(2, "0")}`;
+}
+
+type CardioRowState = {
+  distance: string;  // km
+  duration: string;  // mm:ss or h:mm:ss
+  hr: string;        // bpm
+  confirmed: boolean;
+  setLogId: string | null;
+  synced: boolean;
+};
+
+function CardioExerciseBlock({ programExercise, workoutLogId }: { programExercise: any; workoutLogId: string | null }) {
+  const supabase = createClient();
+  const ex = programExercise.exercises ?? {};
+  const tracks = {
+    distance: !!ex.tracks_distance,
+    duration: !!ex.tracks_duration,
+    hr: !!ex.tracks_hr,
+  };
+  const trackedCount = (tracks.distance ? 1 : 0) + (tracks.duration ? 1 : 0) + (tracks.hr ? 1 : 0);
+  const targetSets: number = programExercise.sets ?? 1;
+  const exerciseName = ex.name ?? "Harjoitus";
+
+  // Format target into a single line
+  const targetParts: string[] = [];
+  if (programExercise.target_distance_m != null) {
+    targetParts.push(`${(programExercise.target_distance_m / 1000).toFixed(2).replace(/\.?0+$/, "")} km`);
+  }
+  if (programExercise.target_duration_s != null) {
+    targetParts.push(formatDurationSec(programExercise.target_duration_s));
+  }
+  if (programExercise.target_hr_bpm != null) {
+    targetParts.push(`${programExercise.target_hr_bpm} bpm`);
+  }
+  const targetLine = targetParts.join(" · ");
+
+  const [rows, setRows] = useState<CardioRowState[]>(() =>
+    Array.from({ length: targetSets }, () => ({
+      distance: "", duration: "", hr: "",
+      confirmed: false, setLogId: null, synced: true,
+    })),
+  );
+
+  const { sets: localSets, deletedIds } = useLocalSetLogsAndDeleted(workoutLogId);
+  const { data: serverSets = [] } = useQuery({
+    queryKey: ["set_logs", workoutLogId, programExercise.id],
+    enabled: !!workoutLogId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("set_logs")
+        .select("id, workout_log_id, exercise_id, program_exercise_id, set_number, weight, reps, rpe, is_pr, estimated_1rm, updated_at, distance_m, duration_s, avg_hr")
+        .eq("workout_log_id", workoutLogId!)
+        .eq("program_exercise_id", programExercise.id)
+        .order("set_number");
+      if (error) throw error;
+      if (data) await hydrateSetLogs(data);
+      return data ?? [];
+    },
+  });
+  const sets = useMemo(() => {
+    const localForEx = localSets.filter((s) => s.program_exercise_id === programExercise.id);
+    return mergeById(serverSets, localForEx)
+      .filter((s: any) => !deletedIds.has(s.id))
+      .sort((a: any, b: any) => (a.set_number ?? 0) - (b.set_number ?? 0));
+  }, [serverSets, localSets, deletedIds, programExercise.id]);
+
+  useEffect(() => {
+    setRows((prev) => prev.map((r, i) => {
+      const match = sets.find((s: any) => s.set_number === i + 1);
+      if (!match) {
+        if (!r.confirmed && r.setLogId === null) return r;
+        return { ...r, confirmed: false, setLogId: null, synced: true };
+      }
+      const isSynced = localSets.find((l) => l.id === match.id)?.synced !== 0;
+      return {
+        ...r,
+        distance: (match as any).distance_m != null ? ((match as any).distance_m / 1000).toString() : r.distance,
+        duration: (match as any).duration_s != null ? formatDurationSec((match as any).duration_s) : r.duration,
+        hr: (match as any).avg_hr != null ? String((match as any).avg_hr) : r.hr,
+        confirmed: true,
+        setLogId: match.id,
+        synced: isSynced,
+      };
+    }));
+  }, [sets, localSets]);
+
+  const confirmedCount = rows.filter((r) => r.confirmed).length;
+  const allDone = confirmedCount === targetSets;
+
+  async function confirmRow(i: number) {
+    if (!workoutLogId || !programExercise.exercise_id) return;
+    const row = rows[i];
+    if (!row || row.confirmed) return;
+    const distance_m = row.distance.trim() && tracks.distance
+      ? Math.round(parseFloat(row.distance.replace(",", ".")) * 1000)
+      : null;
+    const duration_s = tracks.duration ? parseDurationStr(row.duration) : null;
+    const hr = row.hr.trim() && tracks.hr ? parseInt(row.hr, 10) : null;
+    await logSet({
+      workout_log_id: workoutLogId,
+      program_exercise_id: programExercise.id,
+      exercise_id: programExercise.exercise_id,
+      set_number: i + 1,
+      weight: null,
+      reps: null,
+      rpe: null,
+      distance_m: Number.isFinite(distance_m as number) ? distance_m : null,
+      duration_s: Number.isFinite(duration_s as number) ? duration_s : null,
+      avg_hr: Number.isFinite(hr as number) ? hr : null,
+    });
+  }
+
+  async function unconfirmRow(i: number) {
+    const row = rows[i];
+    if (!row?.setLogId || !workoutLogId) return;
+    await deleteSet(row.setLogId, workoutLogId);
+  }
+
+  return (
+    <div style={{
+      background: "var(--c-surface)",
+      border: `1px solid ${allDone ? "rgba(62,207,142,0.25)" : "var(--c-border)"}`,
+      borderRadius: 18, overflow: "hidden",
+    }}>
+      <div style={{ padding: "14px 16px 12px", display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{
+          width: 36, height: 36, borderRadius: "50%", flexShrink: 0,
+          border: `2px solid ${allDone ? "#3ECF8E" : "var(--c-border)"}`,
+          background: allDone ? "rgba(62,207,142,0.12)" : "var(--c-surface2)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}>
+          {allDone
+            ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3ECF8E" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            : <span style={{ fontSize: 11, fontWeight: 700, color: "var(--c-text-muted)" }}>{confirmedCount}/{targetSets}</span>
+          }
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontWeight: 700, fontSize: 15, color: "var(--c-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {exerciseName}
+          </div>
+          {targetLine && (
+            <div style={{ fontSize: 12, color: "var(--c-text-muted)", marginTop: 2 }}>
+              Tavoite: {targetLine}
+            </div>
+          )}
+          {!targetLine && trackedCount > 0 && (
+            <div style={{ fontSize: 11, color: "var(--c-text-subtle)", marginTop: 2 }}>
+              Kardio · {targetSets} sarja{targetSets > 1 ? "a" : ""}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {trackedCount === 0 ? (
+        <div style={{ padding: "12px 16px 16px", fontSize: 12, color: "var(--c-text-muted)" }}>
+          Liikkeelle ei ole valittu seurattavia kenttiä. Coach: rastita matka / aika / syke liikepankissa.
+        </div>
+      ) : (
+        <div style={{ padding: "0 8px 12px" }}>
+          {/* Header */}
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: `16px ${[tracks.distance, tracks.duration, tracks.hr].filter(Boolean).map(() => "minmax(0,1fr)").join(" ")} clamp(34px,9vw,44px)`,
+            gap: 4, padding: "6px clamp(4px,1.5vw,8px) 4px",
+            borderBottom: "1px solid var(--c-border)",
+          }}>
+            <span style={{ fontSize: 10, color: "var(--c-text-subtle)", fontWeight: 600 }}>#</span>
+            {tracks.distance && <span style={{ fontSize: 10, color: "var(--c-text-muted)", fontWeight: 600, textAlign: "center" }}>Matka (km)</span>}
+            {tracks.duration && <span style={{ fontSize: 10, color: "var(--c-text-muted)", fontWeight: 600, textAlign: "center" }}>Aika</span>}
+            {tracks.hr && <span style={{ fontSize: 10, color: "var(--c-pink)", fontWeight: 600, textAlign: "center" }}>Syke</span>}
+            <span />
+          </div>
+          {rows.map((row, i) => (
+            <div key={i} style={{
+              display: "grid",
+              gridTemplateColumns: `16px ${[tracks.distance, tracks.duration, tracks.hr].filter(Boolean).map(() => "minmax(0,1fr)").join(" ")} clamp(34px,9vw,44px)`,
+              gap: 4, padding: "8px clamp(4px,1.5vw,8px)",
+              borderBottom: "1px solid var(--c-border)",
+              opacity: row.confirmed ? 0.7 : 1,
+            }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 600, color: "var(--c-text-subtle)" }}>
+                {i + 1}
+              </div>
+              {tracks.distance && (
+                <input
+                  type="number" inputMode="decimal" step="0.1"
+                  placeholder="–"
+                  value={row.distance}
+                  onChange={(e) => setRows((prev) => prev.map((r, idx) => idx === i ? { ...r, distance: e.target.value, confirmed: false, setLogId: null } : r))}
+                  style={cardioInputStyle(row.confirmed)}
+                />
+              )}
+              {tracks.duration && (
+                <input
+                  type="text" inputMode="numeric"
+                  placeholder="mm:ss"
+                  value={row.duration}
+                  onChange={(e) => setRows((prev) => prev.map((r, idx) => idx === i ? { ...r, duration: e.target.value, confirmed: false, setLogId: null } : r))}
+                  style={cardioInputStyle(row.confirmed)}
+                />
+              )}
+              {tracks.hr && (
+                <input
+                  type="number" inputMode="numeric" step="1"
+                  placeholder="bpm"
+                  value={row.hr}
+                  onChange={(e) => setRows((prev) => prev.map((r, idx) => idx === i ? { ...r, hr: e.target.value, confirmed: false, setLogId: null } : r))}
+                  style={cardioInputStyle(row.confirmed)}
+                />
+              )}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <button
+                  type="button"
+                  onClick={() => row.confirmed ? unconfirmRow(i) : confirmRow(i)}
+                  title={row.confirmed ? "Peru" : "Merkitse tehdyksi"}
+                  style={{
+                    width: "clamp(34px,9vw,40px)", height: "clamp(34px,9vw,40px)",
+                    borderRadius: "50%", padding: 0, flexShrink: 0,
+                    background: row.confirmed ? "rgba(62,207,142,0.15)" : "var(--c-surface2)",
+                    border: `1px solid ${row.confirmed ? "rgba(62,207,142,0.4)" : "var(--c-border)"}`,
+                    cursor: "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}
+                >
+                  <svg width="40%" height="40%" viewBox="0 0 24 24" fill="none"
+                    stroke={row.confirmed ? "#3ECF8E" : "var(--c-text-subtle)"}
+                    strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function cardioInputStyle(confirmed: boolean): React.CSSProperties {
+  return {
+    width: "100%", minWidth: 0, boxSizing: "border-box",
+    textAlign: "center", lineHeight: 1,
+    fontSize: "clamp(11px,3.2vw,13px)", fontWeight: 700,
+    color: "var(--c-text)",
+    background: confirmed ? "transparent" : "var(--c-surface2)",
+    border: `1px solid ${confirmed ? "transparent" : "var(--c-border)"}`,
+    borderRadius: 7, padding: "8px 4px",
+    outline: "none", fontFamily: "inherit",
+  };
 }

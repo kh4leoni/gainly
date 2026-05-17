@@ -1295,7 +1295,18 @@ export function ProgramEditor({ programId }: { programId: string }) {
                 pe.sets = 3;
                 pe.reps = "6";
                 pe.exercises = exData
-                  ? { id: exData.id, name: exData.name, video_path: null, instructions: null }
+                  ? {
+                      id: exData.id,
+                      name: exData.name,
+                      video_path: null,
+                      instructions: null,
+                      kind: "lifting",
+                      tracks_weight: true,
+                      tracks_reps: true,
+                      tracks_distance: false,
+                      tracks_duration: false,
+                      tracks_hr: false,
+                    }
                   : null;
               }
             }

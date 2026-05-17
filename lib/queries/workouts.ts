@@ -22,8 +22,23 @@ export type TodayWorkout = {
       set_configs: Array<{ reps: string | null; weight: number | null; rpe: number | null }> | null;
       rest_sec: number | null;
       notes: string | null;
+      free_text: string | null;
+      target_distance_m: number | null;
+      target_duration_s: number | null;
+      target_hr_bpm: number | null;
       exercise_id: string | null;
-      exercises: { id: string; name: string; video_path: string | null; instructions: string | null } | null;
+      exercises: {
+        id: string;
+        name: string;
+        video_path: string | null;
+        instructions: string | null;
+        kind: string;
+        tracks_weight: boolean;
+        tracks_reps: boolean;
+        tracks_distance: boolean;
+        tracks_duration: boolean;
+        tracks_hr: boolean;
+      } | null;
     }>;
   } | null;
 };
@@ -52,8 +67,9 @@ export async function getNextWorkout(supabase: DB, clientId: string): Promise<To
         program_weeks ( week_number, description, is_active ),
         program_exercises (
           id, order_idx, sets, reps, intensity, intensity_type, target_rpe, target_rpes, set_configs, rest_sec, notes,
+          free_text, target_distance_m, target_duration_s, target_hr_bpm,
           exercise_id,
-          exercises ( id, name, video_path, instructions )
+          exercises ( id, name, video_path, instructions, kind, tracks_weight, tracks_reps, tracks_distance, tracks_duration, tracks_hr )
         )
       )
     `)
@@ -79,8 +95,9 @@ export async function getScheduledWorkout(supabase: DB, id: string): Promise<Sch
         program_weeks ( week_number, description ),
         program_exercises (
           id, order_idx, sets, reps, intensity, intensity_type, target_rpe, target_rpes, set_configs, rest_sec, notes,
+          free_text, target_distance_m, target_duration_s, target_hr_bpm,
           exercise_id,
-          exercises ( id, name, video_path, instructions )
+          exercises ( id, name, video_path, instructions, kind, tracks_weight, tracks_reps, tracks_distance, tracks_duration, tracks_hr )
         )
       )
     `)

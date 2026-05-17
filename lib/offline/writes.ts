@@ -13,6 +13,9 @@ export type LogSetInput = {
   weight: number | null;
   reps: number | null;
   rpe: number | null;
+  distance_m?: number | null;
+  duration_s?: number | null;
+  avg_hr?: number | null;
 };
 
 export async function logSet(input: LogSetInput): Promise<LocalSetLog> {
@@ -30,6 +33,9 @@ export async function logSet(input: LogSetInput): Promise<LocalSetLog> {
     rpe: input.rpe,
     is_pr: false,
     estimated_1rm: null,
+    distance_m: input.distance_m ?? null,
+    duration_s: input.duration_s ?? null,
+    avg_hr: input.avg_hr ?? null,
     updated_at: now,
     synced: 0,
   };
@@ -57,6 +63,9 @@ export async function deleteSet(id: string, workoutLogId?: string): Promise<void
       rpe: null,
       is_pr: false,
       estimated_1rm: null,
+      distance_m: null,
+      duration_s: null,
+      avg_hr: null,
       updated_at: new Date().toISOString(),
       synced: 0,
       deleted: 1,
