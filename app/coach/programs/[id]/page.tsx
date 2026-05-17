@@ -3,12 +3,11 @@ import { HydrationBoundary, dehydrate } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/server";
 import { getQueryClient } from "@/lib/get-query-client";
 import { getProgramFull } from "@/lib/queries/programs";
-import { getExercises } from "@/lib/queries/exercises";
-import { ProgramEditorV2 } from "@/components/program-builder/program-editor-v2";
+import { ProgramViewer } from "@/components/programs/program-viewer";
 
 export const dynamic = "force-dynamic";
 
-export default async function ProgramEditPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ProgramViewPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createClient();
 
@@ -21,14 +20,14 @@ export default async function ProgramEditPage({ params }: { params: Promise<{ id
   if (!program) notFound();
 
   const qc = getQueryClient();
-  await Promise.all([
-    qc.prefetchQuery({ queryKey: ["program", id], queryFn: () => getProgramFull(supabase, id) }),
-    qc.prefetchQuery({ queryKey: ["exercises"],  queryFn: () => getExercises(supabase) }),
-  ]);
+  await qc.prefetchQuery({
+    queryKey: ["program", id],
+    queryFn: () => getProgramFull(supabase, id),
+  });
 
   return (
     <HydrationBoundary state={dehydrate(qc)}>
-      <ProgramEditorV2 programId={id} clientId={program.client_id} />
+      <ProgramViewer programId={id} isTemplate={program.client_id === null} />
     </HydrationBoundary>
   );
 }
