@@ -9,7 +9,7 @@ export const getMeCached = cache(async () => {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, role, full_name, avatar_url, phone, email")
+    .select("id, role, full_name, avatar_url, phone, email, co_brand_label")
     .eq("id", user.id)
     .single();
   if (error) throw error;
@@ -48,11 +48,11 @@ export const getMyCoachCached = cache(async () => {
   const supabase = await createClient();
   const { data } = await supabase
     .from("coach_clients")
-    .select("profiles:coach_id (full_name, email, phone)")
+    .select("profiles:coach_id (full_name, email, phone, co_brand_label)")
     .eq("client_id", user.id)
     .eq("status", "active")
     .maybeSingle();
-  const coach = data?.profiles as unknown as { full_name: string | null; email: string | null; phone: string | null } | null;
+  const coach = data?.profiles as unknown as { full_name: string | null; email: string | null; phone: string | null; co_brand_label: string | null } | null;
   if (!coach) return null;
-  return { name: coach.full_name, email: coach.email, phone: coach.phone };
+  return { name: coach.full_name, email: coach.email, phone: coach.phone, coBrandLabel: coach.co_brand_label };
 });

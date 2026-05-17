@@ -20,7 +20,7 @@ export default async function CoachLayout({ children }: { children: React.ReactN
   ];
 
   return (
-    <AppShell title="Gainly" nav={nav} variant="coach" me={me}>
+    <AppShell title="Gainly" nav={nav} variant="coach" me={me} coBrandLabel={me?.co_brand_label ?? null}>
       {children}
     </AppShell>
   );
