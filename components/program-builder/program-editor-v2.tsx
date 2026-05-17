@@ -427,6 +427,81 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
     },
   });
 
+  const duplicateBlock = useMutation({
+    mutationFn: async (blockId: string) => {
+      const src = program?.program_blocks?.find((b) => b.id === blockId);
+      if (!src) throw new Error("Block not found");
+      const newBlockNumber =
+        Math.max(0, ...((program?.program_blocks ?? []).map((b) => b.block_number))) + 1;
+      const { data: newBlock, error: blockErr } = await supabase
+        .from("program_blocks")
+        .insert({
+          program_id: programId,
+          block_number: newBlockNumber,
+          name: src.name ? `${src.name} (kopio)` : `Jakso ${newBlockNumber}`,
+          description: src.description,
+        })
+        .select("id")
+        .single();
+      if (blockErr || !newBlock) throw blockErr ?? new Error("block insert failed");
+
+      let firstWeekId: string | null = null;
+      for (const w of src.program_weeks ?? []) {
+        const { data: newWeek, error: wErr } = await supabase
+          .from("program_weeks")
+          .insert({
+            program_id: programId,
+            block_id: newBlock.id,
+            week_number: w.week_number,
+            name: w.name,
+            description: w.description,
+            is_active: false,
+          })
+          .select("id")
+          .single();
+        if (wErr || !newWeek) throw wErr ?? new Error("week insert failed");
+        if (!firstWeekId) firstWeekId = newWeek.id;
+
+        for (const d of w.program_days ?? []) {
+          const { data: newDay, error: dErr } = await supabase
+            .from("program_days")
+            .insert({ week_id: newWeek.id, day_number: d.day_number, name: d.name, description: d.description })
+            .select("id")
+            .single();
+          if (dErr || !newDay) throw dErr ?? new Error("day insert failed");
+          const pes = d.program_exercises ?? [];
+          if (pes.length > 0) {
+            const { error: exErr } = await supabase.from("program_exercises").insert(
+              pes.map((pe) => ({
+                day_id: newDay.id,
+                exercise_id: pe.exercise_id,
+                order_idx: pe.order_idx,
+                sets: pe.sets,
+                reps: pe.reps,
+                intensity: pe.intensity,
+                intensity_type: pe.intensity_type,
+                target_rpe: pe.target_rpe,
+                target_rpes: pe.target_rpes as any,
+                set_configs: pe.set_configs as any,
+                rest_sec: pe.rest_sec,
+                notes: pe.notes,
+              }))
+            );
+            if (exErr) throw exErr;
+          }
+        }
+      }
+      return { blockId: newBlock.id, weekId: firstWeekId };
+    },
+    onSuccess: async ({ blockId, weekId }) => {
+      await qc.invalidateQueries({ queryKey: ["program", programId] });
+      setSelBlockId(blockId);
+      setSelWeekId(weekId);
+      setSelDayId(null);
+      setSelExIdx(0);
+    },
+  });
+
   const deleteBlock = useMutation({
     mutationFn: async (blockId: string) => {
       const { error } = await supabase.from("program_blocks").delete().eq("id", blockId);
@@ -713,7 +788,8 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
       const b = program?.program_blocks?.find((x) => x.id === blockId);
       const w = b?.program_weeks?.find((x) => x.id === weekId);
       if (!w) throw new Error("Week not found");
-      const newWeekNumber = (b?.program_weeks?.length ?? 0) + 1;
+      const newWeekNumber =
+        Math.max(0, ...((b?.program_weeks ?? []).map((x) => x.week_number))) + 1;
       const { data: newWeek, error: weekErr } = await supabase
         .from("program_weeks")
         .insert({
@@ -757,6 +833,68 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
       }
     },
     onSuccess: invalidate,
+  });
+
+  const setActiveWeek = useMutation({
+    mutationFn: async (weekId: string) => {
+      const allWeeks = (program?.program_blocks ?? []).flatMap((b) => b.program_weeks ?? []);
+      if (allWeeks.length > 0) {
+        const { error: e1 } = await supabase
+          .from("program_weeks")
+          .update({ is_active: false })
+          .in("id", allWeeks.map((w) => w.id));
+        if (e1) throw e1;
+      }
+      const { error: e2 } = await supabase
+        .from("program_weeks")
+        .update({ is_active: true })
+        .eq("id", weekId);
+      if (e2) throw e2;
+    },
+    onMutate: async (weekId) => {
+      await qc.cancelQueries({ queryKey: ["program", programId] });
+      const prev = qc.getQueryData<ProgramFull>(["program", programId]);
+      qc.setQueryData(["program", programId], (old: ProgramFull) => {
+        if (!old) return old;
+        const next = structuredClone(old);
+        for (const b of next.program_blocks ?? [])
+          for (const w of b.program_weeks ?? []) w.is_active = w.id === weekId;
+        return next;
+      });
+      return { prev };
+    },
+    onError: (_e, _p, ctx) => {
+      if (ctx?.prev) qc.setQueryData(["program", programId], ctx.prev);
+    },
+    onSettled: invalidate,
+  });
+
+  const clearActiveWeek = useMutation({
+    mutationFn: async () => {
+      const allWeeks = (program?.program_blocks ?? []).flatMap((b) => b.program_weeks ?? []);
+      if (allWeeks.length === 0) return;
+      const { error } = await supabase
+        .from("program_weeks")
+        .update({ is_active: false })
+        .in("id", allWeeks.map((w) => w.id));
+      if (error) throw error;
+    },
+    onMutate: async () => {
+      await qc.cancelQueries({ queryKey: ["program", programId] });
+      const prev = qc.getQueryData<ProgramFull>(["program", programId]);
+      qc.setQueryData(["program", programId], (old: ProgramFull) => {
+        if (!old) return old;
+        const next = structuredClone(old);
+        for (const b of next.program_blocks ?? [])
+          for (const w of b.program_weeks ?? []) w.is_active = false;
+        return next;
+      });
+      return { prev };
+    },
+    onError: (_e, _p, ctx) => {
+      if (ctx?.prev) qc.setQueryData(["program", programId], ctx.prev);
+    },
+    onSettled: invalidate,
   });
 
   // Copy sets from one exercise to another (by name/exercise_id match in target week)
@@ -877,6 +1015,7 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
           setPendingDeleteBlock({ id: block.id, label: `Jakso ${block.block_number}${block.name?.trim() ? ` — ${block.name.trim()}` : ""}` })
         }
         canDelete={blocks.length > 1}
+        onDuplicate={() => duplicateBlock.mutate(block.id)}
       />
 
       {/* Phase overview */}
@@ -1087,6 +1226,8 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
             week={week}
             block={block}
             onDuplicateWeek={() => duplicateWeek.mutate({ weekId: week.id, blockId: block.id })}
+            onSetActiveWeek={() => setActiveWeek.mutate(week.id)}
+            onClearActiveWeek={() => clearActiveWeek.mutate()}
           />
         )}
       </div>
@@ -1319,6 +1460,7 @@ function PhaseStrip({
   onNext,
   onRequestDelete,
   canDelete,
+  onDuplicate,
 }: {
   blockName: string;
   blockNumber: number;
@@ -1331,6 +1473,7 @@ function PhaseStrip({
   onNext: () => void;
   onRequestDelete: () => void;
   canDelete: boolean;
+  onDuplicate: () => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   return (
@@ -1402,7 +1545,7 @@ function PhaseStrip({
         </span>
       </div>
       <div style={{ marginLeft: "auto", display: "flex", gap: 6, position: "relative" }}>
-        <Mv2Button kind="ghost" size="sm">
+        <Mv2Button kind="ghost" size="sm" onClick={onDuplicate}>
           <Copy size={11} /> Monista jakso
         </Mv2Button>
         <Mv2Button kind="ghost" size="sm" title="Lisää" onClick={() => setMenuOpen((o) => !o)}>
@@ -3514,10 +3657,14 @@ function SummaryRail({
   week,
   block,
   onDuplicateWeek,
+  onSetActiveWeek,
+  onClearActiveWeek,
 }: {
   week: Week;
   block: Block;
   onDuplicateWeek: () => void;
+  onSetActiveWeek: () => void;
+  onClearActiveWeek: () => void;
 }) {
   const totalSets = week.program_days.reduce(
     (a, d) => a + d.program_exercises.reduce((b, e) => b + configsFromExercise(e).length, 0),
@@ -3608,6 +3755,17 @@ function SummaryRail({
           Pikatoiminnot
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {week.is_active ? (
+            <RailButton onClick={onClearActiveWeek}>
+              <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--green)", display: "inline-block" }} />
+              Aktiivinen — poista
+            </RailButton>
+          ) : (
+            <RailButton onClick={onSetActiveWeek}>
+              <span style={{ width: 8, height: 8, borderRadius: "50%", border: "1px solid var(--fg-3)", display: "inline-block" }} />
+              Aseta aktiiviseksi
+            </RailButton>
+          )}
           <RailButton onClick={onDuplicateWeek}>
             <Copy size={12} /> Monista viikoksi {nextWeekNum}
           </RailButton>
