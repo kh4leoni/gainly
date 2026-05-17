@@ -37,6 +37,7 @@ const MUSCLE_GROUPS: Record<string, string> = {
   "hip flexors": "Lonkankoukistajat",
   calves: "Pohkeet",
   full_body: "Koko keho",
+  cardio: "Kardio",
 };
 
 const MUSCLE_COLORS: Record<string, string> = {
@@ -63,6 +64,7 @@ const MUSCLE_COLORS: Record<string, string> = {
   obliques: "#c2410c",
   lower_back: "#a16207",
   full_body: "#374151",
+  cardio: "#fb923c",
 };
 
 function translateMuscle(m: string) {
