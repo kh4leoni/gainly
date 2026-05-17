@@ -33,7 +33,7 @@ export function ProgramsList({ programs }: { programs: Program[] }) {
         {filtered.map((p) => (
           <Link
             key={p.id}
-            href={`/coach/programs/${p.id}/edit`}
+            href={`/coach/programs/${p.id}`}
             prefetch
             className="group relative overflow-hidden rounded-2xl border bg-card p-5 transition-all hover:shadow-md active:scale-[0.99]"
             style={{ transition: "transform 280ms cubic-bezier(0.34,1.56,0.64,1), box-shadow 200ms ease" }}

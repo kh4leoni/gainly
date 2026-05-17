@@ -279,7 +279,7 @@ function logsByPe(completion: ProgramCompletion | undefined, dayId: string): Map
 
 // ── ProgramEditorV2 ───────────────────────────────────────────────────────────
 
-export function ProgramEditorV2({ programId, clientId }: { programId: string; clientId: string }) {
+export function ProgramEditorV2({ programId, clientId }: { programId: string; clientId: string | null }) {
   const supabase = createClient();
   const qc = useQueryClient();
 
@@ -288,8 +288,9 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
     queryFn: () => getProgramFull(supabase, programId),
   });
   const { data: completion } = useQuery({
-    queryKey: ["program-completion", programId],
-    queryFn: () => getProgramCompletion(supabase, programId, clientId),
+    queryKey: ["program-completion", programId, clientId],
+    queryFn: () => clientId ? getProgramCompletion(supabase, programId, clientId) : Promise.resolve(undefined),
+    enabled: clientId !== null,
   });
   const { data: exerciseBank = [] } = useQuery({
     queryKey: ["exercises"],
@@ -355,6 +356,7 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
   const [saveLabel, setSaveLabel] = useState("Tallenna");
   const rescheduleMutation = useMutation({
     mutationFn: async () => {
+      if (!clientId) return; // Template programs are not scheduled
       const { error } = await supabase.rpc("schedule_program", { _program: programId, _client: clientId });
       if (error) throw error;
     },
@@ -1043,6 +1045,7 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
         setPhaseView={setPhaseView}
         showSummaryRail={showSummaryRail}
         setShowSummaryRail={setShowSummaryRail}
+        isTemplate={clientId === null}
       />
 
       {/* Phase strip */}
@@ -1311,6 +1314,7 @@ function Topbar({
   setPhaseView,
   showSummaryRail,
   setShowSummaryRail,
+  isTemplate,
 }: {
   programId: string;
   programTitle: string;
@@ -1322,6 +1326,7 @@ function Topbar({
   setPhaseView: (v: "expanded" | "compact" | "off") => void;
   showSummaryRail: boolean;
   setShowSummaryRail: (v: boolean) => void;
+  isTemplate: boolean;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   return (
@@ -1370,25 +1375,27 @@ function Topbar({
             style={{ position: "absolute", left: 9, top: "50%", transform: "translateY(-50%)", color: "var(--fg-3)" }}
           />
         </div>
-        <Link
-          href={`/coach/client-programs/${programId}/edit`}
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 5,
-            padding: "6px 10px",
-            borderRadius: 6,
-            border: "1px dashed var(--accent-line)",
-            background: "transparent",
-            color: "var(--accent-fg)",
-            fontSize: 11,
-            fontWeight: 500,
-            textDecoration: "none",
-          }}
-          title="Palaa vanhaan näkymään"
-        >
-          ← v1
-        </Link>
+        {!isTemplate && (
+          <Link
+            href={`/coach/client-programs/${programId}/edit`}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 5,
+              padding: "6px 10px",
+              borderRadius: 6,
+              border: "1px dashed var(--accent-line)",
+              background: "transparent",
+              color: "var(--accent-fg)",
+              fontSize: 11,
+              fontWeight: 500,
+              textDecoration: "none",
+            }}
+            title="Palaa vanhaan näkymään"
+          >
+            ← v1
+          </Link>
+        )}
         <Mv2Button kind="ghost" onClick={onAddBlock}>
           <Plus size={13} /> Jakso
         </Mv2Button>
@@ -1448,9 +1455,15 @@ function Topbar({
             </>
           )}
         </div>
-        <Mv2Button kind="primary" onClick={onSave} disabled={saving}>
-          {saving ? "Tallennetaan…" : saveLabel}
-        </Mv2Button>
+        {isTemplate ? (
+          <span style={{ fontSize: 11, color: "var(--fg-3)", paddingLeft: 4 }}>
+            Muutokset tallentuvat automaattisesti
+          </span>
+        ) : (
+          <Mv2Button kind="primary" onClick={onSave} disabled={saving}>
+            {saving ? "Tallennetaan…" : saveLabel}
+          </Mv2Button>
+        )}
       </div>
     </div>
   );
