@@ -886,13 +886,13 @@ function StepperCell({
     color: display === "–" ? "var(--c-text-subtle)" : "var(--c-text)",
     background: disabled ? "transparent" : "var(--c-surface2)",
     border: `1px solid ${disabled ? "transparent" : "var(--c-border)"}`,
-    borderRadius: 7, padding: "8px 1px",
+    borderRadius: 7, padding: "7px 0",
     minWidth: 0, outline: "none",
     fontFamily: "inherit",
   };
 
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 2, minWidth: 0 }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0 }}>
       {btn(canDec, onDec, "minus")}
       {onRawChange ? (
         <input
