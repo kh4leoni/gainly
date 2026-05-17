@@ -122,6 +122,7 @@ type SetLogHydrate = {
   program_exercise_id: string | null; set_number: number | null;
   weight: number | null; reps: number | null; rpe: number | null;
   is_pr: boolean; estimated_1rm: number | null;
+  distance_m?: number | null; duration_s?: number | null; avg_hr?: number | null;
   updated_at?: string | null;
 };
 
@@ -156,7 +157,13 @@ export async function hydrateSetLogs(rows: readonly SetLogHydrate[]): Promise<vo
         const rAt = Date.parse(ts);
         if (lAt > rAt) continue;
       }
-      await db.set_logs.put({ ...r, updated_at: ts, synced: 1, deleted: 0 });
+      await db.set_logs.put({
+        ...r,
+        distance_m: r.distance_m ?? null,
+        duration_s: r.duration_s ?? null,
+        avg_hr: r.avg_hr ?? null,
+        updated_at: ts, synced: 1, deleted: 0,
+      });
     }
   });
 }

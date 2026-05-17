@@ -34,53 +34,24 @@ export type Database = {
   }
   public: {
     Tables: {
-      waist_measurements: {
-        Row: {
-          id: string
-          client_id: string
-          waist_cm: number
-          logged_at: string
-        }
-        Insert: {
-          id?: string
-          client_id: string
-          waist_cm: number
-          logged_at?: string
-        }
-        Update: {
-          id?: string
-          client_id?: string
-          waist_cm?: number
-          logged_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "waist_measurements_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       bodyweights: {
         Row: {
-          id: string
           client_id: string
-          weight_kg: number
+          id: string
           logged_at: string
+          weight_kg: number
         }
         Insert: {
-          id?: string
           client_id: string
-          weight_kg: number
+          id?: string
           logged_at?: string
+          weight_kg: number
         }
         Update: {
-          id?: string
           client_id?: string
-          weight_kg?: number
+          id?: string
           logged_at?: string
+          weight_kg?: number
         }
         Relationships: [
           {
@@ -134,8 +105,14 @@ export type Database = {
           created_by: string | null
           id: string
           instructions: string | null
+          kind: string
           muscle_groups: string[]
           name: string
+          tracks_distance: boolean
+          tracks_duration: boolean
+          tracks_hr: boolean
+          tracks_reps: boolean
+          tracks_weight: boolean
           video_path: string | null
         }
         Insert: {
@@ -143,8 +120,14 @@ export type Database = {
           created_by?: string | null
           id?: string
           instructions?: string | null
+          kind?: string
           muscle_groups?: string[]
           name: string
+          tracks_distance?: boolean
+          tracks_duration?: boolean
+          tracks_hr?: boolean
+          tracks_reps?: boolean
+          tracks_weight?: boolean
           video_path?: string | null
         }
         Update: {
@@ -152,8 +135,14 @@ export type Database = {
           created_by?: string | null
           id?: string
           instructions?: string | null
+          kind?: string
           muscle_groups?: string[]
           name?: string
+          tracks_distance?: boolean
+          tracks_duration?: boolean
+          tracks_hr?: boolean
+          tracks_reps?: boolean
+          tracks_weight?: boolean
           video_path?: string | null
         }
         Relationships: [
@@ -402,6 +391,7 @@ export type Database = {
         Row: {
           day_id: string
           exercise_id: string | null
+          free_text: string | null
           id: string
           intensity: number | null
           intensity_type: string | null
@@ -411,12 +401,16 @@ export type Database = {
           rest_sec: number | null
           set_configs: Json | null
           sets: number | null
+          target_distance_m: number | null
+          target_duration_s: number | null
+          target_hr_bpm: number | null
           target_rpe: number | null
           target_rpes: Json | null
         }
         Insert: {
           day_id: string
           exercise_id?: string | null
+          free_text?: string | null
           id?: string
           intensity?: number | null
           intensity_type?: string | null
@@ -426,12 +420,16 @@ export type Database = {
           rest_sec?: number | null
           set_configs?: Json | null
           sets?: number | null
+          target_distance_m?: number | null
+          target_duration_s?: number | null
+          target_hr_bpm?: number | null
           target_rpe?: number | null
           target_rpes?: Json | null
         }
         Update: {
           day_id?: string
           exercise_id?: string | null
+          free_text?: string | null
           id?: string
           intensity?: number | null
           intensity_type?: string | null
@@ -441,6 +439,9 @@ export type Database = {
           rest_sec?: number | null
           set_configs?: Json | null
           sets?: number | null
+          target_distance_m?: number | null
+          target_duration_s?: number | null
+          target_hr_bpm?: number | null
           target_rpe?: number | null
           target_rpes?: Json | null
         }
@@ -608,6 +609,9 @@ export type Database = {
       }
       set_logs: {
         Row: {
+          avg_hr: number | null
+          distance_m: number | null
+          duration_s: number | null
           estimated_1rm: number | null
           exercise_id: string
           id: string
@@ -621,6 +625,9 @@ export type Database = {
           workout_log_id: string
         }
         Insert: {
+          avg_hr?: number | null
+          distance_m?: number | null
+          duration_s?: number | null
           estimated_1rm?: number | null
           exercise_id: string
           id?: string
@@ -634,6 +641,9 @@ export type Database = {
           workout_log_id: string
         }
         Update: {
+          avg_hr?: number | null
+          distance_m?: number | null
+          duration_s?: number | null
           estimated_1rm?: number | null
           exercise_id?: string
           id?: string
@@ -700,6 +710,35 @@ export type Database = {
           {
             foreignKeyName: "threads_coach_id_fkey"
             columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      waist_measurements: {
+        Row: {
+          client_id: string
+          id: string
+          logged_at: string
+          waist_cm: number
+        }
+        Insert: {
+          client_id: string
+          id?: string
+          logged_at?: string
+          waist_cm: number
+        }
+        Update: {
+          client_id?: string
+          id?: string
+          logged_at?: string
+          waist_cm?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "waist_measurements_client_id_fkey"
+            columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]

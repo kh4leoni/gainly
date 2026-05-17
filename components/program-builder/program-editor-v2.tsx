@@ -85,6 +85,10 @@ type ExPatch = {
   target_rpes?: (number | null)[] | null;
   set_configs?: SetConfig[] | null;
   notes?: string | null;
+  free_text?: string | null;
+  target_distance_m?: number | null;
+  target_duration_s?: number | null;
+  target_hr_bpm?: number | null;
 };
 
 // ── Design tokens (scoped via style on root) ───────────────────────────────────
@@ -599,7 +603,18 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
               if (pe) {
                 pe.exercise_id = exerciseId;
                 pe.exercises = exData
-                  ? { id: exData.id, name: exData.name, video_path: null, instructions: null }
+                  ? {
+                      id: exData.id,
+                      name: exData.name,
+                      video_path: null,
+                      instructions: null,
+                      kind: "lifting",
+                      tracks_weight: true,
+                      tracks_reps: true,
+                      tracks_distance: false,
+                      tracks_duration: false,
+                      tracks_hr: false,
+                    }
                   : null;
               }
             }
@@ -2796,6 +2811,11 @@ function ExerciseDetail({
         </div>
       </div>
 
+      {/* Cardio targets (visible only for kind=cardio) */}
+      {ex.exercises?.kind === "cardio" && (
+        <CardioTargetsPanel ex={ex} onUpdate={onUpdateExercise} />
+      )}
+
       {/* Three-week comparison */}
       <div style={{ display: "flex", gap: 12, alignItems: "stretch" }}>
         <div style={{ flex: "0 0 154px", minWidth: 0 }}>
@@ -3891,4 +3911,163 @@ function Mv2Style() {
       .mv2 .mv2-row-del:hover { background: rgba(255,90,90,0.12) !important; color: #ff6b6b !important; }
     `}</style>
   );
+}
+
+// ── Cardio targets panel (shown when ex.exercises.kind === 'cardio') ──────────
+function CardioTargetsPanel({
+  ex,
+  onUpdate,
+}: {
+  ex: ProgramExerciseRow;
+  onUpdate: (patch: ExPatch) => void;
+}) {
+  const tracks = {
+    distance: ex.exercises?.tracks_distance ?? false,
+    duration: ex.exercises?.tracks_duration ?? false,
+    hr: ex.exercises?.tracks_hr ?? false,
+  };
+  const sets = ex.sets ?? 1;
+  return (
+    <div
+      style={{
+        background: "var(--bg-1)",
+        border: "1px solid var(--line)",
+        borderRadius: 12,
+        padding: "12px 16px",
+        display: "flex",
+        flexDirection: "column",
+        gap: 10,
+      }}
+    >
+      <div
+        style={{
+          fontSize: 10,
+          fontWeight: 700,
+          color: "var(--fg-3)",
+          letterSpacing: "0.05em",
+          textTransform: "uppercase",
+        }}
+      >
+        Kardio-tavoitteet
+      </div>
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <CardioTargetField
+          label="Sarjoja (intervalleja)"
+          value={String(sets)}
+          onCommit={(v) => {
+            const n = parseInt(v, 10);
+            onUpdate({ id: ex.id, sets: Number.isFinite(n) && n > 0 ? n : 1 });
+          }}
+          placeholder="1"
+          inputMode="numeric"
+        />
+        {tracks.distance && (
+          <CardioTargetField
+            label="Matka (km)"
+            value={ex.target_distance_m != null ? (ex.target_distance_m / 1000).toString() : ""}
+            onCommit={(v) => {
+              const trimmed = v.trim();
+              if (!trimmed) return onUpdate({ id: ex.id, target_distance_m: null });
+              const km = parseFloat(trimmed.replace(",", "."));
+              onUpdate({ id: ex.id, target_distance_m: Number.isFinite(km) ? Math.round(km * 1000) : null });
+            }}
+            placeholder="5.0"
+            inputMode="decimal"
+          />
+        )}
+        {tracks.duration && (
+          <CardioTargetField
+            label="Aika (mm:ss)"
+            value={ex.target_duration_s != null ? formatTargetDuration(ex.target_duration_s) : ""}
+            onCommit={(v) => {
+              const trimmed = v.trim();
+              if (!trimmed) return onUpdate({ id: ex.id, target_duration_s: null });
+              const sec = parseTargetDuration(trimmed);
+              onUpdate({ id: ex.id, target_duration_s: sec });
+            }}
+            placeholder="25:00"
+            inputMode="text"
+          />
+        )}
+        {tracks.hr && (
+          <CardioTargetField
+            label="Syke (bpm)"
+            value={ex.target_hr_bpm != null ? String(ex.target_hr_bpm) : ""}
+            onCommit={(v) => {
+              const trimmed = v.trim();
+              if (!trimmed) return onUpdate({ id: ex.id, target_hr_bpm: null });
+              const n = parseInt(trimmed, 10);
+              onUpdate({ id: ex.id, target_hr_bpm: Number.isFinite(n) ? n : null });
+            }}
+            placeholder="150"
+            inputMode="numeric"
+          />
+        )}
+        {!tracks.distance && !tracks.duration && !tracks.hr && (
+          <div style={{ fontSize: 12, color: "var(--fg-3)" }}>
+            Liikkeelle ei ole valittu seurattavia kenttiä. Rastita liikepankissa matka / aika / syke.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CardioTargetField({
+  label,
+  value,
+  onCommit,
+  placeholder,
+  inputMode,
+}: {
+  label: string;
+  value: string;
+  onCommit: (v: string) => void;
+  placeholder: string;
+  inputMode: "numeric" | "decimal" | "text";
+}) {
+  return (
+    <label style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 120, flex: "1 1 120px" }}>
+      <span style={{ fontSize: 10, color: "var(--fg-3)", fontWeight: 600, letterSpacing: "0.02em" }}>{label}</span>
+      <input
+        key={`cardio:${label}:${value}`}
+        defaultValue={value}
+        placeholder={placeholder}
+        inputMode={inputMode}
+        onBlur={(e) => {
+          if (e.target.value !== value) onCommit(e.target.value);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+        }}
+        style={{
+          background: "var(--bg-2)",
+          border: "1px solid var(--line)",
+          borderRadius: 6,
+          color: "var(--fg-1)",
+          fontSize: 13,
+          fontFamily: "inherit",
+          padding: "7px 10px",
+          outline: "none",
+        }}
+      />
+    </label>
+  );
+}
+
+function parseTargetDuration(s: string): number | null {
+  const parts = s.split(":").map((p) => p.trim());
+  if (parts.some((p) => p === "" || !/^\d+$/.test(p))) return null;
+  const nums = parts.map((p) => parseInt(p, 10));
+  if (nums.length === 1) return nums[0]!;
+  if (nums.length === 2) return nums[0]! * 60 + nums[1]!;
+  if (nums.length === 3) return nums[0]! * 3600 + nums[1]! * 60 + nums[2]!;
+  return null;
+}
+function formatTargetDuration(s: number): string {
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  if (h > 0) return `${h}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+  return `${m}:${String(sec).padStart(2, "0")}`;
 }

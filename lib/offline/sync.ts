@@ -182,7 +182,9 @@ async function syncGroup(
       else await db.set_logs.put({ id, deleted: 1, synced: 1,
         workout_log_id: "", exercise_id: "", program_exercise_id: null,
         set_number: null, weight: null, reps: null, rpe: null,
-        is_pr: false, estimated_1rm: null, updated_at: new Date().toISOString() });
+        is_pr: false, estimated_1rm: null,
+        distance_m: null, duration_s: null, avg_hr: null,
+        updated_at: new Date().toISOString() });
     }
   });
 }
@@ -220,6 +222,9 @@ function toSetLogPayload(r: LocalSetLog) {
     weight: r.weight,
     reps: r.reps,
     rpe: r.rpe,
+    distance_m: r.distance_m,
+    duration_s: r.duration_s,
+    avg_hr: r.avg_hr,
     updated_at: r.updated_at,
   };
 }
