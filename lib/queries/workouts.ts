@@ -225,6 +225,28 @@ export async function getLatestPRs(supabase: DB, clientId: string, limit = 3) {
   return data ?? [];
 }
 
+export type CardioRecord = {
+  id: string;
+  bucket: "cooper" | "1km" | "5km" | "10km" | "21km" | "42km";
+  duration_s: number | null;
+  distance_m: number | null;
+  achieved_at: string;
+  exercises: { id: string; name: string } | null;
+};
+
+export async function getCardioRecords(supabase: DB, clientId: string): Promise<CardioRecord[]> {
+  const { data, error } = await supabase
+    .from("cardio_records")
+    .select(`
+      id, bucket, duration_s, distance_m, achieved_at,
+      exercises ( id, name )
+    `)
+    .eq("client_id", clientId)
+    .order("achieved_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as unknown as CardioRecord[];
+}
+
 export async function getRecentPRs(supabase: DB, clientId: string, limit = 250) {
   const { data, error } = await supabase
     .from("personal_records")
