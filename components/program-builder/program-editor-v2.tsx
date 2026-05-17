@@ -58,6 +58,7 @@ import {
   ChevronsUp,
   Copy,
   GripVertical,
+  Pencil,
   Plus,
   Search,
   Settings2,
@@ -2769,6 +2770,7 @@ function EditableTitle({
       type="button"
       onClick={() => setEditing(true)}
       title="Klikkaa muokataksesi nimeä"
+      className="mv2-editable-title"
       style={{
         background: "transparent",
         border: "1px solid transparent",
@@ -2781,16 +2783,23 @@ function EditableTitle({
         color: isEmpty ? "var(--fg-2)" : "inherit",
         textAlign: "left",
         borderRadius: 4,
-        overflow: "hidden",
-        textOverflow: "ellipsis",
-        whiteSpace: "nowrap",
         width: "100%",
         minWidth: 0,
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 6,
       }}
       onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--line)"; }}
       onMouseLeave={(e) => { e.currentTarget.style.borderColor = "transparent"; }}
     >
-      {display}
+      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0, flex: 1 }}>
+        {display}
+      </span>
+      <Pencil
+        size={11}
+        className="mv2-editable-pencil"
+        style={{ flexShrink: 0, color: "var(--fg-3)", opacity: 0.5 }}
+      />
     </button>
   );
 }
@@ -4098,6 +4107,8 @@ function Mv2Style() {
       .mv2 .mv2-row:hover .mv2-row-del,
       .mv2 .mv2-row-del:focus-visible { opacity: 1; }
       .mv2 .mv2-row-del:hover { background: rgba(255,90,90,0.12) !important; color: #ff6b6b !important; }
+      .mv2 .mv2-editable-pencil { transition: opacity 0.12s, color 0.12s; }
+      .mv2 .mv2-editable-title:hover .mv2-editable-pencil { opacity: 1 !important; color: var(--accent-fg) !important; }
     `}</style>
   );
 }
