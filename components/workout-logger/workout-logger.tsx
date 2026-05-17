@@ -435,6 +435,11 @@ type RowState = {
   setLogId: string | null;
   isPr: boolean;
   synced: boolean;
+  // Original program target for this row — used to decide whether a value
+  // has been touched by the user, so confirm-row carry-forward can skip
+  // user-edited rows and rows whose programmed target differs.
+  initialWeight: string;
+  initialReps: string;
 };
 
 type SetConfig = { reps: string | null; weight: number | null; rpe: number | null };
@@ -442,27 +447,39 @@ type SetConfig = { reps: string | null; weight: number | null; rpe: number | nul
 function resolveInitialRows(pe: any): RowState[] {
   const cfgs: SetConfig[] | null = pe.set_configs ?? null;
   if (cfgs && cfgs.length > 0) {
-    return cfgs.map((c) => ({
-      weight: c.weight != null ? String(c.weight) : (pe.intensity != null ? String(pe.intensity) : ""),
-      reps: c.reps ?? pe.reps ?? "",
-      rpeIdx: targetRpeIdx(c.rpe ?? null),
+    return cfgs.map((c) => {
+      const weight = c.weight != null ? String(c.weight) : (pe.intensity != null ? String(pe.intensity) : "");
+      const reps = c.reps ?? pe.reps ?? "";
+      return {
+        weight,
+        reps,
+        rpeIdx: targetRpeIdx(c.rpe ?? null),
+        confirmed: false,
+        setLogId: null,
+        isPr: false,
+        synced: true,
+        initialWeight: weight,
+        initialReps: reps,
+      };
+    });
+  }
+  const sets: number = pe.sets ?? 3;
+  const perSetRpe: (number | null)[] | null = pe.target_rpes ?? null;
+  return Array.from({ length: sets }, (_, i) => {
+    const weight = pe.intensity != null ? String(pe.intensity) : "";
+    const reps = pe.reps ?? "";
+    return {
+      weight,
+      reps,
+      rpeIdx: targetRpeIdx(perSetRpe ? (perSetRpe[i] ?? null) : (pe.target_rpe ?? null)),
       confirmed: false,
       setLogId: null,
       isPr: false,
       synced: true,
-    }));
-  }
-  const sets: number = pe.sets ?? 3;
-  const perSetRpe: (number | null)[] | null = pe.target_rpes ?? null;
-  return Array.from({ length: sets }, (_, i) => ({
-    weight: pe.intensity != null ? String(pe.intensity) : "",
-    reps: pe.reps ?? "",
-    rpeIdx: targetRpeIdx(perSetRpe ? (perSetRpe[i] ?? null) : (pe.target_rpe ?? null)),
-    confirmed: false,
-    setLogId: null,
-    isPr: false,
-    synced: true,
-  }));
+      initialWeight: weight,
+      initialReps: reps,
+    };
+  });
 }
 
 // ── Exercise block dispatcher ─────────────────────────────────────────────────
@@ -654,7 +671,26 @@ function LiftingExerciseBlock({ programExercise, workoutLogId }: { programExerci
     const row = rows[i];
     if (!row || row.confirmed) return;
     cancelledRef.current.delete(i);
-    setRows((prev) => prev.map((r, idx) => idx === i ? { ...r, confirmed: true } : r));
+    // Carry the just-confirmed weight/reps forward to subsequent unconfirmed
+    // rows — but only if the next row hasn't been edited (still matches its
+    // own program target) AND the two rows were programmed to mirror each
+    // other (same initial target). Skips per-set varying schemes like 8/6/4
+    // reps where each row was meant to differ.
+    setRows((prev) => prev.map((r, idx) => {
+      if (idx === i) return { ...r, confirmed: true };
+      if (idx > i && !r.confirmed) {
+        const untouchedW = r.weight === r.initialWeight;
+        const untouchedR = r.reps === r.initialReps;
+        const mirroredW = row.initialWeight === r.initialWeight;
+        const mirroredR = row.initialReps === r.initialReps;
+        return {
+          ...r,
+          weight: untouchedW && mirroredW ? row.weight : r.weight,
+          reps: untouchedR && mirroredR ? row.reps : r.reps,
+        };
+      }
+      return r;
+    }));
     add.mutate({ rowIdx: i, row });
   }
 
@@ -918,7 +954,7 @@ function StepperCell({
         disabled={!active || disabled}
         aria-label={kind === "plus" ? "Lisää" : "Vähennä"}
         style={{
-          width: "clamp(22px, 6.5vw, 28px)", height: "clamp(22px, 6.5vw, 28px)",
+          width: "clamp(34px, 9vw, 42px)", height: "clamp(34px, 9vw, 42px)",
           borderRadius: "50%", flexShrink: 0,
           background: (!active || disabled) ? "transparent" : "var(--c-surface3)",
           border: `1px solid ${(!active || disabled) ? "transparent" : "var(--c-border)"}`,
@@ -928,7 +964,7 @@ function StepperCell({
           transition: "background 0.1s",
         }}
       >
-        <svg width="55%" height="55%" viewBox="0 0 24 24" fill="none"
+        <svg width="50%" height="50%" viewBox="0 0 24 24" fill="none"
           stroke={stroke} strokeWidth="3" strokeLinecap="round">
           <line x1="5" y1="12" x2="19" y2="12" />
           {kind === "plus" && <line x1="12" y1="5" x2="12" y2="19" />}
@@ -939,11 +975,11 @@ function StepperCell({
 
   const centerStyle: React.CSSProperties = {
     flex: 1, textAlign: "center", lineHeight: 1,
-    fontSize: "clamp(11px, 3.2vw, 13px)", fontWeight: 700,
+    fontSize: "clamp(14px, 3.8vw, 16px)", fontWeight: 700,
     color: display === "–" ? "var(--c-text-subtle)" : "var(--c-text)",
     background: disabled ? "transparent" : "var(--c-surface2)",
     border: `1px solid ${disabled ? "transparent" : "var(--c-border)"}`,
-    borderRadius: 7, padding: "7px 0",
+    borderRadius: 7, padding: "9px 0",
     minWidth: 0, outline: "none",
     fontFamily: "inherit",
   };
@@ -1008,8 +1044,8 @@ function SetTableRow({
 
   return (
     <div style={{
-      display: "grid", gridTemplateColumns: "16px minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr) clamp(34px, 9vw, 44px)",
-      gap: 2, padding: "6px clamp(4px, 1.5vw, 8px)",
+      display: "grid", gridTemplateColumns: "16px minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr) clamp(40px, 11vw, 50px)",
+      gap: 2, padding: "8px clamp(4px, 1.5vw, 8px)",
       borderBottom: "1px solid var(--c-border)",
       background: row.isPr ? "rgba(245,166,35,0.05)" : "transparent",
       opacity: row.confirmed ? 0.7 : 1,
@@ -1062,24 +1098,24 @@ function SetTableRow({
           onClick={row.confirmed ? onUnconfirm : onConfirm}
           title={row.confirmed ? "Peru sarja" : "Merkitse tehdyksi"}
           style={{
-            width: "clamp(34px, 9vw, 40px)", height: "clamp(34px, 9vw, 40px)",
+            width: "clamp(40px, 11vw, 48px)", height: "clamp(40px, 11vw, 48px)",
             borderRadius: "50%", padding: 0, flexShrink: 0,
-            background: row.confirmed ? "rgba(62,207,142,0.15)" : "var(--c-surface2)",
-            border: `1px solid ${row.confirmed && !row.synced ? "rgba(245,166,35,0.4)" : row.confirmed ? "rgba(62,207,142,0.4)" : "var(--c-border)"}`,
+            background: row.confirmed ? "rgba(62,207,142,0.15)" : "var(--c-pink-dim, rgba(236,72,153,0.10))",
+            border: `1.5px solid ${row.confirmed && !row.synced ? "rgba(245,166,35,0.4)" : row.confirmed ? "rgba(62,207,142,0.4)" : "var(--c-pink, rgba(236,72,153,0.5))"}`,
             cursor: "pointer",
             display: "flex", alignItems: "center", justifyContent: "center",
             transition: "all 0.2s",
           } as React.CSSProperties}
         >
           {row.confirmed && !row.synced ? (
-            <svg width="40%" height="40%" viewBox="0 0 24 24" fill="none"
+            <svg width="46%" height="46%" viewBox="0 0 24 24" fill="none"
               stroke="#F5A623" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 15 14" />
             </svg>
           ) : (
-            <svg width="40%" height="40%" viewBox="0 0 24 24" fill="none"
-              stroke={row.confirmed ? "#3ECF8E" : "var(--c-text-subtle)"}
-              strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="46%" height="46%" viewBox="0 0 24 24" fill="none"
+              stroke={row.confirmed ? "#3ECF8E" : "var(--c-pink, #ec4899)"}
+              strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="20 6 9 17 4 12"/>
             </svg>
           )}
