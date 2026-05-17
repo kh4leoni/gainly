@@ -301,7 +301,7 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
   };
 
   // ── Layout state ──
-  const [phaseView, setPhaseView] = useState<"expanded" | "compact" | "off">("expanded");
+  const [phaseView, setPhaseView] = useState<"expanded" | "compact" | "off">("compact");
   const [showSummaryRail, setShowSummaryRail] = useState(true);
   const [showProgression] = useState(true);
   const [showCompletion] = useState(true);
@@ -1678,11 +1678,22 @@ function PhaseOverview({
       style={{
         borderBottom: "1px solid var(--line)",
         background: "var(--bg-1)",
-        padding: "10px 18px 14px",
         flex: "0 0 auto",
       }}
     >
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+      <div
+        style={{
+          position: "sticky",
+          top: 0,
+          zIndex: 5,
+          background: "var(--bg-1)",
+          padding: "10px 18px",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          boxShadow: "0 1px 0 var(--line)",
+        }}
+      >
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 10, fontWeight: 700, color: "var(--accent-fg)", letterSpacing: "0.05em", textTransform: "uppercase" }}>
             Jakson yleiskuva
@@ -1709,6 +1720,7 @@ function PhaseOverview({
           gridTemplateColumns: `28px repeat(${weeks.length}, minmax(0, 1fr)) 72px`,
           gridTemplateRows: `26px repeat(${dayNumbers.length || 1}, minmax(76px, auto))`,
           gap: 5,
+          padding: "10px 18px 14px",
         }}
       >
         {/* corner */}
