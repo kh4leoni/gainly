@@ -11,6 +11,14 @@
   /* iOS UISwitch defaults — system green ON, system fill OFF */
   --c-toggle-on: #34C759;
   --c-toggle-off: rgba(120, 120, 128, 0.32);
+  /* iOS easing curves — match UIKit's standard timing functions */
+  --ease-ios:        cubic-bezier(0.32, 0.72, 0, 1);   /* smooth deceleration (sheets, dismissals) */
+  --ease-ios-spring: cubic-bezier(0.34, 1.56, 0.64, 1); /* bouncy overshoot (toggle, taps) */
+  --ease-ios-snap:   cubic-bezier(0.22, 1, 0.36, 1);    /* snappy completion (gestures) */
+  /* iOS standard durations */
+  --d-fast: 180ms;
+  --d-base: 240ms;
+  --d-slow: 400ms;
 }
 @media (prefers-color-scheme: light) {
   :root { --c-toggle-off: rgba(120, 120, 128, 0.16); }
@@ -395,10 +403,10 @@ body:has(.client-app) {
   overflow: hidden;
   background: #070708;
 }
-.c-ani         { animation: c-fadeUp       0.26s ease-out both; will-change: opacity, transform; }
-.c-fade        { animation: c-fadeIn       0.22s ease-out both; will-change: opacity; }
-.c-slide-right { animation: c-slideInRight 0.2s cubic-bezier(0.25,0.46,0.45,0.94) both; will-change: transform; -webkit-backface-visibility: hidden; backface-visibility: hidden; }
-.c-slide-left  { animation: c-slideInLeft  0.2s cubic-bezier(0.25,0.46,0.45,0.94) both; will-change: transform; -webkit-backface-visibility: hidden; backface-visibility: hidden; }
+.c-ani         { animation: c-fadeUp       var(--d-base) var(--ease-ios) both; will-change: opacity, transform; }
+.c-fade        { animation: c-fadeIn       var(--d-fast) var(--ease-ios) both; will-change: opacity; }
+.c-slide-right { animation: c-slideInRight var(--d-base) var(--ease-ios) both; will-change: transform; -webkit-backface-visibility: hidden; backface-visibility: hidden; }
+.c-slide-left  { animation: c-slideInLeft  var(--d-base) var(--ease-ios) both; will-change: transform; -webkit-backface-visibility: hidden; backface-visibility: hidden; }
 .c-msg-in      { animation: c-fadeIn       0.18s ease-out both; }
 
 @layer base {
@@ -507,7 +515,7 @@ body:has(.client-app) {
   border-radius: 9999px;
   background: var(--c-toggle-off);
   cursor: pointer;
-  transition: background 240ms ease;
+  transition: background var(--d-base) var(--ease-ios);
   -webkit-tap-highlight-color: transparent;
   box-sizing: border-box;
 }
@@ -527,7 +535,7 @@ body:has(.client-app) {
     0 3px 8px rgba(0, 0, 0, 0.15),
     0 3px 1px rgba(0, 0, 0, 0.06),
     0 0 0 0.5px rgba(0, 0, 0, 0.04);
-  transition: transform 280ms cubic-bezier(0.34, 1.4, 0.64, 1);
+  transition: transform var(--d-base) var(--ease-ios-spring);
   pointer-events: none;
   box-sizing: border-box;
   -webkit-corner-shape: round;
@@ -566,6 +574,69 @@ html.light [role="dialog"].client-themed {
 [data-radix-dialog-overlay]:has(~ [role="dialog"].client-themed),
 [data-radix-dialog-overlay]:has(+ [role="dialog"].client-themed) {
   background: rgba(0, 0, 0, 0.42) !important;
+}
+
+/* ── iOS inset grouped list pattern ─────────────────────────────────────
+   .ios-group       — the rounded card wrapping the rows
+   .ios-group-row   — each tappable row (44pt min height, hairline divider)
+   .ios-group-label — small-caps section label rendered above the group
+   .ios-group-footer — fine-print footer rendered under the group */
+.ios-group {
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  margin: 0 0 16px;
+}
+.ios-group-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 11px 16px;
+  width: 100%;
+  background: transparent;
+  border: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--d-fast) var(--ease-ios);
+}
+.ios-group-row + .ios-group-row::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 16px;
+  right: 0;
+  height: 1px;
+  background: var(--c-border);
+  pointer-events: none;
+}
+.ios-group-row:active {
+  background: var(--c-surface2);
+}
+.ios-group-row[aria-disabled="true"],
+.ios-group-row:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.ios-group-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--c-text-subtle);
+  padding: 0 16px 8px;
+}
+.ios-group-footer {
+  font-size: 12px;
+  color: var(--c-text-muted);
+  padding: 8px 16px 0;
+  line-height: 1.45;
 }
 
 /* ── Bottom nav with progressive fade: translucent top, solid bottom ────── */

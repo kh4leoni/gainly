@@ -153,7 +153,7 @@ function QuoteCard() {
               position: "absolute",
               inset: 0,
               pointerEvents: "none",
-              animation: `${slideDir === "left" ? "quote-out-left" : "quote-out-right"} ${ANIM_MS}ms cubic-bezier(0.4,0,0.2,1) both`,
+              animation: `${slideDir === "left" ? "quote-out-left" : "quote-out-right"} ${ANIM_MS}ms var(--ease-ios) both`,
             }}
           >
             <QuoteContent text={departingQuote} />
@@ -165,7 +165,7 @@ function QuoteCard() {
           key={`c-${current}`}
           style={{
             animation: departing !== null
-              ? `${slideDir === "left" ? "quote-in-right" : "quote-in-left"} ${ANIM_MS}ms cubic-bezier(0.4,0,0.2,1) both`
+              ? `${slideDir === "left" ? "quote-in-right" : "quote-in-left"} ${ANIM_MS}ms var(--ease-ios) both`
               : "none",
           }}
         >
@@ -251,7 +251,7 @@ export function ClientDashboardView({ clientId, firstName }: { clientId: string;
   const wcPct = wcTotal > 0 ? Math.round((wcDone / wcTotal) * 100) : 0;
 
   const enterStyle = (delay: number): React.CSSProperties => ({
-    animation: "card-enter 0.45s cubic-bezier(0.22, 1, 0.36, 1) both",
+    animation: "card-enter 0.45s var(--ease-ios-snap) both",
     animationDelay: `${delay}ms`,
   });
 

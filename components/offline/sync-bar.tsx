@@ -121,7 +121,7 @@ export function SyncBar() {
           transform: visible ? "translate(-50%, -50%) scale(1)" : "translate(-50%, -50%) scale(0)",
           opacity: visible ? 1 : 0,
           transition: visible
-            ? `transform ${ENTER_MS}ms cubic-bezier(0.34,1.56,0.64,1), opacity 150ms ease`
+            ? `transform ${ENTER_MS}ms var(--ease-ios-spring), opacity 150ms ease`
             : `transform ${EXIT_MS}ms cubic-bezier(0.4,0,1,1), opacity ${EXIT_MS}ms ease`,
           pointerEvents: visible ? "auto" : "none",
         }}
