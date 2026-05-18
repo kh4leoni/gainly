@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useRef, useState, useEffect, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { House, CalendarDots, TrendUp, ClockCounterClockwise, ChatCircle, Sun, Moon, SignOut, PencilSimple, CaretDown } from "@phosphor-icons/react";
 
@@ -492,6 +492,17 @@ export function ClientShell({
   const { pendingHref, setPendingHref } = usePendingNav();
   const onMessages = pathname.startsWith("/client/messages") || !!pendingHref?.startsWith("/client/messages");
 
+  // Compact title: visible once the user has scrolled the large title past
+  // the top edge. Reset on every route change.
+  const [compactVisible, setCompactVisible] = useState(false);
+  useEffect(() => { setCompactVisible(false); }, [pathname]);
+  const handleContentScroll = useCallback((scrollTop: number) => {
+    // The large title is ~58px tall. Show the compact bar a bit before it
+    // disappears so the transition feels smooth, hide just before so the
+    // large title is fully visible on top.
+    setCompactVisible(scrollTop > 38);
+  }, []);
+
   const supabase = createClient();
   const qc = useQueryClient();
   const handleRefresh = () => qc.invalidateQueries({ refetchType: "active" });
@@ -706,6 +717,7 @@ export function ClientShell({
               <PullToRefresh
                 key={pathname}
                 onRefresh={handleRefresh}
+                onScroll={handleContentScroll}
                 className="c-fade"
                 style={{
                   position: "absolute",
@@ -721,6 +733,18 @@ export function ClientShell({
               </PullToRefresh>
             )}
           </div>
+
+          {/* Compact title bar — appears once the large page title scrolls
+              past the top edge. Hidden on the messages route (it has its own
+              chat header) and during route transitions. */}
+          {!isMessages && !pendingHref && pageTitle(pathname) && (
+            <div
+              className={`client-compact-title${compactVisible ? " visible" : ""}`}
+              aria-hidden={!compactVisible}
+            >
+              <h2 className="client-compact-title-text">{pageTitle(pathname)}</h2>
+            </div>
+          )}
         </main>
 
         {/* ── Bottom nav: solid background with progressive fade above ── */}

@@ -664,6 +664,58 @@ html.light [role="dialog"].client-themed {
     rgba(var(--c-bg-rgb), 1) 100%
   );
 }
+/* Top compact title bar — mirror of bottom nav fade.
+   Solid at the top, fades to transparent at the bottom (so content
+   scrolls under it cleanly), with a small lead-out fade below for the
+   transition into the content area. */
+.client-compact-title {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding-top: env(safe-area-inset-top, 0px);
+  height: calc(env(safe-area-inset-top, 0px) + 44px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 30;
+  opacity: 0;
+  transition: opacity 220ms var(--ease-ios);
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    rgba(var(--c-bg-rgb), 1) 0%,
+    rgba(var(--c-bg-rgb), 1) calc(env(safe-area-inset-top, 0px) + 26px),
+    rgba(var(--c-bg-rgb), 0.97) calc(env(safe-area-inset-top, 0px) + 32px),
+    rgba(var(--c-bg-rgb), 0.80) calc(env(safe-area-inset-top, 0px) + 38px),
+    rgba(var(--c-bg-rgb), 0.40) 100%
+  );
+}
+.client-compact-title.visible {
+  opacity: 1;
+}
+.client-compact-title::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  height: 14px;
+  background: linear-gradient(
+    to bottom,
+    rgba(var(--c-bg-rgb), 0.40) 0%,
+    rgba(var(--c-bg-rgb), 0) 100%
+  );
+  pointer-events: none;
+}
+.client-compact-title-text {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  color: var(--c-text);
+  font-family: inherit;
+}
 /* Soft lead-in fade just above the nav — content doesn't slam straight
    into the 40% gradient edge. */
 .client-fade-nav::before {

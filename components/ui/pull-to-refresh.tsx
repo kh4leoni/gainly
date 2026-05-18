@@ -9,12 +9,14 @@ const RESISTANCE = 0.5;
 
 export function PullToRefresh({
   onRefresh,
+  onScroll,
   disabled,
   className,
   style,
   children,
 }: {
   onRefresh: () => Promise<unknown> | unknown;
+  onScroll?: (scrollTop: number) => void;
   disabled?: boolean;
   className?: string;
   style?: CSSProperties;
@@ -24,6 +26,21 @@ export function PullToRefresh({
   const startY = useRef<number | null>(null);
   const [pull, setPull] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || !onScroll) return;
+    let raf = 0;
+    function handle() {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => onScroll!(el!.scrollTop));
+    }
+    el.addEventListener("scroll", handle, { passive: true });
+    return () => {
+      cancelAnimationFrame(raf);
+      el.removeEventListener("scroll", handle);
+    };
+  }, [onScroll]);
 
   useEffect(() => {
     const el = scrollRef.current;
