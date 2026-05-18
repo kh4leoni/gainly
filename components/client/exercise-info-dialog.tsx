@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Collapse } from "@/components/ui/collapse";
+import { useDragToDismiss } from "@/hooks/use-drag-to-dismiss";
 
 export type ExerciseInfo = {
   name: string;
@@ -100,22 +101,37 @@ interface ExerciseInfoDialogProps {
 }
 
 export function ExerciseInfoDialog({ exercises, title, trigger }: ExerciseInfoDialogProps) {
+  const [open, setOpen] = useState(false);
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
+  const handleRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
 
-  const handleOpenChange = (open: boolean) => {
-    if (!open) setExpandedIdx(null);
+  useDragToDismiss({
+    handleRef,
+    contentRef,
+    onDismiss: () => setOpen(false),
+    enabled: open,
+  });
+
+  const handleOpenChange = (next: boolean) => {
+    setOpen(next);
+    if (!next) setExpandedIdx(null);
   };
 
   return (
-    <Dialog onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent
+        ref={contentRef}
         className="client-themed max-h-[85vh] flex flex-col overflow-hidden"
         style={{
           background: "var(--c-surface)",
           border: "1px solid var(--c-border)",
         } as React.CSSProperties}
       >
+        <div ref={handleRef} className="ios-drag-handle" aria-hidden>
+          <div className="ios-drag-handle-bar" />
+        </div>
         <DialogHeader style={{ flexShrink: 0 }}>
           <DialogTitle style={{ color: "var(--c-text)" }}>{title ?? "Harjoitteet"}</DialogTitle>
         </DialogHeader>
