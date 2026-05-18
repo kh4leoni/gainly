@@ -700,7 +700,10 @@ export function ClientShell({
                 className="c-fade"
                 style={{
                   position: "absolute",
-                  inset: 0,
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: "var(--client-nav-inset)",
                   display: "flex",
                   flexDirection: "column",
                   overflow: "hidden",
@@ -726,7 +729,7 @@ export function ClientShell({
                 }}
               >
                 <PageTitle title={pageTitle(pathname)} />
-                <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, paddingBottom: "var(--client-nav-inset)" }}>
                   {children}
                 </div>
               </PullToRefresh>
@@ -734,16 +737,17 @@ export function ClientShell({
           </div>
         </main>
 
-        {/* ── Bottom nav ── */}
+        {/* ── Bottom nav: solid background with progressive fade above ── */}
         <nav
+          className="client-fade-nav"
           style={{
+            position: "absolute",
+            left: 0,
+            right: 0,
+            bottom: 0,
             display: "flex",
-            borderTop: "1px solid var(--c-border)",
-            background: "var(--c-surface)",
-            flexShrink: 0,
             paddingBottom: "env(safe-area-inset-bottom, 0px)",
-            position: "relative",
-            overflow: "visible",
+            zIndex: 60,
           }}
         >
           {NAV.map(({ href, label, Icon }) => {

@@ -29,6 +29,7 @@ export function SearchableSelect({
   const [query, setQuery] = useState("");
   const [pos, setPos] = useState({ top: 0, left: 0, width: 0 });
   const triggerRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const selectedLabel = options.find((o) => o.value === value)?.label;
@@ -58,16 +59,18 @@ export function SearchableSelect({
 
   useEffect(() => {
     if (!open) return;
-    const onMouseDown = (e: MouseEvent) => {
-      if (triggerRef.current?.contains(e.target as Node)) return;
+    const onPointerDown = (e: PointerEvent) => {
+      const target = e.target as Node;
+      if (triggerRef.current?.contains(target)) return;
+      if (dropdownRef.current?.contains(target)) return;
       setOpen(false);
     };
     const onReposition = () => computePos();
-    document.addEventListener("mousedown", onMouseDown);
+    document.addEventListener("pointerdown", onPointerDown);
     window.addEventListener("scroll", onReposition, true);
     window.addEventListener("resize", onReposition);
     return () => {
-      document.removeEventListener("mousedown", onMouseDown);
+      document.removeEventListener("pointerdown", onPointerDown);
       window.removeEventListener("scroll", onReposition, true);
       window.removeEventListener("resize", onReposition);
     };
@@ -75,6 +78,7 @@ export function SearchableSelect({
 
   const dropdown = (
     <div
+      ref={dropdownRef}
       style={{ position: "absolute", top: pos.top, left: pos.left, width: pos.width, zIndex: 9999 }}
       className="overflow-hidden rounded-lg border border-border bg-background shadow-lg"
     >
@@ -88,7 +92,8 @@ export function SearchableSelect({
             if (e.key === "Enter" && filtered[0]) { onChange(filtered[0].value); setOpen(false); }
             if (e.key === "Escape") setOpen(false);
           }}
-          className="h-8 w-full rounded-md border border-border bg-muted/30 px-2.5 text-sm placeholder:text-muted-foreground focus:border-primary/40 focus:outline-none focus:ring-1 focus:ring-primary/20"
+          style={{ fontSize: 16 }}
+          className="h-9 w-full rounded-md border border-border bg-muted/30 px-2.5 placeholder:text-muted-foreground focus:border-primary/40 focus:outline-none focus:ring-1 focus:ring-primary/20"
         />
       </div>
       {filtered.length === 0 ? (
@@ -98,9 +103,9 @@ export function SearchableSelect({
           {filtered.map((o) => (
             <li
               key={o.value}
-              onMouseDown={(e) => { e.preventDefault(); onChange(o.value); setOpen(false); }}
+              onClick={() => { onChange(o.value); setOpen(false); }}
               className={cn(
-                "cursor-pointer rounded-[4px] px-3 py-1.5 text-sm transition-colors hover:bg-accent hover:text-accent-foreground",
+                "cursor-pointer rounded-[4px] px-3 py-2 text-sm transition-colors hover:bg-accent hover:text-accent-foreground",
                 o.value === value && "bg-accent/50 font-medium"
               )}
             >
