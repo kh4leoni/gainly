@@ -84,8 +84,6 @@ export function ProgressView({
     enabled: online,
   });
 
-  const tabIdx = TABS.indexOf(tab);
-
   // Initial scroll position (default = "ennätykset" at scrollLeft 0)
   useLayoutEffect(() => {
     const el = scrollerRef.current;
@@ -196,45 +194,6 @@ export function ProgressView({
           ))}
         </div>
 
-        {/* Swipe indicator — signals horizontal pages */}
-        <div
-          aria-hidden
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 6,
-            marginBottom: 14,
-            color: "var(--c-text-subtle)",
-            fontSize: 10,
-            fontWeight: 600,
-            letterSpacing: "0.8px",
-            textTransform: "uppercase",
-          }}
-        >
-          <span
-            className="swipe-hint-arrow swipe-hint-arrow-left"
-            style={{ opacity: tabIdx > 0 ? 1 : 0.25 }}
-          >‹</span>
-          <div style={{ display: "flex", gap: 5 }}>
-            {TABS.map((t, i) => (
-              <span
-                key={t}
-                style={{
-                  width: i === tabIdx ? 18 : 5,
-                  height: 5,
-                  borderRadius: "var(--r-xs)",
-                  background: i === tabIdx ? "var(--c-pink)" : "var(--c-border-hover)",
-                  transition: "width 0.22s, background 0.22s",
-                }}
-              />
-            ))}
-          </div>
-          <span
-            className="swipe-hint-arrow swipe-hint-arrow-right"
-            style={{ opacity: tabIdx < TABS.length - 1 ? 1 : 0.25 }}
-          >›</span>
-        </div>
       </div>
 
       <div
@@ -250,7 +209,7 @@ export function ProgressView({
           scrollSnapType: "x mandatory",
           WebkitOverflowScrolling: "touch",
           scrollbarWidth: "none",
-          touchAction: "pan-x pan-y",
+          touchAction: "pan-y",
         }}
       >
         {/* ── Ennätykset ── */}

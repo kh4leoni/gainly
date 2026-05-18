@@ -92,16 +92,7 @@ function DayRow({ day }: { day: ScheduleDay }) {
       tabIndex={0}
       onClick={() => router.push(`/client/workout/${day.id}`)}
       onKeyDown={(e) => { if (e.key === "Enter") router.push(`/client/workout/${day.id}`); }}
-      style={{
-        padding: "12px 14px",
-        background: "var(--c-surface)",
-        border: "1px solid var(--c-border)",
-        borderRadius: "var(--r-md)",
-        display: "flex",
-        alignItems: "center",
-        gap: 12,
-        cursor: "pointer",
-      }}
+      className="ios-group-row"
     >
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontWeight: 600, fontSize: 13, color: "var(--c-text)" }}>
@@ -354,8 +345,10 @@ export function OhjelmaView({ clientId }: { clientId: string }) {
                 boxSizing: "border-box",
               }}
             >
-              <div style={{ padding: "0 20px", display: "flex", flexDirection: "column", gap: 8 }}>
-                {wp.days.map((day) => <DayRow key={day.id} day={day} />)}
+              <div style={{ padding: "0 20px" }}>
+                <div className="ios-group">
+                  {wp.days.map((day) => <DayRow key={day.id} day={day} />)}
+                </div>
               </div>
             </div>
           ))}
@@ -384,16 +377,9 @@ export function OhjelmaView({ clientId }: { clientId: string }) {
       )}
 
       {orphans.length > 0 && (
-        <div style={{
-          margin: "22px 20px 0",
-          background: "var(--c-surface)",
-          border: "1px dashed var(--c-border)",
-          borderRadius: "var(--r-md)", padding: "12px 14px",
-        }}>
-          <div style={{ fontSize: 11, color: "var(--c-text-muted)", marginBottom: 6 }}>
-            Treenit ilman ohjelmaa ({orphans.length})
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <div style={{ margin: "22px 20px 0" }}>
+          <span className="ios-group-label">Treenit ilman ohjelmaa ({orphans.length})</span>
+          <div className="ios-group" style={{ borderStyle: "dashed" }}>
             {orphans.map((day) => <DayRow key={day.id} day={day} />)}
           </div>
         </div>

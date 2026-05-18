@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { useDragToDismiss } from "@/hooks/use-drag-to-dismiss";
 
 // Standard plate denominations available in most gyms (kg).
 const PLATES_KG = [25, 20, 15, 10, 5, 2.5, 1.25, 0.5] as const;
@@ -74,8 +75,18 @@ export function PlateLoaderDialog({
   nextSetNumber: number | null;
   nextSetWeight: number | null;
 }) {
+  const [open, setOpen] = useState(false);
   const [barKg, setBarKg] = useState<number>(20);
   const [maxPlateKg, setMaxPlateKg] = useState<25 | 20>(25);
+  const handleRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  useDragToDismiss({
+    handleRef,
+    contentRef,
+    onDismiss: () => setOpen(false),
+    enabled: open,
+  });
 
   const total = nextSetWeight ?? 0;
   const perSide = Math.max(0, (total - barKg) / 2);
@@ -90,15 +101,19 @@ export function PlateLoaderDialog({
   const fits = remainder === 0;
 
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent
+        ref={contentRef}
         className="client-themed max-h-[85vh] flex flex-col overflow-hidden"
         style={{
           background: "var(--c-surface)",
           border: "1px solid var(--c-border)",
         } as React.CSSProperties}
       >
+        <div ref={handleRef} className="ios-drag-handle" aria-hidden>
+          <div className="ios-drag-handle-bar" />
+        </div>
         <DialogHeader style={{ flexShrink: 0 }}>
           <DialogTitle style={{ color: "var(--c-text)" }}>Levyt — {exerciseName}</DialogTitle>
         </DialogHeader>

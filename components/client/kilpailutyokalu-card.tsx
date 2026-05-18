@@ -41,7 +41,7 @@ export function KilpailutyokaluCard({
       <div style={{
         overflow: "hidden",
         maxHeight: open ? 800 : 0,
-        transition: "max-height 0.35s cubic-bezier(0.4,0,0.2,1)",
+        transition: "max-height 0.35s var(--ease-ios)",
       }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingTop: 2 }}>
           {/* Mode selector */}
