@@ -41,7 +41,6 @@ function PageTitle({ title }: { title: string }) {
 import { useTheme } from "next-themes";
 import { SyncBar } from "@/components/offline/sync-bar";
 import { useWorkoutPrefetch } from "@/hooks/use-workout-prefetch";
-import { useEdgeSwipeBack } from "@/hooks/use-edge-swipe-back";
 import { logBodyweight, logWaist, updateProfileName } from "@/app/client/actions";
 import { usePendingNav } from "@/lib/nav-context";
 import { createClient } from "@/lib/supabase/client";
@@ -492,12 +491,6 @@ export function ClientShell({
   const pathname = usePathname();
   const { pendingHref, setPendingHref } = usePendingNav();
   const onMessages = pathname.startsWith("/client/messages") || !!pendingHref?.startsWith("/client/messages");
-
-  // Edge-swipe-back: enable only on detail routes (not on tab roots, where
-  // horizontal pagers would conflict with the gesture).
-  const TAB_ROOTS = ["/client/dashboard", "/client/ohjelma", "/client/progress", "/client/history", "/client/messages"];
-  const isTabRoot = TAB_ROOTS.some((p) => pathname === p);
-  useEdgeSwipeBack({ enabled: !isTabRoot && pathname.startsWith("/client/") });
 
   const supabase = createClient();
   const qc = useQueryClient();

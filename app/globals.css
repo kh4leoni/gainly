@@ -610,7 +610,7 @@ html.light [role="dialog"].client-themed {
   position: absolute;
   top: 0;
   left: 16px;
-  right: 0;
+  right: 16px;
   height: 1px;
   background: var(--c-border);
   pointer-events: none;
