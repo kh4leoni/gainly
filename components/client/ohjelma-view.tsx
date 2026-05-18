@@ -330,7 +330,7 @@ export function OhjelmaView({ clientId }: { clientId: string }) {
             scrollSnapType: "x mandatory",
             WebkitOverflowScrolling: "touch",
             scrollbarWidth: "none",
-            touchAction: "pan-x",
+            touchAction: "pan-y",
           }}
         >
           {weeks.map((wp) => (
