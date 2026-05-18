@@ -664,10 +664,17 @@ html.light [role="dialog"].client-themed {
     rgba(var(--c-bg-rgb), 1) 100%
   );
 }
-/* Top compact title bar — mirror of bottom nav fade.
-   Solid at the top, fades to transparent at the bottom (so content
-   scrolls under it cleanly), with a small lead-out fade below for the
-   transition into the content area. */
+/* Large page title — scroll-driven fade + tiny upward shift as user
+   scrolls. Reads --compact-progress (0..1) from a parent. */
+.page-title-large {
+  opacity: calc(1 - var(--compact-progress, 0));
+  transform: translate3d(0, calc(var(--compact-progress, 0) * -6px), 0);
+  will-change: opacity, transform;
+}
+
+/* Top compact title bar — slides up and fades in as the large title
+   scrolls out of view. Mirror of the bottom nav: solid at top, fades to
+   transparent below so content can scroll under it. */
 .client-compact-title {
   position: absolute;
   top: 0;
@@ -679,9 +686,10 @@ html.light [role="dialog"].client-themed {
   align-items: center;
   justify-content: center;
   z-index: 30;
-  opacity: 0;
-  transition: opacity 220ms var(--ease-ios);
+  opacity: var(--compact-progress, 0);
+  transform: translate3d(0, calc((1 - var(--compact-progress, 0)) * 6px), 0);
   pointer-events: none;
+  will-change: opacity, transform;
   background: linear-gradient(
     to bottom,
     rgba(var(--c-bg-rgb), 1) 0%,
@@ -690,9 +698,6 @@ html.light [role="dialog"].client-themed {
     rgba(var(--c-bg-rgb), 0.80) calc(env(safe-area-inset-top, 0px) + 38px),
     rgba(var(--c-bg-rgb), 0.40) 100%
   );
-}
-.client-compact-title.visible {
-  opacity: 1;
 }
 .client-compact-title::after {
   content: "";
