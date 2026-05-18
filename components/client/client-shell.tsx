@@ -23,6 +23,7 @@ function PageTitle({ title }: { title: string }) {
   if (!title) return null;
   return (
     <h1
+      className="page-title-large"
       style={{
         margin: 0,
         padding: "14px 152px 6px 20px",
@@ -492,16 +493,22 @@ export function ClientShell({
   const { pendingHref, setPendingHref } = usePendingNav();
   const onMessages = pathname.startsWith("/client/messages") || !!pendingHref?.startsWith("/client/messages");
 
-  // Compact title: visible once the user has scrolled the large title past
-  // the top edge. Reset on every route change.
-  const [compactVisible, setCompactVisible] = useState(false);
-  useEffect(() => { setCompactVisible(false); }, [pathname]);
-  const handleContentScroll = useCallback((scrollTop: number) => {
-    // The large title is ~58px tall. Show the compact bar a bit before it
-    // disappears so the transition feels smooth, hide just before so the
-    // large title is fully visible on top.
-    setCompactVisible(scrollTop > 38);
+  // Compact title progress (0..1) is set as a CSS custom property on the
+  // shell wrapper so both the large title fade-out and the compact title
+  // fade-in track scroll without re-rendering React on every frame.
+  const shellRef = useRef<HTMLDivElement>(null);
+  const setProgress = useCallback((p: number) => {
+    shellRef.current?.style.setProperty("--compact-progress", String(p));
   }, []);
+  useEffect(() => { setProgress(0); }, [pathname, setProgress]);
+  const handleContentScroll = useCallback((scrollTop: number) => {
+    // Start fading immediately on scroll, complete by the time the large
+    // title has fully scrolled past the compact bar.
+    const START = 4;
+    const END = 44;
+    const p = Math.max(0, Math.min(1, (scrollTop - START) / (END - START)));
+    setProgress(p);
+  }, [setProgress]);
 
   const supabase = createClient();
   const qc = useQueryClient();
@@ -585,6 +592,7 @@ export function ClientShell({
       }}
     >
       <div
+        ref={shellRef}
         style={{
           width: "100%",
           maxWidth: 480,
@@ -734,18 +742,16 @@ export function ClientShell({
             )}
           </div>
 
-          {/* Compact title bar — appears once the large page title scrolls
-              past the top edge. Hidden on the messages route (it has its own
-              chat header) and during route transitions. */}
-          {!isMessages && !pendingHref && pageTitle(pathname) && (
-            <div
-              className={`client-compact-title${compactVisible ? " visible" : ""}`}
-              aria-hidden={!compactVisible}
-            >
-              <h2 className="client-compact-title-text">{pageTitle(pathname)}</h2>
-            </div>
-          )}
         </main>
+
+        {/* Compact title bar — scroll-driven fade/slide via --compact-progress.
+            Sits above main so it covers the safe-area too. Hidden on the
+            messages route and during route transitions. */}
+        {!isMessages && !pendingHref && pageTitle(pathname) && (
+          <div className="client-compact-title" aria-hidden>
+            <h2 className="client-compact-title-text">{pageTitle(pathname)}</h2>
+          </div>
+        )}
 
         {/* ── Bottom nav: solid background with progressive fade above ── */}
         <nav
