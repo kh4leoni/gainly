@@ -204,15 +204,11 @@ html.gainly-cobrand .client-themed {
   --c-pink-fg: #ffffff;
 }
 
-/* Hide scrollbar on horizontal pagers (ohjelma weeks, progress tabs) */
-.ohjelma-pager::-webkit-scrollbar,
-.progress-pager::-webkit-scrollbar { display: none; }
-.ohjelma-pager,
-.progress-pager { -ms-overflow-style: none; }
-/* Hide pager arrows on touch devices — swipe is the gesture */
-@media (hover: none) and (pointer: coarse) {
-  .ohjelma-pager-arrow { display: none !important; }
-}
+/* Hide scrollbar on horizontal pagers (progress tabs, week chips) */
+.progress-pager::-webkit-scrollbar,
+.ohjelma-week-chips::-webkit-scrollbar { display: none; }
+.progress-pager,
+.ohjelma-week-chips { -ms-overflow-style: none; }
 
 /* Swipe hint chevrons — subtle horizontal nudge to suggest swipe gesture */
 .swipe-hint-arrow {

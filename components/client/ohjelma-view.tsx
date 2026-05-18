@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
@@ -59,11 +59,92 @@ function buildWeeks(workouts: ScheduleDay[]): { weeks: WeekPane[]; orphans: Sche
   return { weeks, orphans };
 }
 
-function NavArrow({ dir }: { dir: "left" | "right" }) {
+function WeekChips({
+  weeks,
+  current,
+  active,
+  onSelect,
+}: {
+  weeks: WeekPane[];
+  current: number;
+  active: number;
+  onSelect: (i: number) => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  // Scroll the selected chip into view when current changes.
+  useEffect(() => {
+    const row = ref.current;
+    if (!row) return;
+    const chip = row.children[current] as HTMLElement | undefined;
+    if (!chip) return;
+    const rowRect = row.getBoundingClientRect();
+    const chipRect = chip.getBoundingClientRect();
+    if (chipRect.left < rowRect.left || chipRect.right > rowRect.right) {
+      chip.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+    }
+  }, [current]);
+
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-      {dir === "left" ? <polyline points="15 18 9 12 15 6"/> : <polyline points="9 18 15 12 9 6"/>}
-    </svg>
+    <div
+      ref={ref}
+      style={{
+        display: "flex",
+        gap: 8,
+        padding: "4px 20px 12px",
+        overflowX: "auto",
+        scrollbarWidth: "none",
+        WebkitOverflowScrolling: "touch",
+      }}
+      className="ohjelma-week-chips"
+    >
+      {weeks.map((w, i) => {
+        const selected = i === current;
+        const isLive = i === active;
+        return (
+          <button
+            key={w.weekId}
+            type="button"
+            onClick={() => onSelect(i)}
+            aria-pressed={selected}
+            style={{
+              flexShrink: 0,
+              padding: "8px 14px",
+              borderRadius: "var(--r-pill)",
+              border: `1px solid ${selected
+                ? "color-mix(in srgb, var(--c-pink) 35%, transparent)"
+                : "var(--c-border)"}`,
+              background: selected ? "var(--c-pink-dim)" : "var(--c-surface)",
+              color: selected ? "var(--c-pink)" : "var(--c-text-muted)",
+              fontFamily: "inherit",
+              fontSize: 12,
+              fontWeight: 700,
+              letterSpacing: "0.2px",
+              cursor: "pointer",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              transition: "background var(--d-fast) var(--ease-ios), color var(--d-fast) var(--ease-ios), border-color var(--d-fast) var(--ease-ios)",
+            }}
+          >
+            Vk {w.weekNumber}
+            {isLive && (
+              <span
+                aria-hidden
+                style={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: "50%",
+                  background: "var(--c-pink)",
+                  display: "inline-block",
+                  flexShrink: 0,
+                }}
+              />
+            )}
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
@@ -132,48 +213,6 @@ function DayRow({ day }: { day: ScheduleDay }) {
   );
 }
 
-function DotIndicator({
-  total, current, onJump, activeIdx,
-}: {
-  total: number;
-  current: number;
-  onJump: (i: number) => void;
-  activeIdx: number;
-}) {
-  // For many weeks, show only a window of dots around current with edge fades.
-  const WINDOW = 9;
-  const half = Math.floor(WINDOW / 2);
-  let start = Math.max(0, current - half);
-  const end = Math.min(total, start + WINDOW);
-  start = Math.max(0, end - WINDOW);
-  const dots = Array.from({ length: end - start }, (_, k) => start + k);
-  return (
-    <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 6, padding: "14px 20px 4px" }}>
-      {dots.map((i) => {
-        const isCurrent = i === current;
-        const isActive = i === activeIdx;
-        return (
-          <button
-            key={i}
-            type="button"
-            onClick={() => onJump(i)}
-            aria-label={`Viikko ${i + 1}`}
-            style={{
-              width: isCurrent ? 22 : 6, height: 6, borderRadius: "var(--r-xs)",
-              background: isCurrent
-                ? "var(--c-pink)"
-                : isActive ? "color-mix(in srgb, var(--c-pink) 50%, transparent)" : "var(--c-border-hover)",
-              border: "none", padding: 0, cursor: "pointer",
-              transition: "width 0.2s, background 0.2s",
-              flexShrink: 0,
-            }}
-          />
-        );
-      })}
-    </div>
-  );
-}
-
 export function OhjelmaView({ clientId }: { clientId: string }) {
   const supabase = createClient();
 
@@ -195,44 +234,14 @@ export function OhjelmaView({ clientId }: { clientId: string }) {
   }, [weeks]);
 
   const [currentIdx, setCurrentIdx] = useState(activeIdx);
-  const scrollerRef = useRef<HTMLDivElement>(null);
   const didInit = useRef(false);
 
-  // Initial scroll to active week (no animation, once).
-  useLayoutEffect(() => {
-    const el = scrollerRef.current;
-    if (!el || weeks.length === 0 || didInit.current) return;
+  // First render: jump to the live week without animation.
+  useEffect(() => {
+    if (didInit.current || weeks.length === 0) return;
     didInit.current = true;
-    el.scrollLeft = activeIdx * el.clientWidth;
     setCurrentIdx(activeIdx);
   }, [activeIdx, weeks.length]);
-
-  // Sync currentIdx with horizontal scroll (debounced via rAF).
-  useEffect(() => {
-    const el = scrollerRef.current;
-    if (!el) return;
-    let raf = 0;
-    function handle() {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => {
-        const w = el!.clientWidth;
-        if (w === 0) return;
-        const idx = Math.round(el!.scrollLeft / w);
-        setCurrentIdx((prev) => (prev === idx ? prev : idx));
-      });
-    }
-    el.addEventListener("scroll", handle, { passive: true });
-    return () => {
-      cancelAnimationFrame(raf);
-      el.removeEventListener("scroll", handle);
-    };
-  }, [weeks.length]);
-
-  function jumpTo(idx: number) {
-    const el = scrollerRef.current;
-    if (!el) return;
-    el.scrollTo({ left: idx * el.clientWidth, behavior: "smooth" });
-  }
 
   const current = weeks[currentIdx];
   const totalWorkouts = schedule.data?.length ?? 0;
@@ -293,78 +302,29 @@ export function OhjelmaView({ clientId }: { clientId: string }) {
         </div>
       )}
 
-      <div style={{ position: "relative" }}>
-        {currentIdx > 0 && (
-          <button
-            type="button"
-            onClick={() => jumpTo(currentIdx - 1)}
-            aria-label="Edellinen viikko"
-            className="ohjelma-pager-arrow"
-            style={navArrowStyle("left")}
-          >
-            <NavArrow dir="left" />
-          </button>
-        )}
-        {currentIdx < weeks.length - 1 && (
-          <button
-            type="button"
-            onClick={() => jumpTo(currentIdx + 1)}
-            aria-label="Seuraava viikko"
-            className="ohjelma-pager-arrow"
-            style={navArrowStyle("right")}
-          >
-            <NavArrow dir="right" />
-          </button>
-        )}
+      <WeekChips
+        weeks={weeks}
+        current={currentIdx}
+        active={activeIdx}
+        onSelect={setCurrentIdx}
+      />
 
-        <div
-          ref={scrollerRef}
-          className="ohjelma-pager"
-          style={{
-            display: "flex",
-            flexDirection: "row",
-            alignItems: "stretch",
-            width: "100%",
-            overflowX: "auto",
-            overflowY: "hidden",
-            scrollSnapType: "x mandatory",
-            WebkitOverflowScrolling: "touch",
-            scrollbarWidth: "none",
-            touchAction: "pan-y",
-          }}
-        >
-          {weeks.map((wp) => (
-            <div
-              key={wp.weekId}
-              style={{
-                flex: "0 0 100%",
-                width: "100%",
-                minWidth: "100%",
-                scrollSnapAlign: "start",
-                scrollSnapStop: "always",
-                boxSizing: "border-box",
-              }}
-            >
-              <div style={{ padding: "0 20px" }}>
-                <div className="ios-group">
-                  {wp.days.map((day) => <DayRow key={day.id} day={day} />)}
-                </div>
-              </div>
-            </div>
-          ))}
+      {current && (
+        <div style={{ padding: "0 20px" }}>
+          <div className="ios-group">
+            {current.days.map((day) => <DayRow key={day.id} day={day} />)}
+          </div>
         </div>
-      </div>
-
-      <DotIndicator total={weeks.length} current={currentIdx} onJump={jumpTo} activeIdx={activeIdx} />
+      )}
 
       {currentIdx !== activeIdx && (
-        <div style={{ display: "flex", justifyContent: "center", paddingTop: 4 }}>
+        <div style={{ display: "flex", justifyContent: "center", paddingTop: 12 }}>
           <button
             type="button"
-            onClick={() => jumpTo(activeIdx)}
+            onClick={() => setCurrentIdx(activeIdx)}
             style={{
               fontSize: 11, fontWeight: 600,
-              padding: "5px 12px", borderRadius: "var(--r-xl)",
+              padding: "6px 14px", borderRadius: "var(--r-pill)",
               background: "var(--c-pink-dim)",
               color: "var(--c-pink)",
               border: "1px solid color-mix(in srgb, var(--c-pink) 25%, transparent)",
@@ -388,19 +348,3 @@ export function OhjelmaView({ clientId }: { clientId: string }) {
   );
 }
 
-function navArrowStyle(side: "left" | "right"): React.CSSProperties {
-  return {
-    position: "absolute",
-    top: "50%",
-    transform: "translateY(-50%)",
-    [side]: 4,
-    zIndex: 4,
-    width: 28, height: 28, borderRadius: "50%",
-    background: "var(--c-surface)",
-    border: "1px solid var(--c-border)",
-    color: "var(--c-text-muted)",
-    display: "flex", alignItems: "center", justifyContent: "center",
-    cursor: "pointer", padding: 0,
-    boxShadow: "0 2px 8px rgba(0,0,0,0.18)",
-  };
-}
