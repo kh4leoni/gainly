@@ -493,22 +493,21 @@ export function ClientShell({
   const { pendingHref, setPendingHref } = usePendingNav();
   const onMessages = pathname.startsWith("/client/messages") || !!pendingHref?.startsWith("/client/messages");
 
-  // Compact title progress (0..1) is set as a CSS custom property on the
-  // shell wrapper so both the large title fade-out and the compact title
-  // fade-in track scroll without re-rendering React on every frame.
+  // The shell flips a single class .client-shell-scrolled at the threshold
+  // where the large title's bottom would slide under the compact bar.
+  // CSS transitions on both titles do the cross-fade, so the user never
+  // sees a half-state if they stop scrolling near the threshold.
   const shellRef = useRef<HTMLDivElement>(null);
-  const setProgress = useCallback((p: number) => {
-    shellRef.current?.style.setProperty("--compact-progress", String(p));
+  const scrolledRef = useRef(false);
+  const setScrolled = useCallback((next: boolean) => {
+    if (next === scrolledRef.current) return;
+    scrolledRef.current = next;
+    shellRef.current?.classList.toggle("client-shell-scrolled", next);
   }, []);
-  useEffect(() => { setProgress(0); }, [pathname, setProgress]);
+  useEffect(() => { setScrolled(false); }, [pathname, setScrolled]);
   const handleContentScroll = useCallback((scrollTop: number) => {
-    // Start fading immediately on scroll, complete by the time the large
-    // title has fully scrolled past the compact bar.
-    const START = 4;
-    const END = 44;
-    const p = Math.max(0, Math.min(1, (scrollTop - START) / (END - START)));
-    setProgress(p);
-  }, [setProgress]);
+    setScrolled(scrollTop > 12);
+  }, [setScrolled]);
 
   const supabase = createClient();
   const qc = useQueryClient();
