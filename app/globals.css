@@ -542,6 +542,32 @@ body:has(.client-app) {
   cursor: not-allowed;
 }
 
+/* ── iOS-style alert dialogs (.client-themed Radix Dialog content) ───────
+   Tightens framing + forces continuous rounded corners on every screen
+   width. Wins over the primitive's `sm:rounded-lg`. */
+[role="dialog"].client-themed {
+  border-radius: var(--r-xl) !important;
+  max-width: min(380px, calc(100vw - 32px)) !important;
+  padding: 22px !important;
+  gap: 12px !important;
+  box-shadow:
+    0 18px 48px rgba(0, 0, 0, 0.45),
+    0 4px 14px rgba(0, 0, 0, 0.22),
+    0 0 0 0.5px rgba(255, 255, 255, 0.06) inset !important;
+}
+html.light [role="dialog"].client-themed {
+  box-shadow:
+    0 18px 48px rgba(20, 20, 30, 0.18),
+    0 4px 14px rgba(20, 20, 30, 0.08),
+    0 0 0 0.5px rgba(0, 0, 0, 0.04) inset !important;
+}
+/* Lighter dim — iOS alerts don't black out the screen at 80%.
+   :has() targets the overlay only when its sibling dialog is themed. */
+[data-radix-dialog-overlay]:has(~ [role="dialog"].client-themed),
+[data-radix-dialog-overlay]:has(+ [role="dialog"].client-themed) {
+  background: rgba(0, 0, 0, 0.42) !important;
+}
+
 /* ── Bottom nav with progressive fade: translucent top, solid bottom ────── */
 .client-fade-nav {
   background: linear-gradient(
