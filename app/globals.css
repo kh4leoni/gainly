@@ -553,3 +553,19 @@ body:has(.client-app) {
     rgba(var(--c-bg-rgb), 1) 100%
   );
 }
+/* Soft lead-in fade just above the nav — content doesn't slam straight
+   into the 40% gradient edge. */
+.client-fade-nav::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  height: 14px;
+  background: linear-gradient(
+    to bottom,
+    rgba(var(--c-bg-rgb), 0) 0%,
+    rgba(var(--c-bg-rgb), 0.40) 100%
+  );
+  pointer-events: none;
+}
