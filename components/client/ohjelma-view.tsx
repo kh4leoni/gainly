@@ -96,7 +96,7 @@ function DayRow({ day }: { day: ScheduleDay }) {
         padding: "12px 14px",
         background: "var(--c-surface)",
         border: "1px solid var(--c-border)",
-        borderRadius: 12,
+        borderRadius: "var(--r-md)",
         display: "flex",
         alignItems: "center",
         gap: 12,
@@ -168,7 +168,7 @@ function DotIndicator({
             onClick={() => onJump(i)}
             aria-label={`Viikko ${i + 1}`}
             style={{
-              width: isCurrent ? 22 : 6, height: 6, borderRadius: 4,
+              width: isCurrent ? 22 : 6, height: 6, borderRadius: "var(--r-xs)",
               background: isCurrent
                 ? "var(--c-pink)"
                 : isActive ? "color-mix(in srgb, var(--c-pink) 50%, transparent)" : "var(--c-border-hover)",
@@ -250,7 +250,7 @@ export function OhjelmaView({ clientId }: { clientId: string }) {
     return (
       <div style={{ padding: "24px 20px" }}>
         {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} style={{ height: 72, borderRadius: 16, background: "var(--c-surface)", marginBottom: 12, opacity: 0.5 }} />
+          <div key={i} style={{ height: 72, borderRadius: "var(--r-lg)", background: "var(--c-surface)", marginBottom: 12, opacity: 0.5 }} />
         ))}
       </div>
     );
@@ -288,7 +288,7 @@ export function OhjelmaView({ clientId }: { clientId: string }) {
             </div>
             {current.isActive && (
               <span style={{
-                fontSize: 9, fontWeight: 700, padding: "2px 7px", borderRadius: 20,
+                fontSize: 9, fontWeight: 700, padding: "2px 7px", borderRadius: "var(--r-xl)",
                 background: "var(--c-pink-dim)", color: "var(--c-pink)",
                 textTransform: "uppercase", letterSpacing: "0.7px",
               }}>
@@ -371,7 +371,7 @@ export function OhjelmaView({ clientId }: { clientId: string }) {
             onClick={() => jumpTo(activeIdx)}
             style={{
               fontSize: 11, fontWeight: 600,
-              padding: "5px 12px", borderRadius: 20,
+              padding: "5px 12px", borderRadius: "var(--r-xl)",
               background: "var(--c-pink-dim)",
               color: "var(--c-pink)",
               border: "1px solid color-mix(in srgb, var(--c-pink) 25%, transparent)",
@@ -388,7 +388,7 @@ export function OhjelmaView({ clientId }: { clientId: string }) {
           margin: "22px 20px 0",
           background: "var(--c-surface)",
           border: "1px dashed var(--c-border)",
-          borderRadius: 12, padding: "12px 14px",
+          borderRadius: "var(--r-md)", padding: "12px 14px",
         }}>
           <div style={{ fontSize: 11, color: "var(--c-text-muted)", marginBottom: 6 }}>
             Treenit ilman ohjelmaa ({orphans.length})

@@ -69,10 +69,29 @@ html.light body:has(.client-app) { background: #f5f4f8; }
   --shimmer-shine: #2c2c34;
   --client-nav-inset: calc(env(safe-area-inset-bottom, 0px) + 64px);
   --client-nav-fade-height: 44px;
+  /* ── iOS shape system (iOS 26 Liquid Glass scale) ──
+     iOS uses ~17.5% ratio (10/57) for continuous corners. Without browser
+     squircle support, fixed pixel radii must be larger to visually match. */
+  --r-xs: 8px;
+  --r-sm: 12px;
+  --r-md: 16px;
+  --r-lg: 22px;
+  --r-xl: 28px;
+  --r-2xl: 36px;
+  --r-pill: 9999px;
+  --r-circle: 50%;
   color: var(--c-text);
   background: var(--c-bg);
   font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
   color-scheme: dark;
+}
+
+/* Apply continuous (squircle) corner shape to anything inside the client app
+   that has a non-zero border-radius. Modern syntax + Safari private API.
+   Browsers without support no-op; bigger radii already approximate the look. */
+.client-app * {
+  -webkit-corner-shape: continuous;
+  corner-shape: squircle;
 }
 html.light .client-app {
   --shimmer-base: #e2e0ea;
@@ -129,8 +148,20 @@ html.light .client-app {
   --c-text: #f0eef5;
   --c-text-muted: rgba(240,238,245,0.48);
   --c-text-subtle: rgba(240,238,245,0.24);
+  --r-xs: 8px;
+  --r-sm: 12px;
+  --r-md: 16px;
+  --r-lg: 22px;
+  --r-xl: 28px;
+  --r-2xl: 36px;
+  --r-pill: 9999px;
+  --r-circle: 50%;
   color-scheme: dark;
   color: var(--c-text);
+}
+.client-themed * {
+  -webkit-corner-shape: continuous;
+  corner-shape: squircle;
 }
 html.light .client-themed {
   --c-bg: #f5f4f8;
@@ -433,14 +464,33 @@ body:has(.client-app) {
   }
 }
 
+/* ── iOS radius overrides for Tailwind utilities used inside client app ──
+   Scoped to .client-app and .client-themed so coach UI keeps its defaults. */
+.client-app .rounded-sm,
+.client-themed .rounded-sm   { border-radius: var(--r-xs); }
+.client-app .rounded,
+.client-themed .rounded      { border-radius: var(--r-sm); }
+.client-app .rounded-md,
+.client-themed .rounded-md   { border-radius: var(--r-md); }
+.client-app .rounded-lg,
+.client-themed .rounded-lg   { border-radius: var(--r-lg); }
+.client-app .rounded-xl,
+.client-themed .rounded-xl   { border-radius: var(--r-xl); }
+.client-app .rounded-2xl,
+.client-themed .rounded-2xl  { border-radius: var(--r-2xl); }
+.client-app .rounded-3xl,
+.client-themed .rounded-3xl  { border-radius: 42px; }
+.client-app .rounded-full,
+.client-themed .rounded-full { border-radius: var(--r-pill); }
+
 /* ── Bottom nav with progressive fade: translucent top, solid bottom ────── */
 .client-fade-nav {
   background: linear-gradient(
     to bottom,
-    rgba(var(--c-bg-rgb), 0.20) 0%,
-    rgba(var(--c-bg-rgb), 0.40) 20%,
-    rgba(var(--c-bg-rgb), 0.85) 50%,
-    rgba(var(--c-bg-rgb), 0.98) 75%,
+    rgba(var(--c-bg-rgb), 0.40) 0%,
+    rgba(var(--c-bg-rgb), 0.80) 20%,
+    rgba(var(--c-bg-rgb), 0.97) 50%,
+    rgba(var(--c-bg-rgb), 1) 75%,
     rgba(var(--c-bg-rgb), 1) 100%
   );
 }

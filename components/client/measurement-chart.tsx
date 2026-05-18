@@ -49,7 +49,7 @@ export function MeasurementChart({
             contentStyle={{
               background: "var(--c-surface, hsl(var(--card)))",
               border: "1px solid var(--c-border, hsl(var(--border)))",
-              borderRadius: 8,
+              borderRadius: "var(--r-sm)",
               fontSize: 12,
             }}
           />

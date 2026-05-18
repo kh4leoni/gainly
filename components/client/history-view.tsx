@@ -48,7 +48,7 @@ function SetRow({
     <div style={{
       display: "flex", alignItems: "center", gap: 10, fontSize: 13,
       background: isPr ? STATUS.pr.bg : "transparent",
-      borderRadius: 6,
+      borderRadius: "var(--r-xs)",
       padding: "4px 8px",
       borderLeft: isPr ? `3px solid ${STATUS.pr.fg}` : "3px solid transparent",
     }}>
@@ -60,7 +60,7 @@ function SetRow({
       </span>
       {rpe != null && (
         <span style={{
-          fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 20,
+          fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: "var(--r-xl)",
           background: "color-mix(in srgb, var(--c-pink) 10%, transparent)", color: "var(--c-pink)",
           border: "1px solid color-mix(in srgb, var(--c-pink) 20%, transparent)",
         }}>
@@ -90,7 +90,7 @@ function WorkoutCard({ w }: { w: PastWorkout }) {
     <div style={{
       background: "var(--c-surface)",
       border: "1px solid var(--c-border)",
-      borderRadius: 12,
+      borderRadius: "var(--r-md)",
       overflow: "hidden",
     }}>
       <button
@@ -128,7 +128,7 @@ function WorkoutCard({ w }: { w: PastWorkout }) {
           {wl?.notes && (
             <div style={{
               background: "color-mix(in srgb, var(--c-pink) 7%, transparent)", border: "1px solid color-mix(in srgb, var(--c-pink) 18%, transparent)",
-              borderRadius: 10, padding: "8px 12px", marginBottom: 12,
+              borderRadius: "var(--r-md)", padding: "8px 12px", marginBottom: 12,
             }}>
               <div style={{ fontSize: 10, color: "var(--c-pink)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: 3 }}>
                 Muistiinpano
@@ -167,7 +167,7 @@ function WorkoutCard({ w }: { w: PastWorkout }) {
             href={`/client/workout/${w.id}`}
             style={{
               display: "block", marginTop: 14, textAlign: "center",
-              padding: "9px 16px", borderRadius: 10,
+              padding: "9px 16px", borderRadius: "var(--r-md)",
               background: "var(--c-surface2)", border: "1px solid var(--c-border)",
               fontSize: 13, fontWeight: 600, color: "var(--c-text-muted)",
               textDecoration: "none",
@@ -189,7 +189,7 @@ function LocalOnlyCard({ completedAt }: { completedAt: string | null }) {
     <div style={{
       background: "var(--c-surface)",
       border: "1px dashed var(--c-border)",
-      borderRadius: 16,
+      borderRadius: "var(--r-lg)",
       padding: "14px 16px",
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
@@ -293,7 +293,7 @@ function CollapseSection({
     <div style={{
       background: "var(--c-surface)",
       border: "1px solid var(--c-border)",
-      borderRadius: 14,
+      borderRadius: "var(--r-lg)",
       overflow: "hidden",
     }}>
       <button
@@ -324,7 +324,7 @@ function CollapseSection({
           <span style={{
             fontSize: 11, fontWeight: 700, color: "var(--c-text-muted)",
             background: "var(--c-surface2)", border: "1px solid var(--c-border)",
-            padding: "3px 8px", borderRadius: 20,
+            padding: "3px 8px", borderRadius: "var(--r-xl)",
           }}>
             {count}
           </span>
@@ -421,7 +421,7 @@ export function HistoryView({ clientId }: { clientId: string }) {
           style={{
             width: "100%", boxSizing: "border-box",
             padding: "10px 36px 10px 14px",
-            borderRadius: 10,
+            borderRadius: "var(--r-md)",
             background: "var(--c-surface)",
             border: "1px solid var(--c-border)",
             color: "var(--c-text)",
@@ -447,7 +447,7 @@ export function HistoryView({ clientId }: { clientId: string }) {
       {isLoading && (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {[0, 1, 2].map((i) => (
-            <div key={i} style={{ height: 80, borderRadius: 16, background: "var(--c-surface)", opacity: 0.4 }} />
+            <div key={i} style={{ height: 80, borderRadius: "var(--r-lg)", background: "var(--c-surface)", opacity: 0.4 }} />
           ))}
         </div>
       )}
@@ -480,7 +480,7 @@ export function HistoryView({ clientId }: { clientId: string }) {
               <div key={name} style={{
                 background: "var(--c-surface)",
                 border: "1px solid var(--c-border)",
-                borderRadius: 12,
+                borderRadius: "var(--r-md)",
                 padding: "12px 14px",
               }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
@@ -488,7 +488,7 @@ export function HistoryView({ clientId }: { clientId: string }) {
                   <span style={{
                     fontSize: 10, fontWeight: 700, color: "var(--c-text-muted)",
                     background: "var(--c-surface2)", border: "1px solid var(--c-border)",
-                    padding: "2px 7px", borderRadius: 20,
+                    padding: "2px 7px", borderRadius: "var(--r-xl)",
                   }}>
                     {hits.length} sarjaa
                   </span>

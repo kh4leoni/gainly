@@ -126,7 +126,7 @@ export function PlateLoaderDialog({
                   type="button"
                   onClick={() => setBarKg(b.kg)}
                   style={{
-                    fontSize: 11, fontWeight: 600, padding: "6px 10px", borderRadius: 18,
+                    fontSize: 11, fontWeight: 600, padding: "6px 10px", borderRadius: "var(--r-xl)",
                     border: `1px solid ${barKg === b.kg ? "var(--c-pink)" : "var(--c-border)"}`,
                     background: barKg === b.kg ? "var(--c-pink-dim)" : "var(--c-surface2)",
                     color: barKg === b.kg ? "var(--c-pink)" : "var(--c-text-muted)",
@@ -151,7 +151,7 @@ export function PlateLoaderDialog({
                   type="button"
                   onClick={() => setMaxPlateKg(kg)}
                   style={{
-                    fontSize: 11, fontWeight: 600, padding: "6px 12px", borderRadius: 18,
+                    fontSize: 11, fontWeight: 600, padding: "6px 12px", borderRadius: "var(--r-xl)",
                     border: `1px solid ${maxPlateKg === kg ? "var(--c-pink)" : "var(--c-border)"}`,
                     background: maxPlateKg === kg ? "var(--c-pink-dim)" : "var(--c-surface2)",
                     color: maxPlateKg === kg ? "var(--c-pink)" : "var(--c-text-muted)",
@@ -167,14 +167,14 @@ export function PlateLoaderDialog({
           {nextSetWeight == null ? (
             <div style={{
               padding: "20px 14px", textAlign: "center",
-              border: "1px dashed var(--c-border)", borderRadius: 12,
+              border: "1px dashed var(--c-border)", borderRadius: "var(--r-md)",
               color: "var(--c-text-muted)", fontSize: 13,
             }}>
               Aseta painon tavoite sarjalle ensin.
             </div>
           ) : total < barKg ? (
             <div style={{
-              padding: "14px", borderRadius: 12,
+              padding: "14px", borderRadius: "var(--r-md)",
               border: "1px solid color-mix(in srgb, var(--c-warning) 30%, transparent)", background: "color-mix(in srgb, var(--c-warning) 8%, transparent)",
               color: "var(--c-warning)", fontSize: 13,
             }}>
@@ -186,7 +186,7 @@ export function PlateLoaderDialog({
               <div style={{
                 background: "var(--c-surface2)",
                 border: "1px solid var(--c-border)",
-                borderRadius: 12, padding: "18px 14px",
+                borderRadius: "var(--r-md)", padding: "18px 14px",
                 display: "flex", alignItems: "center", justifyContent: "center",
                 gap: 2, minHeight: 160, overflowX: "auto",
               }}>
@@ -195,7 +195,7 @@ export function PlateLoaderDialog({
                   <div key={i} style={{
                     width: plateWidth(p), height: plateHeight(p),
                     background: PLATE_COLOR[p],
-                    borderRadius: 3,
+                    borderRadius: "var(--r-xs)",
                     border: "1px solid rgba(0,0,0,0.25)",
                     boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.1)",
                     flexShrink: 0,
@@ -221,7 +221,7 @@ export function PlateLoaderDialog({
                     return (
                       <div key={p} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13 }}>
                         <span style={{
-                          width: 12, height: 12, borderRadius: 3,
+                          width: 12, height: 12, borderRadius: "var(--r-xs)",
                           background: PLATE_COLOR[p as PlateKg],
                           border: "1px solid rgba(0,0,0,0.3)", flexShrink: 0,
                         }} />
@@ -239,7 +239,7 @@ export function PlateLoaderDialog({
 
               {!fits && (
                 <div style={{
-                  marginTop: 12, padding: "10px 12px", borderRadius: 10,
+                  marginTop: 12, padding: "10px 12px", borderRadius: "var(--r-md)",
                   border: "1px solid color-mix(in srgb, var(--c-warning) 30%, transparent)", background: "color-mix(in srgb, var(--c-warning) 8%, transparent)",
                   color: "var(--c-warning)", fontSize: 12,
                 }}>
