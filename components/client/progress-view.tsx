@@ -250,7 +250,7 @@ export function ProgressView({
           scrollSnapType: "x mandatory",
           WebkitOverflowScrolling: "touch",
           scrollbarWidth: "none",
-          touchAction: "pan-x",
+          touchAction: "pan-x pan-y",
         }}
       >
         {/* ── Ennätykset ── */}
