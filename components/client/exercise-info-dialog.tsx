@@ -36,7 +36,7 @@ function ExerciseAccordion({ ex, expanded, onToggle }: { ex: ExerciseInfo; expan
       borderLeft: expanded ? "3px solid var(--c-pink)" : "3px solid var(--c-border)",
       overflow: "hidden",
       background: "var(--c-surface2)",
-      boxShadow: expanded ? "0 4px 20px rgba(255,29,140,0.07)" : "0 2px 8px rgba(0,0,0,0.18)",
+      boxShadow: expanded ? "0 4px 20px color-mix(in srgb, var(--c-pink) 7%, transparent)" : "0 2px 8px rgba(0,0,0,0.18)",
       transition: "box-shadow 0.2s, border-left-color 0.2s",
     }}>
       <button

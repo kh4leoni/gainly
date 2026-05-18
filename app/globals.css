@@ -2,6 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Semantic color tokens — available app-wide (client + coach + portals) ── */
+:root {
+  --c-success: #3ECF8E;
+  --c-warning: #F5A623;
+  --c-info: #818CF8;
+  --c-info-alt: #34D399;
+}
+
 /* ── Logo adaptive inversion ─────────────────────────────────────────────── */
 /* Default: light mode — invert so black outline becomes visible */
 .logo-adaptive { filter: invert(1); }
@@ -35,9 +43,16 @@ html.light .client-app {
 html.light body:has(.client-app) { background: #f5f4f8; }
 
 .client-app {
-  --c-pink: #FF1D8C;
-  --c-pink-dim: rgba(255,29,140,0.12);
-  --c-pink-glow: rgba(255,29,140,0.4);
+  /* Default = plain (no co-brand): text-color neutral. Cobrand override below sets pink. */
+  --c-pink: #f0eef5;
+  --c-pink-dim: rgba(240,238,245,0.10);
+  --c-pink-glow: rgba(240,238,245,0.30);
+  --c-pink-fg: #070708;
+  /* Semantic colors */
+  --c-success: #3ECF8E;
+  --c-warning: #F5A623;
+  --c-info: #818CF8;
+  --c-info-alt: #34D399;
   --c-green: #3ECF8E;
   --c-bg: #070708;
   --c-surface: #0f0f12;
@@ -55,7 +70,14 @@ html.light body:has(.client-app) { background: #f5f4f8; }
   font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
   color-scheme: dark;
 }
-html.light .client-app { --shimmer-base: #e2e0ea; --shimmer-shine: #f5f4f8; }
+html.light .client-app {
+  --shimmer-base: #e2e0ea;
+  --shimmer-shine: #f5f4f8;
+  --c-pink: #1a1820;
+  --c-pink-dim: rgba(26,24,32,0.08);
+  --c-pink-glow: rgba(26,24,32,0.22);
+  --c-pink-fg: #ffffff;
+}
 
 /* ── Press feedback for all client-side buttons + links ──────────────────────
    Scale + brightness combo. Works in dark/light without per-element colors. */
@@ -84,8 +106,14 @@ html.light .client-app { --shimmer-base: #e2e0ea; --shimmer-shine: #f5f4f8; }
    Apply this class to any portaled element that should adopt client-app tokens
    regardless of where the Radix portal mounts it. */
 .client-themed {
-  --c-pink: #FF1D8C;
-  --c-pink-dim: rgba(255,29,140,0.12);
+  --c-pink: #f0eef5;
+  --c-pink-dim: rgba(240,238,245,0.10);
+  --c-pink-glow: rgba(240,238,245,0.30);
+  --c-pink-fg: #070708;
+  --c-success: #3ECF8E;
+  --c-warning: #F5A623;
+  --c-info: #818CF8;
+  --c-info-alt: #34D399;
   --c-green: #3ECF8E;
   --c-bg: #070708;
   --c-surface: #0f0f12;
@@ -109,8 +137,49 @@ html.light .client-themed {
   --c-text: #1a1820;
   --c-text-muted: rgba(26,24,32,0.55);
   --c-text-subtle: rgba(26,24,32,0.3);
+  --c-pink: #1a1820;
+  --c-pink-dim: rgba(26,24,32,0.08);
+  --c-pink-glow: rgba(26,24,32,0.22);
+  --c-pink-fg: #ffffff;
   color-scheme: light;
 }
+/* ── Co-brand accent (Gainly × coach): switch neutral to Gainly pink ───── */
+html.gainly-cobrand .client-app,
+html.gainly-cobrand .client-themed {
+  --c-pink: #FF1D8C;
+  --c-pink-dim: rgba(255,29,140,0.12);
+  --c-pink-glow: rgba(255,29,140,0.40);
+  --c-pink-fg: #ffffff;
+}
+
+/* Hide scrollbar on horizontal pagers (ohjelma weeks, progress tabs) */
+.ohjelma-pager::-webkit-scrollbar,
+.progress-pager::-webkit-scrollbar { display: none; }
+.ohjelma-pager,
+.progress-pager { -ms-overflow-style: none; }
+/* Hide pager arrows on touch devices — swipe is the gesture */
+@media (hover: none) and (pointer: coarse) {
+  .ohjelma-pager-arrow { display: none !important; }
+}
+
+/* Swipe hint chevrons — subtle horizontal nudge to suggest swipe gesture */
+.swipe-hint-arrow {
+  font-size: 14px;
+  line-height: 1;
+  display: inline-block;
+  font-weight: 700;
+}
+.swipe-hint-arrow-left  { animation: swipe-hint-nudge-left  1.8s ease-in-out infinite; }
+.swipe-hint-arrow-right { animation: swipe-hint-nudge-right 1.8s ease-in-out infinite; }
+@keyframes swipe-hint-nudge-right {
+  0%, 60%, 100% { transform: translateX(0); }
+  30%           { transform: translateX(3px); }
+}
+@keyframes swipe-hint-nudge-left {
+  0%, 60%, 100% { transform: translateX(0); }
+  30%           { transform: translateX(-3px); }
+}
+
 @keyframes c-fadeUp        { from{opacity:0;transform:translate3d(0,10px,0)} to{opacity:1;transform:translate3d(0,0,0)} }
 @keyframes c-fadeDown      { from{opacity:1;transform:translate3d(0,0,0)} to{opacity:0;transform:translate3d(0,8px,0)} }
 @keyframes c-fadeIn        { from{opacity:0} to{opacity:1} }

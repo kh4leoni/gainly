@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { MeasurementChart } from "@/components/client/measurement-chart";
@@ -8,8 +8,11 @@ import { getRecentPRs, getCardioRecords, type CardioRecord } from "@/lib/queries
 import { derivedRepMax, roundKg } from "@/lib/calc/one-rm";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { KilpailutyokaluCard } from "@/components/client/kilpailutyokalu-card";
-import { matchBigThree, BIG_THREE, ATTEMPT_MODES } from "@/lib/powerlifting";
+import { matchBigThree, BIG_THREE } from "@/lib/powerlifting";
 import type { BigThreeKey } from "@/lib/powerlifting";
+import { EmptyState } from "@/components/ui/empty-state";
+import { WifiSlash, Trophy } from "@phosphor-icons/react";
+import { Eyebrow, SectionLabel, Subtitle } from "@/components/ui/typography";
 
 type Exercise = { id: string; name: string };
 type PR = {
@@ -21,6 +24,15 @@ type PR = {
   exercises: { id: string; name: string } | null;
 };
 type Measurement = { value: number; logged_at: string };
+
+const TABS = ["ennätykset", "kehitys", "voimanosto"] as const;
+type Tab = typeof TABS[number];
+
+const TAB_LABEL: Record<Tab, string> = {
+  "ennätykset": "Ennätykset",
+  "kehitys": "Kehitys",
+  "voimanosto": "Voimanosto",
+};
 
 function formatW(w: number | null) {
   if (w === null) return "—";
@@ -43,9 +55,11 @@ export function ProgressView({
   waistHistory: Measurement[];
 }) {
   const supabase = createClient();
-  const [tab, setTab] = useState<"ennätykset" | "kehitys" | "voimanosto">("ennätykset");
+  const [tab, setTab] = useState<Tab>("ennätykset");
   const [selId, setSelId] = useState(exercises[0]?.id ?? "");
   const [online, setOnline] = useState(true);
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const didInit = useRef(false);
 
   useEffect(() => {
     setOnline(navigator.onLine);
@@ -69,6 +83,44 @@ export function ProgressView({
     staleTime: 60_000,
     enabled: online,
   });
+
+  const tabIdx = TABS.indexOf(tab);
+
+  // Initial scroll position (default = "ennätykset" at scrollLeft 0)
+  useLayoutEffect(() => {
+    const el = scrollerRef.current;
+    if (!el || didInit.current) return;
+    didInit.current = true;
+    el.scrollLeft = 0;
+  }, []);
+
+  // Scroll position is the source of truth — sync tab state from it
+  useEffect(() => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    let raf = 0;
+    function handle() {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const w = el!.clientWidth;
+        if (w === 0) return;
+        const idx = Math.round(el!.scrollLeft / w);
+        const next = TABS[idx];
+        if (next) setTab((prev) => (prev === next ? prev : next));
+      });
+    }
+    el.addEventListener("scroll", handle, { passive: true });
+    return () => {
+      cancelAnimationFrame(raf);
+      el.removeEventListener("scroll", handle);
+    };
+  }, []);
+
+  function jumpTo(t: Tab) {
+    const el = scrollerRef.current;
+    if (!el) return;
+    el.scrollTo({ left: TABS.indexOf(t) * el.clientWidth, behavior: "smooth" });
+  }
 
   const selExName = exercises.find((e) => e.id === selId)?.name ?? "";
 
@@ -120,224 +172,290 @@ export function ProgressView({
     fontFamily: "inherit",
   });
 
+  const paneInner: React.CSSProperties = { padding: "0 20px" };
+
   return (
-    <div style={{ flex: 1, padding: "24px 20px 20px" }}>
-      <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-0.5px", marginBottom: 16 }}>
-        {tab === "ennätykset" ? "Ennätykset" : tab === "kehitys" ? "Kehitys" : "Voimanosto"}
+    <div style={{ flex: 1, paddingTop: 8, paddingBottom: 20 }}>
+      <div style={{ padding: "0 20px" }}>
+        <SectionLabel style={{ marginBottom: 12, letterSpacing: "0.6px" }}>
+          {TAB_LABEL[tab]}
+        </SectionLabel>
+
+        {/* Segmented toggle — clicks scroll the pager */}
+        <div style={{
+          display: "flex",
+          background: "var(--c-surface2)",
+          borderRadius: 10,
+          padding: 3,
+          marginBottom: 10,
+        }}>
+          {TABS.map((t) => (
+            <button key={t} style={segStyle(tab === t)} onClick={() => jumpTo(t)}>
+              {TAB_LABEL[t]}
+            </button>
+          ))}
+        </div>
+
+        {/* Swipe indicator — signals horizontal pages */}
+        <div
+          aria-hidden
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 6,
+            marginBottom: 14,
+            color: "var(--c-text-subtle)",
+            fontSize: 10,
+            fontWeight: 600,
+            letterSpacing: "0.8px",
+            textTransform: "uppercase",
+          }}
+        >
+          <span
+            className="swipe-hint-arrow swipe-hint-arrow-left"
+            style={{ opacity: tabIdx > 0 ? 1 : 0.25 }}
+          >‹</span>
+          <div style={{ display: "flex", gap: 5 }}>
+            {TABS.map((t, i) => (
+              <span
+                key={t}
+                style={{
+                  width: i === tabIdx ? 18 : 5,
+                  height: 5,
+                  borderRadius: 3,
+                  background: i === tabIdx ? "var(--c-pink)" : "var(--c-border-hover)",
+                  transition: "width 0.22s, background 0.22s",
+                }}
+              />
+            ))}
+          </div>
+          <span
+            className="swipe-hint-arrow swipe-hint-arrow-right"
+            style={{ opacity: tabIdx < TABS.length - 1 ? 1 : 0.25 }}
+          >›</span>
+        </div>
       </div>
 
-      {/* Segmented toggle */}
-      <div style={{
-        display: "flex",
-        background: "var(--c-surface2)",
-        borderRadius: 10,
-        padding: 3,
-        marginBottom: 22,
-      }}>
-        <button style={segStyle(tab === "ennätykset")} onClick={() => setTab("ennätykset")}>
-          Ennätykset
-        </button>
-        <button style={segStyle(tab === "kehitys")} onClick={() => setTab("kehitys")}>
-          Kehitys
-        </button>
-        <button style={segStyle(tab === "voimanosto")} onClick={() => setTab("voimanosto")}>
-          Voimanosto
-        </button>
-      </div>
-
-      {/* ── Ennätykset ── */}
-      {tab === "ennätykset" && (
-        <>
-          {!online ? (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 24px", gap: 12, textAlign: "center" }}>
-              <div style={{ fontSize: 40 }}>📡</div>
-              <div style={{ fontSize: 14, color: "var(--c-text-muted)", lineHeight: 1.6 }}>
-                Ei käytössä ilman internet-yhteyttä.
-              </div>
-            </div>
-          ) : (
-            <>
-              <div style={{ fontSize: 12, color: "var(--c-text-muted)", marginBottom: 18 }}>
-                Parhaat suoritukset 1–5 toiston välillä + arviot.
-              </div>
-              <div style={{ marginBottom: 20 }}>
-                <SearchableSelect
-                  options={exercises.map((ex) => ({ value: ex.id, label: ex.name }))}
-                  value={selId}
-                  onChange={setSelId}
-                  placeholder="Valitse harjoitus..."
-                />
-              </div>
-              {selId && (
-                <div style={{ background: "var(--c-surface)", border: "1px solid var(--c-border)", borderRadius: 16, padding: "14px 16px", marginBottom: 22 }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                    <div style={{ fontSize: 14, fontWeight: 700 }}>{selExName}</div>
-                    {selectedTop1RM != null && (
-                      <div style={{ fontSize: 12, color: "var(--c-pink)", fontWeight: 700 }}>
-                        Paras e1RM {formatW(roundKg(selectedTop1RM))} kg
-                      </div>
-                    )}
-                  </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "40px 1fr 1fr", gap: 8, fontSize: 11, color: "var(--c-text-subtle)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.6px", padding: "0 4px 6px", borderBottom: "1px solid var(--c-border)" }}>
-                    <span>Reps</span><span>Ennätys</span><span>Arvio @RPE 10</span>
-                  </div>
-                  {[1, 2, 3, 4, 5].map((n) => {
-                    const pr = selectedByReps?.get(n) ?? null;
-                    const derivedVal = selectedTop1RM != null ? derivedRepMax(selectedTop1RM, n, 10) : null;
-                    return (
-                      <div key={n} style={{ display: "grid", gridTemplateColumns: "40px 1fr 1fr", gap: 8, alignItems: "center", padding: "10px 4px", borderBottom: "1px solid var(--c-border)", fontSize: 14 }}>
-                        <span style={{ fontWeight: 700 }}>{n}</span>
-                        <span style={{ fontWeight: 600, color: pr ? "var(--c-text)" : "var(--c-text-subtle)" }}>
-                          {pr?.weight != null ? `${formatW(pr.weight)} kg` : "—"}
-                          {pr?.achieved_at && (
-                            <span style={{ display: "block", fontSize: 10, color: "var(--c-text-muted)", fontWeight: 500, marginTop: 2 }}>
-                              {new Date(pr.achieved_at).toLocaleDateString("fi-FI")}
-                            </span>
-                          )}
-                        </span>
-                        <span style={{ fontWeight: 600, color: derivedVal != null ? "var(--c-pink)" : "var(--c-text-subtle)" }}>
-                          {derivedVal != null ? `${formatW(roundKg(derivedVal))} kg` : "—"}
-                        </span>
-                      </div>
-                    );
-                  })}
+      <div
+        ref={scrollerRef}
+        className="progress-pager"
+        style={{
+          display: "flex",
+          flexDirection: "row",
+          alignItems: "flex-start",
+          width: "100%",
+          overflowX: "auto",
+          overflowY: "hidden",
+          scrollSnapType: "x mandatory",
+          WebkitOverflowScrolling: "touch",
+          scrollbarWidth: "none",
+          touchAction: "pan-x",
+        }}
+      >
+        {/* ── Ennätykset ── */}
+        <div style={paneStyle}>
+          <div style={paneInner}>
+            {!online ? (
+              <EmptyState
+                icon={WifiSlash}
+                title="Ei verkkoyhteyttä"
+                description="Ennätykset ovat käytettävissä, kun yhteys palaa."
+              />
+            ) : (
+              <>
+                <Subtitle style={{ marginBottom: 18, fontSize: 12 }}>
+                  Parhaat suoritukset 1–5 toiston välillä + arviot.
+                </Subtitle>
+                <div style={{ marginBottom: 20 }}>
+                  <SearchableSelect
+                    options={exercises.map((ex) => ({ value: ex.id, label: ex.name }))}
+                    value={selId}
+                    onChange={setSelId}
+                    placeholder="Valitse harjoitus..."
+                  />
                 </div>
-              )}
-              <div style={{ fontSize: 12, color: "var(--c-text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 10 }}>
-                Parhaat liikkeet (e1RM)
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {rankedBests.length === 0 && (
-                  <div style={{ textAlign: "center", padding: "24px", color: "var(--c-text-muted)", fontSize: 13 }}>
-                    Ei ennätyksiä vielä.
+                {selId && (
+                  <div style={{ background: "var(--c-surface)", border: "1px solid var(--c-border)", borderRadius: 16, padding: "14px 16px", marginBottom: 22 }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                      <div style={{ fontSize: 14, fontWeight: 700 }}>{selExName}</div>
+                      {selectedTop1RM != null && (
+                        <div style={{ fontSize: 12, color: "var(--c-pink)", fontWeight: 700 }}>
+                          Paras e1RM {formatW(roundKg(selectedTop1RM))} kg
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "40px 1fr 1fr", gap: 8, fontSize: 11, color: "var(--c-text-subtle)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.6px", padding: "0 4px 6px", borderBottom: "1px solid var(--c-border)" }}>
+                      <span>Reps</span><span>Ennätys</span><span>Arvio @RPE 10</span>
+                    </div>
+                    {[1, 2, 3, 4, 5].map((n) => {
+                      const pr = selectedByReps?.get(n) ?? null;
+                      const derivedVal = selectedTop1RM != null ? derivedRepMax(selectedTop1RM, n, 10) : null;
+                      return (
+                        <div key={n} style={{ display: "grid", gridTemplateColumns: "40px 1fr 1fr", gap: 8, alignItems: "center", padding: "10px 4px", borderBottom: "1px solid var(--c-border)", fontSize: 14 }}>
+                          <span style={{ fontWeight: 700 }}>{n}</span>
+                          <span style={{ fontWeight: 600, color: pr ? "var(--c-text)" : "var(--c-text-subtle)" }}>
+                            {pr?.weight != null ? `${formatW(pr.weight)} kg` : "—"}
+                            {pr?.achieved_at && (
+                              <span style={{ display: "block", fontSize: 10, color: "var(--c-text-muted)", fontWeight: 500, marginTop: 2 }}>
+                                {new Date(pr.achieved_at).toLocaleDateString("fi-FI")}
+                              </span>
+                            )}
+                          </span>
+                          <span style={{ fontWeight: 600, color: derivedVal != null ? "var(--c-pink)" : "var(--c-text-subtle)" }}>
+                            {derivedVal != null ? `${formatW(roundKg(derivedVal))} kg` : "—"}
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
-                {rankedBests.map(({ exId, e1rm, name }) => (
-                  <button
-                    key={exId}
-                    onClick={() => setSelId(exId)}
-                    style={{
-                      display: "flex", alignItems: "center", justifyContent: "space-between",
-                      padding: "14px 16px",
-                      background: selId === exId ? "var(--c-pink-dim)" : "var(--c-surface)",
-                      border: `1px solid ${selId === exId ? "rgba(255,29,140,0.3)" : "var(--c-border)"}`,
-                      borderRadius: 14, cursor: "pointer", transition: "all 0.15s",
-                      fontFamily: "inherit", color: "var(--c-text)", textAlign: "left",
-                    }}
-                  >
-                    <span style={{ fontWeight: 600, fontSize: 14 }}>{name}</span>
-                    <span style={{ fontWeight: 700, color: "var(--c-pink)", fontSize: 15 }}>
-                      {formatW(roundKg(e1rm))}{" "}
-                      <span style={{ fontSize: 11, color: "var(--c-text-muted)", fontWeight: 400 }}>kg / e1RM</span>
-                    </span>
-                  </button>
-                ))}
-              </div>
-
-              {/* ── Kardio-ennätykset ── */}
-              {(cardioPRs.data?.length ?? 0) > 0 && (
-                <>
-                  <div style={{ fontSize: 12, color: "var(--c-text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "1px", margin: "26px 0 10px" }}>
-                    Kardio-ennätykset
-                  </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    {sortCardioPRs(cardioPRs.data ?? []).map((pr) => (
-                      <CardioPRRow key={pr.id} pr={pr} />
-                    ))}
-                  </div>
-                </>
-              )}
-            </>
-          )}
-        </>
-      )}
-
-      {/* ── Kehitys ── */}
-      {tab === "kehitys" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-          {/* Bodyweight card */}
-          <div style={{ background: "var(--c-surface)", border: "1px solid var(--c-border)", borderRadius: 16, padding: "16px 16px 12px" }}>
-            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 14 }}>
-              <div style={{ fontSize: 14, fontWeight: 700 }}>Paino</div>
-              {latestValue(bwHistory) !== null && (
-                <div style={{ fontSize: 13, fontWeight: 700, color: "#818cf8" }}>
-                  {latestValue(bwHistory)} kg
+                <SectionLabel style={{ marginBottom: 10 }}>
+                  Parhaat liikkeet (e1RM)
+                </SectionLabel>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {rankedBests.length === 0 && (
+                    <EmptyState
+                      icon={Trophy}
+                      title="Ei ennätyksiä vielä"
+                      description="Kirjaa sarjoja ja ennätykset alkavat kertyä."
+                      compact
+                    />
+                  )}
+                  {rankedBests.map(({ exId, e1rm, name }) => (
+                    <button
+                      key={exId}
+                      onClick={() => setSelId(exId)}
+                      style={{
+                        display: "flex", alignItems: "center", justifyContent: "space-between",
+                        padding: "14px 16px",
+                        background: selId === exId ? "var(--c-pink-dim)" : "var(--c-surface)",
+                        border: `1px solid ${selId === exId ? "color-mix(in srgb, var(--c-pink) 30%, transparent)" : "var(--c-border)"}`,
+                        borderRadius: 14, cursor: "pointer", transition: "all 0.15s",
+                        fontFamily: "inherit", color: "var(--c-text)", textAlign: "left",
+                      }}
+                    >
+                      <span style={{ fontWeight: 600, fontSize: 14 }}>{name}</span>
+                      <span style={{ fontWeight: 700, color: "var(--c-pink)", fontSize: 15 }}>
+                        {formatW(roundKg(e1rm))}{" "}
+                        <span style={{ fontSize: 11, color: "var(--c-text-muted)", fontWeight: 400 }}>kg / e1RM</span>
+                      </span>
+                    </button>
+                  ))}
                 </div>
-              )}
-            </div>
-            <MeasurementChart
-              data={bwHistory}
-              unit="kg"
-              color="#818cf8"
-              emptyText="Ei painomerkintöjä vielä. Lisää asetuksista."
-            />
-          </div>
 
-          {/* Waist card */}
-          <div style={{ background: "var(--c-surface)", border: "1px solid var(--c-border)", borderRadius: 16, padding: "16px 16px 12px" }}>
-            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 14 }}>
-              <div style={{ fontSize: 14, fontWeight: 700 }}>Vyötärö</div>
-              {latestValue(waistHistory) !== null && (
-                <div style={{ fontSize: 13, fontWeight: 700, color: "#34d399" }}>
-                  {latestValue(waistHistory)} cm
-                </div>
-              )}
-            </div>
-            <MeasurementChart
-              data={waistHistory}
-              unit="cm"
-              color="#34d399"
-              emptyText="Ei vyötärösmittauksia vielä. Lisää asetuksista."
-            />
-          </div>
-        </div>
-      )}
-
-      {/* ── Voimanosto ── */}
-      {tab === "voimanosto" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-
-          {/* ── Section 1: Estimated total ── */}
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "1px", color: "var(--c-text-muted)", marginBottom: 10 }}>
-              Arvioitu yhteistulos
-            </div>
-            <div style={{ background: "var(--c-surface)", border: "1px solid var(--c-border)", borderRadius: 16, padding: "16px" }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-                <div style={{ fontSize: 13, color: "var(--c-text-muted)" }}>Yhteensä (e1RM)</div>
-                <div style={{ fontSize: 24, fontWeight: 800, color: "var(--c-pink)" }}>
-                  {bigThreeTotal != null ? `${formatW(roundKg(bigThreeTotal))} kg` : "—"}
-                </div>
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
-                {BIG_THREE.map(({ key, label }) => {
-                  const e1rm = bigThreeE1rm[key];
-                  return (
-                    <div key={key} style={{ background: "var(--c-surface2)", borderRadius: 10, padding: "10px 8px", textAlign: "center" }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: "var(--c-text-muted)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 4 }}>{label}</div>
-                      <div style={{ fontSize: 16, fontWeight: 800, color: e1rm != null ? "var(--c-text)" : "var(--c-text-subtle)" }}>
-                        {e1rm != null ? `${formatW(roundKg(e1rm))}` : "—"}
-                      </div>
-                      <div style={{ fontSize: 10, color: "var(--c-text-subtle)" }}>kg</div>
+                {(cardioPRs.data?.length ?? 0) > 0 && (
+                  <>
+                    <SectionLabel style={{ margin: "26px 0 10px" }}>
+                      Kardio-ennätykset
+                    </SectionLabel>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      {sortCardioPRs(cardioPRs.data ?? []).map((pr) => (
+                        <CardioPRRow key={pr.id} pr={pr} />
+                      ))}
                     </div>
-                  );
-                })}
-              </div>
-              {bigThreeTotal == null && (
-                <div style={{ fontSize: 12, color: "var(--c-text-muted)", textAlign: "center", marginTop: 12 }}>
-                  Kirjaa kyykky, penkki ja maastaveto saadaksesi yhteistuloksen
+                  </>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* ── Kehitys ── */}
+        <div style={paneStyle}>
+          <div style={paneInner}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+              <div style={{ background: "var(--c-surface)", border: "1px solid var(--c-border)", borderRadius: 16, padding: "16px 16px 12px" }}>
+                <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 14 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700 }}>Paino</div>
+                  {latestValue(bwHistory) !== null && (
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "var(--c-info)" }}>
+                      {latestValue(bwHistory)} kg
+                    </div>
+                  )}
                 </div>
-              )}
+                <MeasurementChart
+                  data={bwHistory}
+                  unit="kg"
+                  color="var(--c-info)"
+                  emptyText="Ei painomerkintöjä vielä. Lisää asetuksista."
+                />
+              </div>
+
+              <div style={{ background: "var(--c-surface)", border: "1px solid var(--c-border)", borderRadius: 16, padding: "16px 16px 12px" }}>
+                <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 14 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700 }}>Vyötärö</div>
+                  {latestValue(waistHistory) !== null && (
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "var(--c-info-alt)" }}>
+                      {latestValue(waistHistory)} cm
+                    </div>
+                  )}
+                </div>
+                <MeasurementChart
+                  data={waistHistory}
+                  unit="cm"
+                  color="var(--c-info-alt)"
+                  emptyText="Ei vyötärösmittauksia vielä. Lisää asetuksista."
+                />
+              </div>
             </div>
           </div>
-
-          {/* ── Section 2: Competition attempt planner ── */}
-          <KilpailutyokaluCard bigThreeE1rm={bigThreeE1rm} />
         </div>
-      )}
+
+        {/* ── Voimanosto ── */}
+        <div style={paneStyle}>
+          <div style={paneInner}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+              <div>
+                <SectionLabel style={{ marginBottom: 10 }}>
+                  Arvioitu yhteistulos
+                </SectionLabel>
+                <div style={{ background: "var(--c-surface)", border: "1px solid var(--c-border)", borderRadius: 16, padding: "16px" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                    <div style={{ fontSize: 13, color: "var(--c-text-muted)" }}>Yhteensä (e1RM)</div>
+                    <div style={{ fontSize: 24, fontWeight: 800, color: "var(--c-pink)" }}>
+                      {bigThreeTotal != null ? `${formatW(roundKg(bigThreeTotal))} kg` : "—"}
+                    </div>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+                    {BIG_THREE.map(({ key, label }) => {
+                      const e1rm = bigThreeE1rm[key];
+                      return (
+                        <div key={key} style={{ background: "var(--c-surface2)", borderRadius: 10, padding: "10px 8px", textAlign: "center" }}>
+                          <div style={{ fontSize: 10, fontWeight: 700, color: "var(--c-text-muted)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 4 }}>{label}</div>
+                          <div style={{ fontSize: 16, fontWeight: 800, color: e1rm != null ? "var(--c-text)" : "var(--c-text-subtle)" }}>
+                            {e1rm != null ? `${formatW(roundKg(e1rm))}` : "—"}
+                          </div>
+                          <div style={{ fontSize: 10, color: "var(--c-text-subtle)" }}>kg</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {bigThreeTotal == null && (
+                    <div style={{ fontSize: 12, color: "var(--c-text-muted)", textAlign: "center", marginTop: 12 }}>
+                      Kirjaa kyykky, penkki ja maastaveto saadaksesi yhteistuloksen
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <KilpailutyokaluCard bigThreeE1rm={bigThreeE1rm} />
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
+
+const paneStyle: React.CSSProperties = {
+  flex: "0 0 100%",
+  width: "100%",
+  minWidth: "100%",
+  scrollSnapAlign: "start",
+  scrollSnapStop: "always",
+  boxSizing: "border-box",
+};
 
 // ── Cardio PR helpers ────────────────────────────────────────────────────────
 const BUCKET_ORDER: CardioRecord["bucket"][] = ["cooper", "1km", "5km", "10km", "21km", "42km"];

@@ -26,14 +26,14 @@ export function SyncBadge({
         {isSynced ? (
           <svg
             width={size} height={size} viewBox="0 0 24 24" fill="none"
-            stroke="#3ECF8E" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
+            stroke="var(--c-success)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
           >
             <polyline points="20 6 9 17 4 12" />
           </svg>
         ) : (
           <svg
             width={size} height={size} viewBox="0 0 24 24" fill="none"
-            stroke="#F5A623" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"
+            stroke="var(--c-warning)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"
           >
             <circle cx="12" cy="12" r="9" />
             <polyline points="12 7 12 12 15 14" />
@@ -57,9 +57,13 @@ export function SyncBadge({
         fontWeight: 700,
         letterSpacing: "0.3px",
         textTransform: "uppercase",
-        background: isSynced ? "rgba(62,207,142,0.12)" : "rgba(245,166,35,0.14)",
-        color: isSynced ? "#3ECF8E" : "#F5A623",
-        border: isSynced ? "1px solid rgba(62,207,142,0.28)" : "1px solid rgba(245,166,35,0.32)",
+        background: isSynced
+          ? "color-mix(in srgb, var(--c-success) 12%, transparent)"
+          : "color-mix(in srgb, var(--c-warning) 14%, transparent)",
+        color: isSynced ? "var(--c-success)" : "var(--c-warning)",
+        border: isSynced
+          ? "1px solid color-mix(in srgb, var(--c-success) 28%, transparent)"
+          : "1px solid color-mix(in srgb, var(--c-warning) 32%, transparent)",
         flexShrink: 0,
       }}
     >

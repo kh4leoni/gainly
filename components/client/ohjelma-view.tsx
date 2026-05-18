@@ -1,106 +1,75 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Collapse } from "@/components/ui/collapse";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { getClientSchedule, type ScheduleDay } from "@/lib/queries/workouts";
 import { ExerciseInfoDialog } from "@/components/client/exercise-info-dialog";
 import { stripCopySuffix } from "@/lib/utils";
+import { StatusPill } from "@/components/ui/status";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ClipboardText } from "@phosphor-icons/react";
+import { Eyebrow, Subtitle, Caption } from "@/components/ui/typography";
 
-type WeekGroup = {
+type WeekPane = {
   weekId: string;
   weekNumber: number;
-  name: string | null;
+  weekName: string | null;
   description: string | null;
   isActive: boolean;
-  days: ScheduleDay[];
-};
-type BlockGroup = {
   blockId: string;
   blockNumber: number;
-  name: string | null;
-  weeks: WeekGroup[];
-  hasActiveWeek: boolean;
-  workoutCount: number;
+  blockName: string | null;
+  days: ScheduleDay[];
 };
 
-function buildHierarchy(workouts: ScheduleDay[]): { blocks: BlockGroup[]; orphans: ScheduleDay[] } {
+function buildWeeks(workouts: ScheduleDay[]): { weeks: WeekPane[]; orphans: ScheduleDay[] } {
   const orphans: ScheduleDay[] = [];
-  const blockMap = new Map<string, BlockGroup>();
+  const byWeek = new Map<string, WeekPane>();
 
   for (const w of workouts) {
     const week = w.program_days?.program_weeks;
-    const block = week?.program_blocks;
-    if (!week) {
-      orphans.push(w);
-      continue;
-    }
-    // Synthesize a "no block" group if a week exists without a block (legacy data)
-    const blockId = block?.id ?? `__noblock_${week.id}`;
-    let bg = blockMap.get(blockId);
-    if (!bg) {
-      bg = {
-        blockId,
-        blockNumber: block?.block_number ?? 0,
-        name: block?.name ?? null,
-        weeks: [],
-        hasActiveWeek: false,
-        workoutCount: 0,
-      };
-      blockMap.set(blockId, bg);
-    }
-    let wg = bg.weeks.find((x) => x.weekId === week.id);
-    if (!wg) {
-      wg = {
+    if (!week) { orphans.push(w); continue; }
+    const block = week.program_blocks;
+    let pane = byWeek.get(week.id);
+    if (!pane) {
+      pane = {
         weekId: week.id,
         weekNumber: week.week_number,
-        name: week.name,
+        weekName: week.name,
         description: week.description,
         isActive: week.is_active,
+        blockId: block?.id ?? `__noblock_${week.id}`,
+        blockNumber: block?.block_number ?? 0,
+        blockName: block?.name ?? null,
         days: [],
       };
-      bg.weeks.push(wg);
-      if (week.is_active) bg.hasActiveWeek = true;
+      byWeek.set(week.id, pane);
     }
-    wg.days.push(w);
-    bg.workoutCount += 1;
+    pane.days.push(w);
   }
 
-  const blocks = Array.from(blockMap.values()).sort((a, b) => a.blockNumber - b.blockNumber);
-  for (const bg of blocks) bg.weeks.sort((a, b) => a.weekNumber - b.weekNumber);
-  return { blocks, orphans };
+  const weeks = Array.from(byWeek.values()).sort(
+    (a, b) => a.blockNumber - b.blockNumber || a.weekNumber - b.weekNumber
+  );
+  for (const w of weeks) {
+    w.days.sort((a, b) => (a.program_days?.day_number ?? 0) - (b.program_days?.day_number ?? 0));
+  }
+  return { weeks, orphans };
 }
 
-function workoutStatus(w: ScheduleDay) {
-  if (w.status === "completed") return { label: "Tehty", bg: "rgba(62,207,142,0.10)", color: "#3ECF8E" };
-  return { label: "Odottaa", bg: "var(--c-surface3)", color: "var(--c-text-muted)" };
-}
-
-function Chevron({ open }: { open: boolean }) {
+function NavArrow({ dir }: { dir: "left" | "right" }) {
   return (
-    <span style={{ transition: "transform 0.2s", transform: open ? "rotate(0deg)" : "rotate(-90deg)", color: "var(--c-text-muted)", display: "flex", flexShrink: 0 }}>
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <polyline points="6 9 12 15 18 9" />
-      </svg>
-    </span>
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      {dir === "left" ? <polyline points="15 18 9 12 15 6"/> : <polyline points="9 18 15 12 9 6"/>}
+    </svg>
   );
 }
 
-function CountBadge({ n }: { n: number }) {
-  return (
-    <span style={{
-      fontSize: 11, fontWeight: 700, color: "var(--c-text-muted)",
-      background: "var(--c-surface2)", border: "1px solid var(--c-border)",
-      padding: "3px 8px", borderRadius: 20,
-    }}>{n}</span>
-  );
-}
-
-function DayRow({ day, indent }: { day: ScheduleDay; indent: number }) {
+function DayRow({ day }: { day: ScheduleDay }) {
   const router = useRouter();
-  const st = workoutStatus(day);
+  const done = day.status === "completed";
   const exNames = (day.program_days?.program_exercises ?? [])
     .slice()
     .sort((a, b) => a.order_idx - b.order_idx)
@@ -124,13 +93,15 @@ function DayRow({ day, indent }: { day: ScheduleDay; indent: number }) {
       onClick={() => router.push(`/client/workout/${day.id}`)}
       onKeyDown={(e) => { if (e.key === "Enter") router.push(`/client/workout/${day.id}`); }}
       style={{
-        padding: `12px 14px 12px ${indent}px`,
-        borderTop: "1px solid var(--c-border)",
-        display: "flex", alignItems: "center", gap: 12,
-        cursor: "pointer", transition: "background 0.15s",
+        padding: "12px 14px",
+        background: "var(--c-surface)",
+        border: "1px solid var(--c-border)",
+        borderRadius: 12,
+        display: "flex",
+        alignItems: "center",
+        gap: 12,
+        cursor: "pointer",
       }}
-      onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.02)")}
-      onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
     >
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontWeight: 600, fontSize: 13, color: "var(--c-text)" }}>
@@ -142,9 +113,7 @@ function DayRow({ day, indent }: { day: ScheduleDay; indent: number }) {
           </div>
         )}
       </div>
-      <span style={{ fontSize: 11, padding: "3px 10px", borderRadius: 20, background: st.bg, color: st.color, fontWeight: 600, whiteSpace: "nowrap" }}>
-        {st.label}
-      </span>
+      <StatusPill kind={done ? "done" : "pending"} compact />
       {infoExercises.length > 0 && (
         <div onClick={(e) => e.stopPropagation()}>
           <ExerciseInfoDialog
@@ -163,9 +132,7 @@ function DayRow({ day, indent }: { day: ScheduleDay; indent: number }) {
                   display: "flex", alignItems: "center", justifyContent: "center",
                   cursor: "pointer", flexShrink: 0,
                 }}
-              >
-                ?
-              </button>
+              >?</button>
             }
           />
         </div>
@@ -174,115 +141,50 @@ function DayRow({ day, indent }: { day: ScheduleDay; indent: number }) {
   );
 }
 
-function WeekCard({ wg, defaultOpen, expanded, setExpanded }: {
-  wg: WeekGroup;
-  defaultOpen: boolean;
-  expanded: Record<string, boolean>;
-  setExpanded: (fn: (p: Record<string, boolean>) => Record<string, boolean>) => void;
+function DotIndicator({
+  total, current, onJump, activeIdx,
+}: {
+  total: number;
+  current: number;
+  onJump: (i: number) => void;
+  activeIdx: number;
 }) {
-  const explicit = expanded[wg.weekId];
-  const open = explicit ?? defaultOpen;
-  const completed = wg.days.filter((d) => d.status === "completed").length;
+  // For many weeks, show only a window of dots around current with edge fades.
+  const WINDOW = 9;
+  const half = Math.floor(WINDOW / 2);
+  let start = Math.max(0, current - half);
+  const end = Math.min(total, start + WINDOW);
+  start = Math.max(0, end - WINDOW);
+  const dots = Array.from({ length: end - start }, (_, k) => start + k);
   return (
-    <div style={{
-      background: "var(--c-surface)",
-      border: `1px solid ${wg.isActive ? "rgba(255,29,140,0.25)" : "var(--c-border)"}`,
-      borderRadius: 12, overflow: "hidden",
-    }}>
-      <button
-        onClick={() => setExpanded((p) => ({ ...p, [wg.weekId]: !open }))}
-        style={{
-          width: "100%", padding: "12px 14px", background: "none", border: "none",
-          cursor: "pointer", display: "flex", alignItems: "center", gap: 10,
-          color: "var(--c-text)", fontFamily: "inherit",
-        }}
-      >
-        <Chevron open={open} />
-        <div style={{ flex: 1, textAlign: "left", minWidth: 0 }}>
-          <div style={{ fontWeight: 700, fontSize: 13 }}>
-            {stripCopySuffix(wg.name) || `Viikko ${wg.weekNumber}`}
-          </div>
-          {wg.description && (
-            <div style={{ fontSize: 11, color: "var(--c-text-muted)", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {wg.description}
-            </div>
-          )}
-        </div>
-        {wg.isActive && (
-          <span style={{ fontSize: 10, padding: "3px 10px", borderRadius: 20, background: "var(--c-pink-dim)", color: "var(--c-pink)", fontWeight: 700 }}>
-            Aktiivinen
-          </span>
-        )}
-        <span style={{ fontSize: 10.5, color: "var(--c-text-subtle)", fontWeight: 600 }}>
-          {completed}/{wg.days.length}
-        </span>
-      </button>
-      <Collapse open={open}>
-        {wg.days.map((day) => <DayRow key={day.id} day={day} indent={40} />)}
-      </Collapse>
-    </div>
-  );
-}
-
-function BlockCard({ bg, defaultOpen, expanded, setExpanded }: {
-  bg: BlockGroup;
-  defaultOpen: boolean;
-  expanded: Record<string, boolean>;
-  setExpanded: (fn: (p: Record<string, boolean>) => Record<string, boolean>) => void;
-}) {
-  const explicit = expanded[bg.blockId];
-  const open = explicit ?? defaultOpen;
-  return (
-    <div style={{
-      background: "var(--c-surface)",
-      border: `1px solid ${bg.hasActiveWeek ? "rgba(255,29,140,0.2)" : "var(--c-border)"}`,
-      borderRadius: 14, overflow: "hidden",
-    }}>
-      <button
-        onClick={() => setExpanded((p) => ({ ...p, [bg.blockId]: !open }))}
-        style={{
-          width: "100%", padding: "14px 16px", background: "none", border: "none",
-          cursor: "pointer", display: "flex", alignItems: "center", gap: 10,
-          color: "var(--c-text)", fontFamily: "inherit",
-        }}
-      >
-        <Chevron open={open} />
-        {bg.hasActiveWeek && (
-          <span style={{ width: 4, height: 28, borderRadius: 2, background: "var(--c-pink)", flexShrink: 0 }} />
-        )}
-        <div style={{ flex: 1, textAlign: "left", minWidth: 0 }}>
-          <div style={{ fontSize: 10, color: "var(--c-text-subtle)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.6px" }}>
-            Jakso {bg.blockNumber || ""}
-          </div>
-          <div style={{ fontWeight: 700, fontSize: 14, color: "var(--c-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {stripCopySuffix(bg.name) || `Jakso ${bg.blockNumber}`}
-          </div>
-          <div style={{ fontSize: 11, color: "var(--c-text-muted)", marginTop: 2 }}>
-            {bg.weeks.length} viikkoa · {bg.workoutCount} treeniä
-          </div>
-        </div>
-        <CountBadge n={bg.workoutCount} />
-      </button>
-      <Collapse open={open}>
-        <div style={{ borderTop: "1px solid var(--c-border)", padding: 10, display: "flex", flexDirection: "column", gap: 8 }}>
-          {bg.weeks.map((wg) => (
-            <WeekCard
-              key={wg.weekId}
-              wg={wg}
-              defaultOpen={wg.isActive}
-              expanded={expanded}
-              setExpanded={setExpanded}
-            />
-          ))}
-        </div>
-      </Collapse>
+    <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 6, padding: "14px 20px 4px" }}>
+      {dots.map((i) => {
+        const isCurrent = i === current;
+        const isActive = i === activeIdx;
+        return (
+          <button
+            key={i}
+            type="button"
+            onClick={() => onJump(i)}
+            aria-label={`Viikko ${i + 1}`}
+            style={{
+              width: isCurrent ? 22 : 6, height: 6, borderRadius: 4,
+              background: isCurrent
+                ? "var(--c-pink)"
+                : isActive ? "color-mix(in srgb, var(--c-pink) 50%, transparent)" : "var(--c-border-hover)",
+              border: "none", padding: 0, cursor: "pointer",
+              transition: "width 0.2s, background 0.2s",
+              flexShrink: 0,
+            }}
+          />
+        );
+      })}
     </div>
   );
 }
 
 export function OhjelmaView({ clientId }: { clientId: string }) {
   const supabase = createClient();
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   const schedule = useQuery({
     queryKey: ["schedule", clientId],
@@ -291,11 +193,57 @@ export function OhjelmaView({ clientId }: { clientId: string }) {
     staleTime: 60_000,
   });
 
-  const { blocks, orphans } = useMemo(
-    () => buildHierarchy(schedule.data ?? []),
+  const { weeks, orphans } = useMemo(
+    () => buildWeeks(schedule.data ?? []),
     [schedule.data]
   );
 
+  const activeIdx = useMemo(() => {
+    const i = weeks.findIndex((w) => w.isActive);
+    return i === -1 ? 0 : i;
+  }, [weeks]);
+
+  const [currentIdx, setCurrentIdx] = useState(activeIdx);
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const didInit = useRef(false);
+
+  // Initial scroll to active week (no animation, once).
+  useLayoutEffect(() => {
+    const el = scrollerRef.current;
+    if (!el || weeks.length === 0 || didInit.current) return;
+    didInit.current = true;
+    el.scrollLeft = activeIdx * el.clientWidth;
+    setCurrentIdx(activeIdx);
+  }, [activeIdx, weeks.length]);
+
+  // Sync currentIdx with horizontal scroll (debounced via rAF).
+  useEffect(() => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    let raf = 0;
+    function handle() {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const w = el!.clientWidth;
+        if (w === 0) return;
+        const idx = Math.round(el!.scrollLeft / w);
+        setCurrentIdx((prev) => (prev === idx ? prev : idx));
+      });
+    }
+    el.addEventListener("scroll", handle, { passive: true });
+    return () => {
+      cancelAnimationFrame(raf);
+      el.removeEventListener("scroll", handle);
+    };
+  }, [weeks.length]);
+
+  function jumpTo(idx: number) {
+    const el = scrollerRef.current;
+    if (!el) return;
+    el.scrollTo({ left: idx * el.clientWidth, behavior: "smooth" });
+  }
+
+  const current = weeks[currentIdx];
   const totalWorkouts = schedule.data?.length ?? 0;
 
   if (schedule.isLoading) {
@@ -308,48 +256,165 @@ export function OhjelmaView({ clientId }: { clientId: string }) {
     );
   }
 
+  if (weeks.length === 0 && orphans.length === 0) {
+    return (
+      <div style={{ flex: 1, padding: "0 20px" }}>
+        <EmptyState
+          icon={ClipboardText}
+          title="Ei ohjelmaa vielä"
+          description="Valmentaja luo ohjelmasi pian. Tämä näkymä päivittyy automaattisesti."
+        />
+      </div>
+    );
+  }
+
   return (
-    <div style={{ flex: 1, padding: "24px 20px 20px" }}>
-      <div style={{ marginBottom: 22 }}>
-        <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-0.5px" }}>Ohjelma</div>
-        {blocks.length > 0 && (
-          <div style={{ fontSize: 12, color: "var(--c-text-muted)", marginTop: 3 }}>
-            {blocks.length} jaksoa · {totalWorkouts} treeniä
-          </div>
-        )}
+    <div style={{ flex: 1, padding: "0 0 24px" }}>
+      <div style={{ padding: "0 20px", marginBottom: 10, display: "flex", alignItems: "baseline", justifyContent: "flex-end" }}>
+        <Caption>{weeks.length} viikkoa · {totalWorkouts} treeniä</Caption>
       </div>
 
-      {blocks.length === 0 && orphans.length === 0 && (
-        <div style={{ textAlign: "center", padding: "48px 0", color: "var(--c-text-muted)" }}>
-          <div style={{ fontSize: 32, marginBottom: 8 }}>📋</div>
-          <div style={{ fontSize: 14 }}>Ei ohjelmaa vielä.</div>
+      {current && (
+        <div style={{ padding: "0 20px 12px" }}>
+          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8 }}>
+            <Eyebrow tone="subtle" style={{ letterSpacing: "0.7px" }}>
+              {stripCopySuffix(current.blockName) || `Jakso ${current.blockNumber || "—"}`}
+            </Eyebrow>
+            <Caption>{currentIdx + 1} / {weeks.length}</Caption>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
+            <div style={{ fontWeight: 800, fontSize: 18, color: "var(--c-text)", letterSpacing: "-0.3px" }}>
+              {stripCopySuffix(current.weekName) || `Viikko ${current.weekNumber}`}
+            </div>
+            {current.isActive && (
+              <span style={{
+                fontSize: 9, fontWeight: 700, padding: "2px 7px", borderRadius: 20,
+                background: "var(--c-pink-dim)", color: "var(--c-pink)",
+                textTransform: "uppercase", letterSpacing: "0.7px",
+              }}>
+                Aktiivinen
+              </span>
+            )}
+          </div>
+          {current.description && (
+            <Subtitle style={{ marginTop: 4, fontSize: 12 }}>{current.description}</Subtitle>
+          )}
         </div>
       )}
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        {blocks.map((bg) => (
-          <BlockCard
-            key={bg.blockId}
-            bg={bg}
-            defaultOpen={bg.hasActiveWeek}
-            expanded={expanded}
-            setExpanded={setExpanded}
-          />
-        ))}
-
-        {orphans.length > 0 && (
-          <div style={{
-            background: "var(--c-surface)",
-            border: "1px dashed var(--c-border)",
-            borderRadius: 12, padding: "12px 14px",
-          }}>
-            <div style={{ fontSize: 11, color: "var(--c-text-muted)", marginBottom: 6 }}>
-              Treenit ilman ohjelmaa ({orphans.length})
-            </div>
-            {orphans.map((day) => <DayRow key={day.id} day={day} indent={14} />)}
-          </div>
+      <div style={{ position: "relative" }}>
+        {currentIdx > 0 && (
+          <button
+            type="button"
+            onClick={() => jumpTo(currentIdx - 1)}
+            aria-label="Edellinen viikko"
+            className="ohjelma-pager-arrow"
+            style={navArrowStyle("left")}
+          >
+            <NavArrow dir="left" />
+          </button>
         )}
+        {currentIdx < weeks.length - 1 && (
+          <button
+            type="button"
+            onClick={() => jumpTo(currentIdx + 1)}
+            aria-label="Seuraava viikko"
+            className="ohjelma-pager-arrow"
+            style={navArrowStyle("right")}
+          >
+            <NavArrow dir="right" />
+          </button>
+        )}
+
+        <div
+          ref={scrollerRef}
+          className="ohjelma-pager"
+          style={{
+            display: "flex",
+            flexDirection: "row",
+            alignItems: "stretch",
+            width: "100%",
+            overflowX: "auto",
+            overflowY: "hidden",
+            scrollSnapType: "x mandatory",
+            WebkitOverflowScrolling: "touch",
+            scrollbarWidth: "none",
+            touchAction: "pan-x",
+          }}
+        >
+          {weeks.map((wp) => (
+            <div
+              key={wp.weekId}
+              style={{
+                flex: "0 0 100%",
+                width: "100%",
+                minWidth: "100%",
+                scrollSnapAlign: "start",
+                scrollSnapStop: "always",
+                boxSizing: "border-box",
+              }}
+            >
+              <div style={{ padding: "0 20px", display: "flex", flexDirection: "column", gap: 8 }}>
+                {wp.days.map((day) => <DayRow key={day.id} day={day} />)}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
+
+      <DotIndicator total={weeks.length} current={currentIdx} onJump={jumpTo} activeIdx={activeIdx} />
+
+      {currentIdx !== activeIdx && (
+        <div style={{ display: "flex", justifyContent: "center", paddingTop: 4 }}>
+          <button
+            type="button"
+            onClick={() => jumpTo(activeIdx)}
+            style={{
+              fontSize: 11, fontWeight: 600,
+              padding: "5px 12px", borderRadius: 20,
+              background: "var(--c-pink-dim)",
+              color: "var(--c-pink)",
+              border: "1px solid color-mix(in srgb, var(--c-pink) 25%, transparent)",
+              cursor: "pointer",
+            }}
+          >
+            ← Aktiiviseen viikkoon
+          </button>
+        </div>
+      )}
+
+      {orphans.length > 0 && (
+        <div style={{
+          margin: "22px 20px 0",
+          background: "var(--c-surface)",
+          border: "1px dashed var(--c-border)",
+          borderRadius: 12, padding: "12px 14px",
+        }}>
+          <div style={{ fontSize: 11, color: "var(--c-text-muted)", marginBottom: 6 }}>
+            Treenit ilman ohjelmaa ({orphans.length})
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {orphans.map((day) => <DayRow key={day.id} day={day} />)}
+          </div>
+        </div>
+      )}
     </div>
   );
+}
+
+function navArrowStyle(side: "left" | "right"): React.CSSProperties {
+  return {
+    position: "absolute",
+    top: "50%",
+    transform: "translateY(-50%)",
+    [side]: 4,
+    zIndex: 4,
+    width: 28, height: 28, borderRadius: "50%",
+    background: "var(--c-surface)",
+    border: "1px solid var(--c-border)",
+    color: "var(--c-text-muted)",
+    display: "flex", alignItems: "center", justifyContent: "center",
+    cursor: "pointer", padding: 0,
+    boxShadow: "0 2px 8px rgba(0,0,0,0.18)",
+  };
 }

@@ -61,7 +61,7 @@ type Props = {
 function statusDotStyle(status: string): React.CSSProperties {
   if (status === "completed") {
     return {
-      background: "radial-gradient(circle at 35% 35%, #34d399, #059669)",
+      background: "radial-gradient(circle at 35% 35%, var(--c-info-alt), color-mix(in srgb, var(--c-info-alt) 70%, #000))",
       boxShadow: "0 0 6px 2px rgba(16,185,129,0.4)",
     };
   }

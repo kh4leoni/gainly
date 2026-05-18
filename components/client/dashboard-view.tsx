@@ -8,22 +8,25 @@ import { getNextWorkout, getWeeklyVolume, getWeeklyCompletion, getLatestPRs } fr
 import { usePrToast } from "@/hooks/use-pr-toast";
 import { ExerciseInfoDialog } from "@/components/client/exercise-info-dialog";
 import { usePendingNav } from "@/lib/nav-context";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Moon } from "@phosphor-icons/react";
+import { Eyebrow, SectionLabel, Subtitle } from "@/components/ui/typography";
 
 const FI_DAYS = ["sunnuntai","maanantai","tiistai","keskiviikko","torstai","perjantai","lauantai"];
 
 const WEIGHT_REFS = [
-  { min: 0,      max: 150,    text: "Olet nostanut painoa Vespan verran! 🛵" },
-  { min: 151,    max: 400,    text: "Olet nostanut painoa flyygelin verran! 🎹" },
-  { min: 401,    max: 800,    text: "Olet nostanut painoa harmaakarhun verran! 🐻" },
-  { min: 801,    max: 1500,   text: "Olet nostanut painoa pienen henkilöauton verran! 🚗" },
-  { min: 1501,   max: 3000,   text: "Olet nostanut painoa valkoisen sarvikuonon verran! 🦏" },
-  { min: 3001,   max: 6000,   text: "Olet nostanut painoa afrikannorsun verran! 🐘" },
-  { min: 6001,   max: 12000,  text: "Olet nostanut painoa Tyrannosaurus Rexin verran! 🦖" },
-  { min: 12001,  max: 25000,  text: "Olet nostanut painoa paikallisbussin verran! 🚌" },
-  { min: 25001,  max: 45000,  text: "Olet nostanut painoa täyteen lastatun paloauton verran! 🚒" },
-  { min: 45001,  max: 75000,  text: "Olet nostanut painoa Leopard 2 -panssarivaunun verran! 🦾" },
-  { min: 75001,  max: 130000, text: "Olet nostanut painoa sinivalaan verran! 🐋" },
-  { min: 130001, max: Infinity, text: "Olet nostanut painoa Boeing 747 -lentokoneen verran! ✈️" },
+  { min: 0,      max: 150,    text: "Olet nostanut painoa Vespan verran." },
+  { min: 151,    max: 400,    text: "Olet nostanut painoa flyygelin verran." },
+  { min: 401,    max: 800,    text: "Olet nostanut painoa harmaakarhun verran." },
+  { min: 801,    max: 1500,   text: "Olet nostanut painoa pienen henkilöauton verran." },
+  { min: 1501,   max: 3000,   text: "Olet nostanut painoa valkoisen sarvikuonon verran." },
+  { min: 3001,   max: 6000,   text: "Olet nostanut painoa afrikannorsun verran." },
+  { min: 6001,   max: 12000,  text: "Olet nostanut painoa Tyrannosaurus Rexin verran." },
+  { min: 12001,  max: 25000,  text: "Olet nostanut painoa paikallisbussin verran." },
+  { min: 25001,  max: 45000,  text: "Olet nostanut painoa täyteen lastatun paloauton verran." },
+  { min: 45001,  max: 75000,  text: "Olet nostanut painoa Leopard 2 -panssarivaunun verran." },
+  { min: 75001,  max: 130000, text: "Olet nostanut painoa sinivalaan verran." },
+  { min: 130001, max: Infinity, text: "Olet nostanut painoa Boeing 747 -lentokoneen verran." },
 ] as const;
 
 function getWeightRef(kg: number): string {
@@ -31,11 +34,11 @@ function getWeightRef(kg: number): string {
 }
 
 function getCompletionFeedback(pct: number): string {
-  if (pct === 0)  return "Viikko alkaa – kaikki vielä edessä! 💪";
-  if (pct <= 33)  return "Hyvä alku, jatka samaan malliin! 🔥";
-  if (pct <= 66)  return "Puolivälissä – pidä vauhti yllä! ⚡";
-  if (pct < 100)  return "Melkein maalissa – loistava viikko! 🎯";
-  return "Täydellinen viikko! Upea suoritus! 🏆";
+  if (pct === 0)  return "Viikko alkaa – kaikki vielä edessä.";
+  if (pct <= 33)  return "Hyvä alku, jatka samaan malliin.";
+  if (pct <= 66)  return "Puolivälissä – pidä vauhti yllä.";
+  if (pct < 100)  return "Melkein maalissa – loistava viikko.";
+  return "Täydellinen viikko. Upea suoritus.";
 }
 
 // ── Quotes ────────────────────────────────────────────────────────────────────
@@ -128,8 +131,8 @@ function QuoteCard() {
   return (
     <div
       style={{
-        background: "linear-gradient(135deg, rgba(255,29,140,0.12) 0%, rgba(155,77,202,0.08) 100%)",
-        border: "1px solid rgba(255,29,140,0.2)",
+        background: "linear-gradient(135deg, color-mix(in srgb, var(--c-pink) 12%, transparent) 0%, color-mix(in srgb, var(--c-pink) 8%, transparent) 100%)",
+        border: "1px solid color-mix(in srgb, var(--c-pink) 20%, transparent)",
         borderRadius: 18,
         padding: "22px 22px 18px",
         marginBottom: 20,
@@ -176,7 +179,7 @@ function QuoteCard() {
           key={`p-${current}`}
           style={{
             height: "100%",
-            background: "linear-gradient(90deg, var(--c-pink), rgba(155,77,202,1))",
+            background: "linear-gradient(90deg, var(--c-pink), color-mix(in srgb, var(--c-pink) 75%, var(--c-bg)))",
             animation: `quote-progress ${INTERVAL_MS}ms linear forwards`,
           }}
         />
@@ -253,30 +256,27 @@ export function ClientDashboardView({ clientId, firstName }: { clientId: string;
   });
 
   return (
-    <div style={{ flex: 1, overflowY: "auto", padding: "24px 20px 20px" }}>
-      {/* Header */}
-      <div style={{ marginBottom: 20, ...enterStyle(0) }}>
-        <div style={{ fontSize: 12, color: "var(--c-text-muted)", marginBottom: 4, textTransform: "capitalize" }}>
-          {dateLabel}
+    <div style={{ flex: 1, padding: "8px 20px 20px" }}>
+      {/* Slim greeting line — kept compact so the workout hero owns the fold */}
+      <div style={{ marginBottom: 14, display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8, ...enterStyle(0) }}>
+        <div style={{ fontSize: 17, fontWeight: 700, letterSpacing: "-0.3px", lineHeight: 1.1 }}>
+          Hei{firstName ? `, ${firstName}` : ""}.
         </div>
-        <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: "-0.8px", lineHeight: 1.1 }}>
-          Hei{firstName ? `, ${firstName}` : ""}! 👋
+        <div style={{ fontSize: 11, color: "var(--c-text-muted)", textTransform: "capitalize", flexShrink: 0 }}>
+          {dateLabel}
         </div>
       </div>
 
-      {/* Motivational quotes carousel */}
-      <div style={enterStyle(60)}><QuoteCard /></div>
-
-      {/* Next workout card */}
+      {/* HERO: Next workout — the dashboard's reason to exist */}
       {workout ? (
         <div style={{
-          background: "linear-gradient(135deg,rgba(255,29,140,0.15) 0%,rgba(155,77,202,0.10) 100%)",
-          border: "1px solid rgba(255,29,140,0.25)",
-          borderRadius: 18,
-          padding: 20,
-          marginBottom: 20,
+          background: "linear-gradient(135deg,color-mix(in srgb, var(--c-pink) 18%, transparent) 0%,color-mix(in srgb, var(--c-pink) 12%, transparent) 100%)",
+          border: "1px solid color-mix(in srgb, var(--c-pink) 30%, transparent)",
+          borderRadius: 22,
+          padding: "22px 22px 20px",
+          marginBottom: 22,
           position: "relative",
-          ...enterStyle(120),
+          ...enterStyle(60),
         }}>
           {exercises.length > 0 && (
             <ExerciseInfoDialog
@@ -295,10 +295,10 @@ export function ClientDashboardView({ clientId, firstName }: { clientId: string;
                   type="button"
                   title="Katso harjoitteiden kuvaukset"
                   style={{
-                    position: "absolute", top: 12, right: 12,
+                    position: "absolute", top: 14, right: 14,
                     width: 34, height: 34, borderRadius: "50%",
-                    border: "1px solid rgba(255,29,140,0.35)",
-                    background: "rgba(255,29,140,0.1)",
+                    border: "1px solid color-mix(in srgb, var(--c-pink) 35%, transparent)",
+                    background: "color-mix(in srgb, var(--c-pink) 10%, transparent)",
                     color: "var(--c-pink)",
                     fontSize: 13, fontWeight: 700,
                     display: "flex", alignItems: "center", justifyContent: "center",
@@ -310,11 +310,11 @@ export function ClientDashboardView({ clientId, firstName }: { clientId: string;
               }
             />
           )}
-          <div style={{ marginBottom: 10 }}>
-            <div style={{ fontSize: 11, color: "var(--c-pink)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 4 }}>
+          <div style={{ marginBottom: 14 }}>
+            <Eyebrow tone="accent" style={{ letterSpacing: "1.5px", marginBottom: 6 }}>
               Seuraava treeni
-            </div>
-            <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-0.5px" }}>
+            </Eyebrow>
+            <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.8px", lineHeight: 1.1 }}>
               {workout.program_days?.name ?? "Treeni"}
             </div>
           </div>
@@ -326,7 +326,7 @@ export function ClientDashboardView({ clientId, firstName }: { clientId: string;
           )}
 
           {exNames.length > 0 && (
-            <div style={{ fontSize: 12, color: "var(--c-text-muted)", marginBottom: 16 }}>
+            <div style={{ fontSize: 12, color: "var(--c-text-muted)", marginBottom: 20 }}>
               {exNames.join(" · ")}{exercises.length > 4 ? ` +${exercises.length - 4}` : ""}
             </div>
           )}
@@ -337,36 +337,53 @@ export function ClientDashboardView({ clientId, firstName }: { clientId: string;
             style={{
               display: "block",
               width: "100%",
-              padding: "13px",
+              padding: "18px",
               background: "var(--c-pink)",
-              borderRadius: 12,
-              color: "#fff",
-              fontSize: 14,
-              fontWeight: 700,
+              borderRadius: 14,
+              color: "var(--c-pink-fg, #fff)",
+              fontSize: 17,
+              fontWeight: 800,
               textAlign: "center",
               textDecoration: "none",
-              boxShadow: "0 0 20px var(--c-pink-glow)",
-              letterSpacing: "-0.2px",
+              boxShadow: "0 6px 24px var(--c-pink-glow)",
+              letterSpacing: "-0.3px",
             }}
           >
-            🔥 Aloita treeni
+            Aloita treeni
           </Link>
         </div>
       ) : (
         <div style={{
           background: "var(--c-surface)",
           border: "1px solid var(--c-border)",
-          borderRadius: 18,
-          padding: 24,
-          marginBottom: 20,
-          textAlign: "center",
-          ...enterStyle(120),
+          borderRadius: 22,
+          marginBottom: 22,
+          ...enterStyle(60),
         }}>
-          <div style={{ fontSize: 32, marginBottom: 8 }}>😴</div>
-          <div style={{ fontWeight: 700, fontSize: 15 }}>Ei tulevia treenejä</div>
-          <div style={{ fontSize: 13, color: "var(--c-text-muted)", marginTop: 4 }}>
-            Ohjelmassasi ei ole tulevia treenejä.
-          </div>
+          <EmptyState
+            icon={Moon}
+            title="Ei tulevia treenejä"
+            description="Ohjelmassasi ei ole tulevia treenejä."
+            action={
+              <Link
+                href="/client/ohjelma"
+                onClick={() => setPendingHref("/client/ohjelma")}
+                style={{
+                  display: "inline-block",
+                  padding: "11px 18px",
+                  borderRadius: 10,
+                  background: "var(--c-surface2)",
+                  border: "1px solid var(--c-border)",
+                  color: "var(--c-text)",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  textDecoration: "none",
+                }}
+              >
+                Selaa ohjelmaa
+              </Link>
+            }
+          />
         </div>
       )}
 
@@ -377,7 +394,7 @@ export function ClientDashboardView({ clientId, firstName }: { clientId: string;
           gridTemplateColumns: wcTotal > 0 && volume > 0 ? "1fr 1fr" : "1fr",
           gap: 12,
           marginBottom: 20,
-          ...enterStyle(190),
+          ...enterStyle(130),
         }}>
           {wcTotal > 0 && (
             <Link
@@ -392,10 +409,10 @@ export function ClientDashboardView({ clientId, firstName }: { clientId: string;
                 color: "inherit",
               }}
             >
-              <div style={{ fontSize: 10, color: "var(--c-text-muted)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 8 }}>
-                📅 Viikon treenit
-              </div>
-              <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: "-1px", color: wcPct === 100 ? "#3ECF8E" : "var(--c-pink)", lineHeight: 1 }}>
+              <Eyebrow style={{ letterSpacing: "1px", marginBottom: 8 }}>
+                Viikon treenit
+              </Eyebrow>
+              <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: "-1px", color: wcPct === 100 ? "var(--c-success)" : "var(--c-pink)", lineHeight: 1 }}>
                 {wcPct}%
               </div>
               <div style={{ fontSize: 12, color: "var(--c-text-muted)", marginTop: 6, marginBottom: 10 }}>
@@ -406,8 +423,8 @@ export function ClientDashboardView({ clientId, firstName }: { clientId: string;
                   height: "100%",
                   width: `${wcPct}%`,
                   background: wcPct === 100
-                    ? "linear-gradient(90deg,#3ECF8E,#2DB87A)"
-                    : "linear-gradient(90deg,var(--c-pink),rgba(155,77,202,1))",
+                    ? "linear-gradient(90deg, var(--c-success), color-mix(in srgb, var(--c-success) 75%, #000))"
+                    : "linear-gradient(90deg,var(--c-pink),color-mix(in srgb, var(--c-pink) 75%, var(--c-bg)))",
                   borderRadius: 2,
                   minWidth: wcDone > 0 ? 4 : 0,
                 }} />
@@ -422,9 +439,9 @@ export function ClientDashboardView({ clientId, firstName }: { clientId: string;
               borderRadius: 18,
               padding: 16,
             }}>
-              <div style={{ fontSize: 10, color: "var(--c-text-muted)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 8 }}>
-                🏋️ Viikon volyymi
-              </div>
+              <Eyebrow style={{ letterSpacing: "1px", marginBottom: 8 }}>
+                Viikon volyymi
+              </Eyebrow>
               <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: "-1px", color: "var(--c-pink)", lineHeight: 1 }}>
                 {volume >= 1000
                   ? `${(volume / 1000).toLocaleString("fi-FI", { maximumFractionDigits: 1 })}t`
@@ -451,12 +468,12 @@ export function ClientDashboardView({ clientId, firstName }: { clientId: string;
             marginBottom: 20,
             textDecoration: "none",
             color: "inherit",
-            ...enterStyle(260),
+            ...enterStyle(200),
           }}
         >
-          <div style={{ fontSize: 11, color: "var(--c-text-muted)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 14 }}>
-            🏆 Viimeisimmät ennätykset
-          </div>
+          <SectionLabel style={{ marginBottom: 14 }}>
+            Viimeisimmät ennätykset
+          </SectionLabel>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {latestPRs.data!.map((pr) => {
               const name = (pr.exercises as { name: string } | null)?.name ?? "—";
@@ -481,17 +498,17 @@ export function ClientDashboardView({ clientId, firstName }: { clientId: string;
           border: "1px solid var(--c-border)",
           borderRadius: 14,
           padding: "14px 16px",
-          marginBottom: 16,
-          ...enterStyle(330),
+          marginBottom: 20,
+          ...enterStyle(270),
         }}>
-          <div style={{ fontSize: 11, color: "var(--c-text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: 6 }}>
-            Viikkojen kuvaus
-          </div>
-          <div style={{ fontSize: 13, color: "var(--c-text-muted)", lineHeight: 1.5 }}>
-            {workout.program_days.program_weeks.description}
-          </div>
+          <Eyebrow style={{ marginBottom: 6 }}>Viikkojen kuvaus</Eyebrow>
+          <Subtitle>{workout.program_days.program_weeks.description}</Subtitle>
         </div>
       )}
+
+      {/* Motivational quotes — moved below the workout so it doesn't push the
+          primary action below the fold. Stays as a small daily moment. */}
+      <div style={enterStyle(340)}><QuoteCard /></div>
     </div>
   );
 }

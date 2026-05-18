@@ -9,6 +9,10 @@ import Link from "next/link";
 import { SyncBadge } from "@/components/offline/sync-badge";
 import { useLocalCompletedNotInServer, useUnsyncedForWorkout } from "@/lib/offline/reads";
 import { stripCopySuffix } from "@/lib/utils";
+import { StatusPill, STATUS } from "@/components/ui/status";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Barbell } from "@phosphor-icons/react";
+import { Subtitle, SectionLabel } from "@/components/ui/typography";
 
 function groupSetsByExercise(sets: PastWorkout["workout_logs"][number]["set_logs"]) {
   const order: string[] = [];
@@ -28,6 +32,44 @@ function pickRichestLog(logs: PastWorkout["workout_logs"]): PastWorkout["workout
     if ((l.set_logs?.length ?? 0) > (best.set_logs?.length ?? 0)) best = l;
   }
   return best;
+}
+
+function SetRow({
+  weight, reps, rpe, isPr, leadLabel, leadWidth = 50,
+}: {
+  weight: number | null;
+  reps: number | null;
+  rpe: number | null;
+  isPr: boolean;
+  leadLabel: string;
+  leadWidth?: number;
+}) {
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", gap: 10, fontSize: 13,
+      background: isPr ? STATUS.pr.bg : "transparent",
+      borderRadius: 6,
+      padding: "4px 8px",
+      borderLeft: isPr ? `3px solid ${STATUS.pr.fg}` : "3px solid transparent",
+    }}>
+      <span style={{ width: leadWidth, color: "var(--c-text-subtle)", fontSize: 11, flexShrink: 0 }}>
+        {leadLabel}
+      </span>
+      <span style={{ fontWeight: 600, color: "var(--c-text)" }}>
+        {weight ?? 0} kg × {reps ?? 0}
+      </span>
+      {rpe != null && (
+        <span style={{
+          fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 20,
+          background: "color-mix(in srgb, var(--c-pink) 10%, transparent)", color: "var(--c-pink)",
+          border: "1px solid color-mix(in srgb, var(--c-pink) 20%, transparent)",
+        }}>
+          RPE {rpe}
+        </span>
+      )}
+      {isPr && <StatusPill kind="pr" compact />}
+    </div>
+  );
 }
 
 function WorkoutCard({ w }: { w: PastWorkout }) {
@@ -62,9 +104,7 @@ function WorkoutCard({ w }: { w: PastWorkout }) {
       >
         <div style={{ minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
-            <span style={{ fontSize: 10, color: "var(--c-green)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.8px" }}>
-              ✓ Tehty
-            </span>
+            <StatusPill kind="done" compact />
             <span style={{ fontSize: 11, color: "var(--c-text-muted)" }}>{dateStr}</span>
             <SyncBadge synced={!unsynced} size={11} />
           </div>
@@ -87,7 +127,7 @@ function WorkoutCard({ w }: { w: PastWorkout }) {
         <div style={{ borderTop: "1px solid var(--c-border)", padding: "12px 14px 14px" }}>
           {wl?.notes && (
             <div style={{
-              background: "rgba(255,29,140,0.07)", border: "1px solid rgba(255,29,140,0.18)",
+              background: "color-mix(in srgb, var(--c-pink) 7%, transparent)", border: "1px solid color-mix(in srgb, var(--c-pink) 18%, transparent)",
               borderRadius: 10, padding: "8px 12px", marginBottom: 12,
             }}>
               <div style={{ fontSize: 10, color: "var(--c-pink)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: 3 }}>
@@ -104,34 +144,16 @@ function WorkoutCard({ w }: { w: PastWorkout }) {
                   <div style={{ fontSize: 11, fontWeight: 700, color: "var(--c-text-muted)", textTransform: "uppercase", letterSpacing: "0.6px", marginBottom: 6 }}>
                     {name}
                   </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                     {sets.map((s, i) => (
-                      <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13 }}>
-                        <span style={{ width: 50, color: "var(--c-text-subtle)", fontSize: 11 }}>
-                          Sarja {s.set_number ?? i + 1}
-                        </span>
-                        <span style={{ fontWeight: 600, color: "var(--c-text)" }}>
-                          {s.weight ?? 0} kg × {s.reps ?? 0}
-                        </span>
-                        {s.rpe != null && (
-                          <span style={{
-                            fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 20,
-                            background: "rgba(255,29,140,0.1)", color: "var(--c-pink)",
-                            border: "1px solid rgba(255,29,140,0.2)",
-                          }}>
-                            RPE {s.rpe}
-                          </span>
-                        )}
-                        {s.is_pr && (
-                          <span style={{
-                            fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 20,
-                            background: "rgba(245,166,35,0.12)", color: "#F5A623",
-                            border: "1px solid rgba(245,166,35,0.25)",
-                          }}>
-                            PR
-                          </span>
-                        )}
-                      </div>
+                      <SetRow
+                        key={i}
+                        weight={s.weight}
+                        reps={s.reps}
+                        rpe={s.rpe}
+                        isPr={s.is_pr}
+                        leadLabel={`Sarja ${s.set_number ?? i + 1}`}
+                      />
                     ))}
                   </div>
                 </div>
@@ -171,9 +193,7 @@ function LocalOnlyCard({ completedAt }: { completedAt: string | null }) {
       padding: "14px 16px",
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-        <span style={{ fontSize: 10, color: "var(--c-green)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.8px" }}>
-          ✓ Tehty
-        </span>
+        <StatusPill kind="done" compact />
         <span style={{ fontSize: 11, color: "var(--c-text-muted)" }}>{dateStr}</span>
         <SyncBadge synced={false} size={11} />
       </div>
@@ -323,8 +343,55 @@ function CollapseSection({
   );
 }
 
+type SearchHit = {
+  workoutId: string;
+  dateMs: number;
+  dateLabel: string;
+  setNumber: number | null;
+  weight: number | null;
+  reps: number | null;
+  rpe: number | null;
+  isPr: boolean;
+};
+
+function buildSearchGroups(workouts: PastWorkout[], q: string): Array<{ name: string; hits: SearchHit[] }> {
+  const ql = q.trim().toLowerCase();
+  if (!ql) return [];
+  const byEx = new Map<string, SearchHit[]>();
+  for (const w of workouts) {
+    const dateMs = w.completed_at ? new Date(w.completed_at).getTime() : 0;
+    const dateLabel = w.completed_at
+      ? new Date(w.completed_at).toLocaleDateString("fi-FI", { day: "numeric", month: "numeric", year: "numeric" })
+      : "—";
+    const wl = pickRichestLog(w.workout_logs ?? []);
+    for (const s of wl?.set_logs ?? []) {
+      const name = s.exercises?.name ?? "";
+      if (!name.toLowerCase().includes(ql)) continue;
+      let arr = byEx.get(name);
+      if (!arr) { arr = []; byEx.set(name, arr); }
+      arr.push({
+        workoutId: w.id,
+        dateMs,
+        dateLabel,
+        setNumber: s.set_number,
+        weight: s.weight,
+        reps: s.reps,
+        rpe: s.rpe,
+        isPr: s.is_pr,
+      });
+    }
+  }
+  const groups = Array.from(byEx.entries()).map(([name, hits]) => {
+    hits.sort((a, b) => b.dateMs - a.dateMs);
+    return { name, hits };
+  });
+  groups.sort((a, b) => b.hits.length - a.hits.length);
+  return groups;
+}
+
 export function HistoryView({ clientId }: { clientId: string }) {
   const supabase = createClient();
+  const [query, setQuery] = useState("");
 
   const { data: workouts = [], isLoading } = useQuery({
     queryKey: ["past-workouts", clientId],
@@ -337,13 +404,44 @@ export function HistoryView({ clientId }: { clientId: string }) {
   const localOnly = useLocalCompletedNotInServer(clientId, serverIds);
 
   const { programs, orphans } = useMemo(() => buildHierarchy(workouts), [workouts]);
+  const searching = query.trim().length > 0;
+  const searchGroups = useMemo(() => buildSearchGroups(workouts, query), [workouts, query]);
 
   return (
     <div style={{ flex: 1 }}>
-      <div style={{ padding: "24px 16px 32px" }}>
-      <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-0.5px", marginBottom: 4 }}>Historia</div>
-      <div style={{ fontSize: 13, color: "var(--c-text-muted)", marginBottom: 24 }}>
-        Tehdyt treenit
+      <div style={{ padding: "8px 16px 32px" }}>
+      <Subtitle style={{ marginBottom: 16 }}>Tehdyt treenit</Subtitle>
+
+      <div style={{ position: "relative", marginBottom: 20 }}>
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Hae liikenimellä, esim. squat"
+          style={{
+            width: "100%", boxSizing: "border-box",
+            padding: "10px 36px 10px 14px",
+            borderRadius: 10,
+            background: "var(--c-surface)",
+            border: "1px solid var(--c-border)",
+            color: "var(--c-text)",
+            fontSize: 14,
+            fontFamily: "inherit",
+            outline: "none",
+          }}
+        />
+        {query && (
+          <button
+            type="button"
+            onClick={() => setQuery("")}
+            aria-label="Tyhjennä haku"
+            style={{
+              position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)",
+              background: "none", border: "none", cursor: "pointer",
+              color: "var(--c-text-muted)", fontSize: 18, padding: 4, lineHeight: 1,
+            }}
+          >×</button>
+        )}
       </div>
 
       {isLoading && (
@@ -355,25 +453,71 @@ export function HistoryView({ clientId }: { clientId: string }) {
       )}
 
       {!isLoading && workouts.length === 0 && localOnly.length === 0 && (
-        <div style={{ textAlign: "center", padding: "48px 0", color: "var(--c-text-muted)" }}>
-          <div style={{ fontSize: 36, marginBottom: 12 }}>🏋️</div>
-          <div style={{ fontWeight: 600, fontSize: 15 }}>Ei vielä treenejä</div>
-          <div style={{ fontSize: 13, marginTop: 4 }}>Treenaaminen tallentuu tänne.</div>
-        </div>
+        <EmptyState
+          icon={Barbell}
+          title="Ei vielä treenejä"
+          description="Tehdyt treenit kertyvät tänne automaattisesti."
+        />
       )}
 
-      {localOnly.length > 0 && (
+      {!searching && localOnly.length > 0 && (
         <div style={{ marginBottom: 24 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--c-text-muted)", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 10 }}>
-            Odottaa synkronointia
-          </div>
+          <SectionLabel style={{ marginBottom: 10 }}>Odottaa synkronointia</SectionLabel>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {localOnly.map((s) => <LocalOnlyCard key={s.id} completedAt={s.completed_at} />)}
           </div>
         </div>
       )}
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      {searching && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          {searchGroups.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "32px 0", color: "var(--c-text-muted)", fontSize: 13 }}>
+              Ei osumia haulle &ldquo;{query}&rdquo;.
+            </div>
+          ) : (
+            searchGroups.map(({ name, hits }) => (
+              <div key={name} style={{
+                background: "var(--c-surface)",
+                border: "1px solid var(--c-border)",
+                borderRadius: 12,
+                padding: "12px 14px",
+              }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "var(--c-text)" }}>{name}</div>
+                  <span style={{
+                    fontSize: 10, fontWeight: 700, color: "var(--c-text-muted)",
+                    background: "var(--c-surface2)", border: "1px solid var(--c-border)",
+                    padding: "2px 7px", borderRadius: 20,
+                  }}>
+                    {hits.length} sarjaa
+                  </span>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                  {hits.map((h, i) => (
+                    <Link
+                      key={i}
+                      href={`/client/workout/${h.workoutId}`}
+                      style={{ textDecoration: "none" }}
+                    >
+                      <SetRow
+                        weight={h.weight}
+                        reps={h.reps}
+                        rpe={h.rpe}
+                        isPr={h.isPr}
+                        leadLabel={h.dateLabel}
+                        leadWidth={78}
+                      />
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {!searching && <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {programs.map((pg, pi) => (
           <CollapseSection
             key={pg.id}
@@ -411,7 +555,7 @@ export function HistoryView({ clientId }: { clientId: string }) {
             {orphans.map((w) => <WorkoutCard key={w.id} w={w} />)}
           </CollapseSection>
         )}
-      </div>
+      </div>}
       </div>
     </div>
   );

@@ -244,7 +244,7 @@ export function CoachDashboardView() {
       {/* Header */}
       <h1 className="card-enter text-2xl font-bold">Dashboard</h1>
       <p className="card-enter card-enter-1 mt-0.5 text-sm text-muted-foreground">
-        {dayName} {dateLabel} — Hei {firstName}! 👋
+        {dayName} {dateLabel} — Hei {firstName}.
       </p>
 
       {/* Stat cards */}
@@ -299,7 +299,7 @@ export function CoachDashboardView() {
           >
             {data.attentionClients.length === 0 ? (
               <div className="px-5 py-10 text-center text-sm text-muted-foreground">
-                Kaikki asiakkaat ovat treenanneet tänään 🎉
+                Kaikki asiakkaat ovat treenanneet tänään.
               </div>
             ) : (
               <ul>

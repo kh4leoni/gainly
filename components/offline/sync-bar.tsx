@@ -105,13 +105,13 @@ export function SyncBar() {
           gap: 6,
           padding: "6px 12px 6px 8px",
           borderRadius: 999,
-          background: d.offline ? "#3a3a42" : d.synced ? "#22c55e" : "#F5A623",
+          background: d.offline ? "#3a3a42" : d.synced ? "var(--c-success)" : "var(--c-warning)",
           border: "none",
           boxShadow: d.offline
             ? "0 2px 12px rgba(0,0,0,0.4)"
             : d.synced
-              ? "0 2px 12px rgba(34,197,94,0.35)"
-              : "0 2px 12px rgba(245,166,35,0.35)",
+              ? "0 2px 12px color-mix(in srgb, var(--c-success) 35%, transparent)"
+              : "0 2px 12px color-mix(in srgb, var(--c-warning) 35%, transparent)",
           fontSize: 12,
           fontWeight: 700,
           color: d.offline ? "#f0eef5" : "#0a0a0c",

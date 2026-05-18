@@ -530,7 +530,7 @@ function ChatPane({
                 fontSize: 13,
                 lineHeight: 1.5,
                 color: isOwn
-                  ? "#fff"
+                  ? (isCoach ? "#fff" : "var(--c-pink-fg, #fff)")
                   : (isCoach ? "hsl(var(--foreground))" : "var(--c-text)"),
                 boxShadow: isOwn
                   ? (isCoach ? "0 2px 12px rgba(255,29,140,0.35)" : "0 0 16px var(--c-pink-glow)")
@@ -575,8 +575,8 @@ function ChatPane({
             transition: "border-color 0.2s, box-shadow 0.2s",
           }}
           onFocus={(e) => {
-            e.target.style.borderColor = "#FF1D8C";
-            e.target.style.boxShadow = "0 0 0 3px rgba(255,29,140,0.12)";
+            e.target.style.borderColor = isCoach ? "#FF1D8C" : "var(--c-pink)";
+            e.target.style.boxShadow = isCoach ? "0 0 0 3px rgba(255,29,140,0.12)" : "0 0 0 3px color-mix(in srgb, var(--c-pink) 12%, transparent)";
           }}
           onBlur={(e) => {
             e.target.style.borderColor = isCoach ? "hsl(var(--border))" : "var(--c-border)";
@@ -590,15 +590,15 @@ function ChatPane({
             width: 42,
             height: 42,
             borderRadius: "50%",
-            background: content.trim() ? "#FF1D8C" : (isCoach ? "hsl(var(--muted))" : "var(--c-surface3)"),
+            background: content.trim() ? (isCoach ? "#FF1D8C" : "var(--c-pink)") : (isCoach ? "hsl(var(--muted))" : "var(--c-surface3)"),
             border: "none",
             cursor: content.trim() ? "pointer" : "default",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            color: "#fff",
+            color: isCoach ? "#fff" : "var(--c-pink-fg, #fff)",
             flexShrink: 0,
-            boxShadow: content.trim() ? "0 2px 12px rgba(255,29,140,0.4)" : "none",
+            boxShadow: content.trim() ? (isCoach ? "0 2px 12px rgba(255,29,140,0.4)" : "0 2px 12px color-mix(in srgb, var(--c-pink) 40%, transparent)") : "none",
             transition: "all 0.18s",
             opacity: content.trim() ? 1 : 0.45,
           }}

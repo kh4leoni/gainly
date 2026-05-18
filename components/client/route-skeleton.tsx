@@ -49,8 +49,8 @@ function DashboardSkeleton() {
 
       {/* Next workout card */}
       <div style={{
-        background: "linear-gradient(135deg,rgba(255,29,140,0.08) 0%,rgba(155,77,202,0.06) 100%)",
-        border: "1px solid rgba(255,29,140,0.15)",
+        background: "linear-gradient(135deg,color-mix(in srgb, var(--c-pink) 8%, transparent) 0%,color-mix(in srgb, var(--c-pink) 6%, transparent) 100%)",
+        border: "1px solid color-mix(in srgb, var(--c-pink) 15%, transparent)",
         borderRadius: 18,
         padding: 20,
         marginBottom: 16,
