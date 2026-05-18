@@ -546,15 +546,15 @@ body:has(.client-app) {
 .client-fade-nav {
   background: linear-gradient(
     to bottom,
-    rgba(var(--c-bg-rgb), 0.40) 0%,
-    rgba(var(--c-bg-rgb), 0.80) 20%,
-    rgba(var(--c-bg-rgb), 0.97) 50%,
+    rgba(var(--c-bg-rgb), 0.50) 0%,
+    rgba(var(--c-bg-rgb), 1) 20%,
+    rgba(var(--c-bg-rgb), 1) 50%,
     rgba(var(--c-bg-rgb), 1) 75%,
     rgba(var(--c-bg-rgb), 1) 100%
   );
 }
 /* Soft lead-in fade just above the nav — content doesn't slam straight
-   into the 40% gradient edge. */
+   into the gradient edge. */
 .client-fade-nav::before {
   content: "";
   position: absolute;
@@ -565,7 +565,7 @@ body:has(.client-app) {
   background: linear-gradient(
     to bottom,
     rgba(var(--c-bg-rgb), 0) 0%,
-    rgba(var(--c-bg-rgb), 0.40) 100%
+    rgba(var(--c-bg-rgb), 0.50) 100%
   );
   pointer-events: none;
 }
