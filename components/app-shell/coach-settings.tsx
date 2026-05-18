@@ -206,20 +206,10 @@ function CoachSettingsPanel({ me, closing, onAnimationEnd }: {
             role="switch"
             aria-checked={isDark}
             onClick={() => setTheme(isDark ? "light" : "dark")}
-            style={{
-              width: 42, height: 24, borderRadius: 12, border: "none",
-              background: isDark ? "hsl(var(--primary))" : "hsl(var(--muted))",
-              cursor: "pointer", position: "relative", flexShrink: 0,
-              transition: "background 220ms ease", padding: 0,
-            }}
+            className="ios-toggle"
+            data-on={isDark ? "1" : "0"}
           >
-            <span style={{
-              position: "absolute", top: 3,
-              left: isDark ? 21 : 3,
-              width: 18, height: 18, borderRadius: "50%",
-              background: "#fff", boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
-              transition: "left 220ms cubic-bezier(0.34, 1.56, 0.64, 1)", display: "block",
-            }} />
+            <span className="ios-toggle-thumb" />
           </button>
           <Moon size={14} color={isDark ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))"} weight={isDark ? "fill" : "regular"} />
         </div>

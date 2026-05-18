@@ -8,7 +8,15 @@
   --c-warning: #F5A623;
   --c-info: #818CF8;
   --c-info-alt: #34D399;
+  /* iOS UISwitch defaults — system green ON, system fill OFF */
+  --c-toggle-on: #34C759;
+  --c-toggle-off: rgba(120, 120, 128, 0.32);
 }
+@media (prefers-color-scheme: light) {
+  :root { --c-toggle-off: rgba(120, 120, 128, 0.16); }
+}
+html.light { --c-toggle-off: rgba(120, 120, 128, 0.16); }
+html.dark  { --c-toggle-off: rgba(120, 120, 128, 0.32); }
 
 /* ── Logo adaptive inversion ─────────────────────────────────────────────── */
 /* Default: light mode — invert so black outline becomes visible */
@@ -482,6 +490,48 @@ body:has(.client-app) {
 .client-themed .rounded-3xl  { border-radius: 42px; }
 .client-app .rounded-full,
 .client-themed .rounded-full { border-radius: var(--r-pill); }
+
+/* ── iOS UISwitch (toggle) — 51×31 track, 27 thumb, system green ON ───── */
+.ios-toggle {
+  position: relative;
+  flex-shrink: 0;
+  width: 51px;
+  height: 31px;
+  padding: 0;
+  border: none;
+  border-radius: 9999px;
+  background: var(--c-toggle-off);
+  cursor: pointer;
+  transition: background 220ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.ios-toggle[data-on="1"],
+.ios-toggle[aria-checked="true"] {
+  background: var(--c-toggle-on);
+}
+.ios-toggle-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 27px;
+  height: 27px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow:
+    0 3px 8px rgba(0, 0, 0, 0.15),
+    0 3px 1px rgba(0, 0, 0, 0.06),
+    0 0 0 0.5px rgba(0, 0, 0, 0.04);
+  transition: transform 260ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  pointer-events: none;
+}
+.ios-toggle[data-on="1"] .ios-toggle-thumb,
+.ios-toggle[aria-checked="true"] .ios-toggle-thumb {
+  transform: translateX(20px);
+}
+.ios-toggle:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
 /* ── Bottom nav with progressive fade: translucent top, solid bottom ────── */
 .client-fade-nav {
