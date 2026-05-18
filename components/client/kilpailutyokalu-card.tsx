@@ -80,14 +80,14 @@ export function KilpailutyokaluCard({
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
                     {atts.map((kg, i) => (
                       <div key={i} style={{
-                        background: i === 2 ? "var(--c-pink-dim, rgba(255,29,140,0.12))" : "var(--c-surface2, hsl(var(--muted)))",
-                        border: i === 2 ? "1px solid rgba(255,29,140,0.25)" : "1px solid transparent",
+                        background: i === 2 ? "var(--c-pink-dim, color-mix(in srgb, var(--c-pink) 12%, transparent))" : "var(--c-surface2, hsl(var(--muted)))",
+                        border: i === 2 ? "1px solid color-mix(in srgb, var(--c-pink) 25%, transparent)" : "1px solid transparent",
                         borderRadius: 10, padding: "10px 8px", textAlign: "center",
                       }}>
-                        <div style={{ fontSize: 10, fontWeight: 700, color: i === 2 ? "#FF1D8C" : "var(--c-text-muted, hsl(var(--muted-foreground)))", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 4 }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: i === 2 ? "var(--c-pink)" : "var(--c-text-muted, hsl(var(--muted-foreground)))", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 4 }}>
                           {i + 1}. nosto
                         </div>
-                        <div style={{ fontSize: 18, fontWeight: 800, color: i === 2 ? "#FF1D8C" : "var(--c-text, hsl(var(--foreground)))" }}>{kg}</div>
+                        <div style={{ fontSize: 18, fontWeight: 800, color: i === 2 ? "var(--c-pink)" : "var(--c-text, hsl(var(--foreground)))" }}>{kg}</div>
                         <div style={{ fontSize: 10, color: "var(--c-text-subtle, hsl(var(--muted-foreground)))" }}>kg</div>
                       </div>
                     ))}
@@ -107,7 +107,7 @@ export function KilpailutyokaluCard({
             return total != null ? (
               <div style={{ background: "var(--c-surface, hsl(var(--card)))", border: "1px solid var(--c-border, hsl(var(--border)))", borderRadius: 16, padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <div style={{ fontSize: 14, fontWeight: 700 }}>Yhteistulos (kilpailu)</div>
-                <div style={{ fontSize: 22, fontWeight: 800, color: "#FF1D8C" }}>{total} kg</div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: "var(--c-pink)" }}>{total} kg</div>
               </div>
             ) : null;
           })()}

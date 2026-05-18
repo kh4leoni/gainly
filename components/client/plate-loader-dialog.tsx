@@ -175,8 +175,8 @@ export function PlateLoaderDialog({
           ) : total < barKg ? (
             <div style={{
               padding: "14px", borderRadius: 12,
-              border: "1px solid rgba(245,166,35,0.3)", background: "rgba(245,166,35,0.08)",
-              color: "#F5A623", fontSize: 13,
+              border: "1px solid color-mix(in srgb, var(--c-warning) 30%, transparent)", background: "color-mix(in srgb, var(--c-warning) 8%, transparent)",
+              color: "var(--c-warning)", fontSize: 13,
             }}>
               {total} kg on alle tangon painon ({barKg} kg). Käytä kevyempää tankoa tai vapaapainoja.
             </div>
@@ -240,8 +240,8 @@ export function PlateLoaderDialog({
               {!fits && (
                 <div style={{
                   marginTop: 12, padding: "10px 12px", borderRadius: 10,
-                  border: "1px solid rgba(245,166,35,0.3)", background: "rgba(245,166,35,0.08)",
-                  color: "#F5A623", fontSize: 12,
+                  border: "1px solid color-mix(in srgb, var(--c-warning) 30%, transparent)", background: "color-mix(in srgb, var(--c-warning) 8%, transparent)",
+                  color: "var(--c-warning)", fontSize: 12,
                 }}>
                   {remainder} kg/puoli ei saatu kasaan tavanomaisilla levyillä.
                 </div>

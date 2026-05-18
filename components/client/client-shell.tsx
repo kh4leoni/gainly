@@ -1,11 +1,43 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useRef, useState, useEffect, useTransition } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { House, CalendarDots, TrendUp, ClockCounterClockwise, ChatCircle, Sun, Moon, SignOut, PencilSimple, CaretDown } from "@phosphor-icons/react";
+
+const ROUTE_TITLE: Record<string, string> = {
+  "/client/dashboard": "Koti",
+  "/client/ohjelma":   "Ohjelma",
+  "/client/progress":  "Gains",
+  "/client/history":   "Historia",
+  "/client/messages":  "Viestit",
+};
+
+function pageTitle(pathname: string): string {
+  const match = Object.keys(ROUTE_TITLE).find((p) => pathname.startsWith(p));
+  return match ? ROUTE_TITLE[match]! : "";
+}
+
+function PageTitle({ title }: { title: string }) {
+  if (!title) return null;
+  return (
+    <h1
+      style={{
+        margin: 0,
+        padding: "14px 152px 6px 20px",
+        fontSize: 32,
+        fontWeight: 800,
+        letterSpacing: "-0.8px",
+        color: "var(--c-text)",
+        lineHeight: 1.1,
+        flexShrink: 0,
+      }}
+    >
+      {title}
+    </h1>
+  );
+}
 import { useTheme } from "next-themes";
 import { SyncBar } from "@/components/offline/sync-bar";
 import { useWorkoutPrefetch } from "@/hooks/use-workout-prefetch";
@@ -14,6 +46,7 @@ import { usePendingNav } from "@/lib/nav-context";
 import { createClient } from "@/lib/supabase/client";
 import { getUnreadCount } from "@/lib/queries/messages";
 import { RouteSkeleton } from "@/components/client/route-skeleton";
+import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import type { ReactNode } from "react";
 
 const NAV = [
@@ -150,15 +183,15 @@ function OmatTiedotSection({ me }: { me: Me }) {
             className="bw-save-btn"
             style={{
               width: 30, height: 30, borderRadius: "50%", padding: 0, flexShrink: 0,
-              background: saved ? "rgba(62,207,142,0.15)" : "var(--c-surface2)",
-              border: `1px solid ${saved ? "rgba(62,207,142,0.4)" : "var(--c-border)"}`,
+              background: saved ? "color-mix(in srgb, var(--c-success) 15%, transparent)" : "var(--c-surface2)",
+              border: `1px solid ${saved ? "color-mix(in srgb, var(--c-success) 40%, transparent)" : "var(--c-border)"}`,
               cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
               opacity: isPending ? 0.5 : 1,
               transition: "background 200ms ease, border-color 200ms ease",
             }}
           >
             <svg key={animKey} width="11" height="11" viewBox="0 0 24 24" fill="none"
-              stroke={saved ? "#3ECF8E" : "var(--c-text-subtle)"}
+              stroke={saved ? "var(--c-success)" : "var(--c-text-subtle)"}
               strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <polyline className={animKey > 0 ? "check-draw" : ""} points="20 6 9 17 4 12"/>
             </svg>
@@ -261,15 +294,15 @@ function MeasurementSection({ label, unit, max, initialHistory, onSave }: {
           className="bw-save-btn"
           style={{
             width: 30, height: 30, borderRadius: "50%", padding: 0, flexShrink: 0,
-            background: saved ? "rgba(62,207,142,0.15)" : "var(--c-surface2)",
-            border: `1px solid ${saved ? "rgba(62,207,142,0.4)" : "var(--c-border)"}`,
+            background: saved ? "color-mix(in srgb, var(--c-success) 15%, transparent)" : "var(--c-surface2)",
+            border: `1px solid ${saved ? "color-mix(in srgb, var(--c-success) 40%, transparent)" : "var(--c-border)"}`,
             cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
             opacity: isPending ? 0.5 : 1,
             transition: "background 200ms ease, border-color 200ms ease",
           }}
         >
           <svg key={animKey} width="11" height="11" viewBox="0 0 24 24" fill="none"
-            stroke={saved ? "#3ECF8E" : "var(--c-text-subtle)"}
+            stroke={saved ? "var(--c-success)" : "var(--c-text-subtle)"}
             strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <polyline className={animKey > 0 ? "check-draw" : ""} points="20 6 9 17 4 12"/>
           </svg>
@@ -474,6 +507,8 @@ export function ClientShell({
   const onMessages = pathname.startsWith("/client/messages") || !!pendingHref?.startsWith("/client/messages");
 
   const supabase = createClient();
+  const qc = useQueryClient();
+  const handleRefresh = () => qc.invalidateQueries({ refetchType: "active" });
   const { data: liveUnread = unreadMessages } = useQuery({
     queryKey: ["unread-count", me?.id],
     queryFn: () => me ? getUnreadCount(supabase, me.id) : Promise.resolve(0),
@@ -528,6 +563,16 @@ export function ClientShell({
 
   useWorkoutPrefetch(me?.id ?? "");
 
+  // Apply Gainly pink only when coach has a co-brand label.
+  // Default CSS = plain B/W neutral, so non-cobrand renders without pink flash.
+  useEffect(() => {
+    const hasCoBrand = !!coach?.coBrandLabel;
+    const root = document.documentElement;
+    if (hasCoBrand) root.classList.add("gainly-cobrand");
+    else root.classList.remove("gainly-cobrand");
+    return () => { root.classList.remove("gainly-cobrand"); };
+  }, [coach?.coBrandLabel]);
+
   const color = avatarColor(me?.full_name ?? "?");
 
   return (
@@ -550,39 +595,22 @@ export function ClientShell({
           display: "flex",
           flexDirection: "column",
           overflow: "hidden",
+          position: "relative",
         }}
       >
         {/* ── Status bar spacer ── */}
-        <div style={{ height: "env(safe-area-inset-top, 0px)", background: "var(--c-surface)", flexShrink: 0 }} />
+        <div style={{ height: "env(safe-area-inset-top, 0px)", flexShrink: 0 }} />
 
-        {/* ── Top header ── */}
-        <header
-          style={{
-            height: 64,
-            paddingLeft: "20px",
-            paddingRight: "20px",
-            borderBottom: "1px solid var(--c-border)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            flexShrink: 0,
-            background: "var(--c-surface)",
-            position: "relative",
-          }}
+        {/* ── Floating profile pill (replaces top header) ── */}
+        <div
           ref={settingsRef}
+          style={{
+            position: "absolute",
+            top: "calc(env(safe-area-inset-top, 0px) + 12px)",
+            right: 14,
+            zIndex: 50,
+          }}
         >
-          <div style={{ lineHeight: 1 }}>
-            <Image
-              src={coach?.coBrandLabel ? "/fs%20collab.png" : "/LOGO_gainly.png"}
-              alt={coach?.coBrandLabel ? `Gainly × ${coach.coBrandLabel}` : "Gainly"}
-              width={140}
-              height={44}
-              className="logo-adaptive"
-              style={{ objectFit: "contain" }}
-            />
-          </div>
-
-          {/* Pill button — opens settings */}
           <button
             type="button"
             onClick={toggleSettings}
@@ -595,6 +623,7 @@ export function ClientShell({
               cursor: "pointer",
               transition: "background 150ms ease, border-color 150ms ease",
               flexShrink: 0,
+              boxShadow: "0 2px 12px rgba(0,0,0,0.15)",
             }}
             title="Asetukset"
             aria-expanded={settingsOpen}
@@ -628,9 +657,22 @@ export function ClientShell({
               onAnimationEnd={handlePanelAnimationEnd}
             />
           )}
+        </div>
 
+        {/* SyncBar floats just below the page title */}
+        <div
+          style={{
+            position: "absolute",
+            top: "calc(env(safe-area-inset-top, 0px) + 70px)",
+            left: 0,
+            right: 0,
+            height: 0,
+            zIndex: 40,
+            pointerEvents: "none",
+          }}
+        >
           <SyncBar />
-        </header>
+        </div>
 
         {/* ── Content ── */}
         <main style={{ flex: 1, minHeight: 0, position: "relative", overflow: "hidden" }}>
@@ -648,9 +690,11 @@ export function ClientShell({
           >
             {pendingHref ? (
               /* Skeleton shown while RSC is in-flight */
-              <RouteSkeleton href={pendingHref} />
-            ) : (
-              /* Real content fades in when RSC arrives */
+              <>
+                <PageTitle title={pageTitle(pendingHref)} />
+                <RouteSkeleton href={pendingHref} />
+              </>
+            ) : isMessages ? (
               <div
                 key={pathname}
                 className="c-fade"
@@ -659,18 +703,33 @@ export function ClientShell({
                   inset: 0,
                   display: "flex",
                   flexDirection: "column",
-                  overflowY: isMessages ? "hidden" : "auto",
-                  overflowX: "hidden",
-                  overscrollBehavior: "contain",
+                  overflow: "hidden",
                 }}
               >
-                <div style={isMessages
-                  ? { position: "absolute", inset: 0, display: "flex", flexDirection: "column" }
-                  : { flex: 1, display: "flex", flexDirection: "column", minHeight: "100%" }
-                }>
-                  {children}
+                <PageTitle title={pageTitle(pathname)} />
+                <div style={{ flex: 1, position: "relative", overflow: "hidden" }}>
+                  <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column" }}>
+                    {children}
+                  </div>
                 </div>
               </div>
+            ) : (
+              <PullToRefresh
+                key={pathname}
+                onRefresh={handleRefresh}
+                className="c-fade"
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  display: "flex",
+                  flexDirection: "column",
+                }}
+              >
+                <PageTitle title={pageTitle(pathname)} />
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
+                  {children}
+                </div>
+              </PullToRefresh>
             )}
           </div>
         </main>
@@ -730,7 +789,7 @@ export function ClientShell({
                     <span style={{
                       position: "absolute", top: -4, right: -6,
                       minWidth: 16, height: 16, borderRadius: 8,
-                      background: "#FF1D8C", color: "#fff",
+                      background: "var(--c-pink)", color: "var(--c-pink-fg, #fff)",
                       fontSize: 10, fontWeight: 700, lineHeight: "16px",
                       textAlign: "center", padding: "0 3px",
                     }}>

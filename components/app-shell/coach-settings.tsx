@@ -94,15 +94,15 @@ function EditableField({
               className="bw-save-btn"
               style={{
                 width: 30, height: 30, borderRadius: "50%", padding: 0, flexShrink: 0,
-                background: saved ? "rgba(62,207,142,0.15)" : "hsl(var(--muted))",
-                border: `1px solid ${saved ? "rgba(62,207,142,0.4)" : "hsl(var(--border))"}`,
+                background: saved ? "color-mix(in srgb, var(--c-success) 15%, transparent)" : "hsl(var(--muted))",
+                border: `1px solid ${saved ? "color-mix(in srgb, var(--c-success) 40%, transparent)" : "hsl(var(--border))"}`,
                 cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
                 opacity: isPending ? 0.5 : 1,
                 transition: "background 200ms ease, border-color 200ms ease",
               }}
             >
               <svg key={animKey} width="11" height="11" viewBox="0 0 24 24" fill="none"
-                stroke={saved ? "#3ECF8E" : "hsl(var(--muted-foreground))"}
+                stroke={saved ? "var(--c-success)" : "hsl(var(--muted-foreground))"}
                 strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <polyline className={animKey > 0 ? "check-draw" : ""} points="20 6 9 17 4 12"/>
               </svg>
@@ -134,7 +134,7 @@ function EditableField({
         )}
       </div>
       {notice && (
-        <p style={{ fontSize: 11, color: "#3ECF8E", marginTop: 2 }}>{notice}</p>
+        <p style={{ fontSize: 11, color: "var(--c-success)", marginTop: 2 }}>{notice}</p>
       )}
     </div>
   );

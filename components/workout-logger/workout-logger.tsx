@@ -221,19 +221,10 @@ export function WorkoutLogger({ scheduledWorkoutId }: { scheduledWorkoutId: stri
             to   { opacity: 1; transform: translateY(0); }
           }
           @keyframes ring-pulse {
-            0%, 100% { box-shadow: 0 0 0 0 rgba(62,207,142,0.5); }
-            50%       { box-shadow: 0 0 0 18px rgba(62,207,142,0); }
+            0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--c-success) 50%, transparent); }
+            50%       { box-shadow: 0 0 0 18px color-mix(in srgb, var(--c-success) 0%, transparent); }
           }
         `}</style>
-
-        {/* Trophy */}
-        <div style={{
-          fontSize: 72, lineHeight: 1, marginBottom: 24,
-          animation: "trophy-pop 0.55s cubic-bezier(0.34,1.56,0.64,1) both",
-          display: "inline-block",
-        }}>
-          🏆
-        </div>
 
         {/* Heading */}
         <div style={{
@@ -260,7 +251,7 @@ export function WorkoutLogger({ scheduledWorkoutId }: { scheduledWorkoutId: stri
           animation: "celebrate-fade-up 0.4s ease both 0.55s",
           opacity: 0,
         }}>
-          Jokainen treeni vie sinut lähemmäs tavoitettasi. Nyt ansaitset levon — hyvää työtä! 💪
+          Jokainen treeni vie sinut lähemmäs tavoitettasi. Nyt ansaitset levon.
         </div>
 
         {/* CTA */}
@@ -320,8 +311,8 @@ export function WorkoutLogger({ scheduledWorkoutId }: { scheduledWorkoutId: stri
 
       {isCompleted && (
         <div style={{
-          background: "rgba(62,207,142,0.10)",
-          border: "1px solid rgba(62,207,142,0.35)",
+          background: "color-mix(in srgb, var(--c-success) 10%, transparent)",
+          border: "1px solid color-mix(in srgb, var(--c-success) 35%, transparent)",
           borderRadius: 14,
           padding: "12px 16px",
           marginBottom: 14,
@@ -329,10 +320,10 @@ export function WorkoutLogger({ scheduledWorkoutId }: { scheduledWorkoutId: stri
           alignItems: "center",
           gap: 10,
         }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3ECF8E" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--c-success)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="20 6 9 17 4 12"/>
           </svg>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "#3ECF8E" }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--c-success)" }}>
             Treeni merkitty valmiiksi
             {workout.completed_at && (
               <span style={{ fontWeight: 400, color: "var(--c-text-muted)", marginLeft: 6 }}>
@@ -394,7 +385,7 @@ export function WorkoutLogger({ scheduledWorkoutId }: { scheduledWorkoutId: stri
               fontSize: 15, fontWeight: 700,
               cursor: complete.isPending || !allSetsConfirmed ? "not-allowed" : "pointer",
               fontFamily: "inherit",
-              boxShadow: allSetsConfirmed ? "0 0 24px rgba(62,207,142,0.3)" : "none",
+              boxShadow: allSetsConfirmed ? "0 0 24px color-mix(in srgb, var(--c-success) 30%, transparent)" : "none",
               display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
               opacity: complete.isPending ? 0.6 : 1, transition: "all 0.2s",
             }}
@@ -734,7 +725,7 @@ function LiftingExerciseBlock({ programExercise, workoutLogId }: { programExerci
   return (
     <div style={{
       background: "var(--c-surface)",
-      border: `1px solid ${allDone ? "rgba(62,207,142,0.25)" : "var(--c-border)"}`,
+      border: `1px solid ${allDone ? "color-mix(in srgb, var(--c-success) 25%, transparent)" : "var(--c-border)"}`,
       borderRadius: 18,
       overflow: "hidden",
     }}>
@@ -743,13 +734,13 @@ function LiftingExerciseBlock({ programExercise, workoutLogId }: { programExerci
         {/* Progress circle */}
         <div style={{
           width: 36, height: 36, borderRadius: "50%", flexShrink: 0,
-          border: `2px solid ${allDone ? "#3ECF8E" : "var(--c-border)"}`,
+          border: `2px solid ${allDone ? "var(--c-success)" : "var(--c-border)"}`,
           display: "flex", alignItems: "center", justifyContent: "center",
-          background: allDone ? "rgba(62,207,142,0.12)" : "var(--c-surface2)",
+          background: allDone ? "color-mix(in srgb, var(--c-success) 12%, transparent)" : "var(--c-surface2)",
           transition: "all 0.2s",
         }}>
           {allDone
-            ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3ECF8E" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--c-success)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
             : <span style={{ fontSize: 11, fontWeight: 700, color: "var(--c-text-muted)" }}>{confirmedCount}/{targetSets}</span>
           }
         </div>
@@ -827,7 +818,7 @@ function LiftingExerciseBlock({ programExercise, workoutLogId }: { programExerci
               title="Lisää muistiinpano"
               style={{
                 flexShrink: 0, width: 24, height: 24, borderRadius: "50%", border: "1px solid var(--c-border)",
-                background: noteOpen ? "rgba(255,29,140,0.1)" : "var(--c-surface2)",
+                background: noteOpen ? "color-mix(in srgb, var(--c-pink) 10%, transparent)" : "var(--c-surface2)",
                 color: noteOpen ? "var(--c-pink)" : "var(--c-text-muted)",
                 display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
                 transition: "all 0.15s",
@@ -1049,13 +1040,13 @@ function SetTableRow({
       display: "grid", gridTemplateColumns: "16px minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr) clamp(40px, 11vw, 50px)",
       gap: 2, padding: "8px clamp(4px, 1.5vw, 8px)",
       borderBottom: "1px solid var(--c-border)",
-      background: row.isPr ? "rgba(245,166,35,0.05)" : "transparent",
+      background: row.isPr ? "color-mix(in srgb, var(--c-warning) 5%, transparent)" : "transparent",
       opacity: row.confirmed ? 0.7 : 1,
       transition: "opacity 0.2s",
     }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <span style={{ fontSize: 12, fontWeight: 600, color: row.isPr ? "#F5A623" : "var(--c-text-subtle)" }}>
-          {row.isPr ? "🏆" : rowNum}
+        <span style={{ fontSize: 12, fontWeight: 600, color: row.isPr ? "var(--c-warning)" : "var(--c-text-subtle)" }}>
+          {row.isPr ? "PR" : rowNum}
         </span>
       </div>
 
@@ -1102,8 +1093,8 @@ function SetTableRow({
           style={{
             width: "clamp(40px, 11vw, 48px)", height: "clamp(40px, 11vw, 48px)",
             borderRadius: "50%", padding: 0, flexShrink: 0,
-            background: row.confirmed ? "rgba(62,207,142,0.15)" : "var(--c-pink-dim, rgba(236,72,153,0.10))",
-            border: `1.5px solid ${row.confirmed && !row.synced ? "rgba(245,166,35,0.4)" : row.confirmed ? "rgba(62,207,142,0.4)" : "var(--c-pink, rgba(236,72,153,0.5))"}`,
+            background: row.confirmed ? "color-mix(in srgb, var(--c-success) 15%, transparent)" : "var(--c-pink-dim, rgba(236,72,153,0.10))",
+            border: `1.5px solid ${row.confirmed && !row.synced ? "color-mix(in srgb, var(--c-warning) 40%, transparent)" : row.confirmed ? "color-mix(in srgb, var(--c-success) 40%, transparent)" : "var(--c-pink, rgba(236,72,153,0.5))"}`,
             cursor: "pointer",
             display: "flex", alignItems: "center", justifyContent: "center",
             transition: "all 0.2s",
@@ -1111,12 +1102,12 @@ function SetTableRow({
         >
           {row.confirmed && !row.synced ? (
             <svg width="46%" height="46%" viewBox="0 0 24 24" fill="none"
-              stroke="#F5A623" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              stroke="var(--c-warning)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 15 14" />
             </svg>
           ) : (
             <svg width="46%" height="46%" viewBox="0 0 24 24" fill="none"
-              stroke={row.confirmed ? "#3ECF8E" : "var(--c-pink, #ec4899)"}
+              stroke={row.confirmed ? "var(--c-success)" : "var(--c-pink, #ec4899)"}
               strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="20 6 9 17 4 12"/>
             </svg>
@@ -1182,18 +1173,18 @@ function FreeExerciseBlock({ programExercise, workoutLogId }: { programExercise:
   return (
     <div style={{
       background: "var(--c-surface)",
-      border: `1px solid ${done ? "rgba(62,207,142,0.25)" : "var(--c-border)"}`,
+      border: `1px solid ${done ? "color-mix(in srgb, var(--c-success) 25%, transparent)" : "var(--c-border)"}`,
       borderRadius: 18, overflow: "hidden", padding: "14px 16px",
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: description ? 10 : 0 }}>
         <div style={{
           width: 36, height: 36, borderRadius: "50%", flexShrink: 0,
-          border: `2px solid ${done ? "#3ECF8E" : "var(--c-border)"}`,
-          background: done ? "rgba(62,207,142,0.12)" : "var(--c-surface2)",
+          border: `2px solid ${done ? "var(--c-success)" : "var(--c-border)"}`,
+          background: done ? "color-mix(in srgb, var(--c-success) 12%, transparent)" : "var(--c-surface2)",
           display: "flex", alignItems: "center", justifyContent: "center",
         }}>
           {done ? (
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3ECF8E" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--c-success)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="20 6 9 17 4 12"/>
             </svg>
           ) : (
@@ -1233,8 +1224,8 @@ function FreeExerciseBlock({ programExercise, workoutLogId }: { programExercise:
         style={{
           width: "100%", padding: "12px",
           borderRadius: 12,
-          background: done ? "rgba(62,207,142,0.10)" : "var(--c-surface2)",
-          border: `1px solid ${done ? "rgba(62,207,142,0.4)" : "var(--c-border)"}`,
+          background: done ? "color-mix(in srgb, var(--c-success) 10%, transparent)" : "var(--c-surface2)",
+          border: `1px solid ${done ? "color-mix(in srgb, var(--c-success) 40%, transparent)" : "var(--c-border)"}`,
           color: done ? "var(--c-green)" : "var(--c-text)",
           fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit",
           display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
@@ -1394,18 +1385,18 @@ function CardioExerciseBlock({ programExercise, workoutLogId }: { programExercis
   return (
     <div style={{
       background: "var(--c-surface)",
-      border: `1px solid ${allDone ? "rgba(62,207,142,0.25)" : "var(--c-border)"}`,
+      border: `1px solid ${allDone ? "color-mix(in srgb, var(--c-success) 25%, transparent)" : "var(--c-border)"}`,
       borderRadius: 18, overflow: "hidden",
     }}>
       <div style={{ padding: "14px 16px 12px", display: "flex", alignItems: "center", gap: 12 }}>
         <div style={{
           width: 36, height: 36, borderRadius: "50%", flexShrink: 0,
-          border: `2px solid ${allDone ? "#3ECF8E" : "var(--c-border)"}`,
-          background: allDone ? "rgba(62,207,142,0.12)" : "var(--c-surface2)",
+          border: `2px solid ${allDone ? "var(--c-success)" : "var(--c-border)"}`,
+          background: allDone ? "color-mix(in srgb, var(--c-success) 12%, transparent)" : "var(--c-surface2)",
           display: "flex", alignItems: "center", justifyContent: "center",
         }}>
           {allDone
-            ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3ECF8E" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--c-success)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
             : <span style={{ fontSize: 11, fontWeight: 700, color: "var(--c-text-muted)" }}>{confirmedCount}/{targetSets}</span>
           }
         </div>
@@ -1491,14 +1482,14 @@ function CardioExerciseBlock({ programExercise, workoutLogId }: { programExercis
                   style={{
                     width: "clamp(34px,9vw,40px)", height: "clamp(34px,9vw,40px)",
                     borderRadius: "50%", padding: 0, flexShrink: 0,
-                    background: row.confirmed ? "rgba(62,207,142,0.15)" : "var(--c-surface2)",
-                    border: `1px solid ${row.confirmed ? "rgba(62,207,142,0.4)" : "var(--c-border)"}`,
+                    background: row.confirmed ? "color-mix(in srgb, var(--c-success) 15%, transparent)" : "var(--c-surface2)",
+                    border: `1px solid ${row.confirmed ? "color-mix(in srgb, var(--c-success) 40%, transparent)" : "var(--c-border)"}`,
                     cursor: "pointer",
                     display: "flex", alignItems: "center", justifyContent: "center",
                   }}
                 >
                   <svg width="40%" height="40%" viewBox="0 0 24 24" fill="none"
-                    stroke={row.confirmed ? "#3ECF8E" : "var(--c-text-subtle)"}
+                    stroke={row.confirmed ? "var(--c-success)" : "var(--c-text-subtle)"}
                     strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="20 6 9 17 4 12"/>
                   </svg>
