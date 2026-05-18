@@ -664,17 +664,26 @@ html.light [role="dialog"].client-themed {
     rgba(var(--c-bg-rgb), 1) 100%
   );
 }
-/* Large page title — scroll-driven fade + tiny upward shift as user
-   scrolls. Reads --compact-progress (0..1) from a parent. */
+/* Large page title — defaults visible; fades up + out once the shell
+   gets .client-shell-scrolled. Transition is time-based (240ms) so the
+   handoff always completes even if the user stops the scroll right at
+   the threshold. */
 .page-title-large {
-  opacity: calc(1 - var(--compact-progress, 0));
-  transform: translate3d(0, calc(var(--compact-progress, 0) * -6px), 0);
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 240ms var(--ease-ios),
+    transform 240ms var(--ease-ios);
   will-change: opacity, transform;
 }
+.client-shell-scrolled .page-title-large {
+  opacity: 0;
+  transform: translate3d(0, -6px, 0);
+}
 
-/* Top compact title bar — slides up and fades in as the large title
-   scrolls out of view. Mirror of the bottom nav: solid at top, fades to
-   transparent below so content can scroll under it. */
+/* Top compact title bar — hidden by default, slides up + in when
+   .client-shell-scrolled is set. Mirror of the bottom nav: solid at
+   top, fades to transparent below so content can scroll under it. */
 .client-compact-title {
   position: absolute;
   top: 0;
@@ -686,10 +695,13 @@ html.light [role="dialog"].client-themed {
   align-items: center;
   justify-content: center;
   z-index: 30;
-  opacity: var(--compact-progress, 0);
-  transform: translate3d(0, calc((1 - var(--compact-progress, 0)) * 6px), 0);
+  opacity: 0;
+  transform: translate3d(0, 6px, 0);
   pointer-events: none;
   will-change: opacity, transform;
+  transition:
+    opacity 240ms var(--ease-ios),
+    transform 240ms var(--ease-ios);
   background: linear-gradient(
     to bottom,
     rgba(var(--c-bg-rgb), 1) 0%,
@@ -698,6 +710,10 @@ html.light [role="dialog"].client-themed {
     rgba(var(--c-bg-rgb), 0.80) calc(env(safe-area-inset-top, 0px) + 38px),
     rgba(var(--c-bg-rgb), 0.40) 100%
   );
+}
+.client-shell-scrolled .client-compact-title {
+  opacity: 1;
+  transform: none;
 }
 .client-compact-title::after {
   content: "";
