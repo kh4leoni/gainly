@@ -169,7 +169,7 @@ function OmatTiedotSection({ me }: { me: Me }) {
             onChange={(e) => { setNameVal(e.target.value); if (saved) setSaved(false); }}
             onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") { setEditing(false); setNameVal(displayName); } }}
             style={{
-              flex: 1, minWidth: 0, maxWidth: 148, padding: "5px 8px", borderRadius: 8,
+              flex: 1, minWidth: 0, maxWidth: 148, padding: "5px 8px", borderRadius: "var(--r-sm)",
               border: "1px solid var(--c-border)", background: "var(--c-surface2)",
               color: "var(--c-text)", fontSize: 13, fontWeight: 600, outline: "none",
             }}
@@ -274,7 +274,7 @@ function MeasurementSection({ label, unit, max, initialHistory, onSave }: {
           style={{
             width: 68,
             padding: "5px 8px",
-            borderRadius: 8,
+            borderRadius: "var(--r-sm)",
             border: "1px solid var(--c-border)",
             background: "var(--c-surface2)",
             color: "var(--c-text)",
@@ -335,7 +335,7 @@ function MeasurementSection({ label, unit, max, initialHistory, onSave }: {
               {history.map((entry, i) => (
                 <div key={i} style={{
                   display: "flex", justifyContent: "space-between", alignItems: "center",
-                  padding: "5px 8px", borderRadius: 7,
+                  padding: "5px 8px", borderRadius: "var(--r-sm)",
                   background: i === 0 ? "var(--c-surface2)" : "none",
                 }}>
                   <span style={{ fontSize: 12, color: "var(--c-text-muted)" }}>
@@ -383,7 +383,7 @@ function SettingsPanel({ me, coach, bwHistory, waistHistory, closing, onAnimatio
         width: 272,
         background: "var(--c-surface)",
         border: "1px solid var(--c-border)",
-        borderRadius: 16,
+        borderRadius: "var(--r-lg)",
         boxShadow: "0 8px 32px rgba(0,0,0,0.28)",
         zIndex: 50,
         animation: closing ? "c-fadeDown 0.15s ease-in both" : "c-fadeUp 0.18s ease-out both",
@@ -444,7 +444,7 @@ function SettingsPanel({ me, coach, bwHistory, waistHistory, closing, onAnimatio
             aria-checked={isDark}
             onClick={() => setTheme(isDark ? "light" : "dark")}
             style={{
-              width: 42, height: 24, borderRadius: 12, border: "none",
+              width: 42, height: 24, borderRadius: "var(--r-md)", border: "none",
               background: isDark ? "var(--c-pink)" : "var(--c-surface3)",
               cursor: "pointer", position: "relative", flexShrink: 0,
               transition: "background 220ms ease",
@@ -474,7 +474,7 @@ function SettingsPanel({ me, coach, bwHistory, waistHistory, closing, onAnimatio
           type="submit"
           style={{
             width: "100%", display: "flex", alignItems: "center", gap: 8,
-            padding: "9px 12px", borderRadius: 10, fontSize: 13, fontWeight: 500,
+            padding: "9px 12px", borderRadius: "var(--r-md)", fontSize: 13, fontWeight: 500,
             cursor: "pointer", border: "1px solid var(--c-border)",
             background: "var(--c-surface2)", color: "var(--c-text-muted)",
           }}
@@ -617,7 +617,7 @@ export function ClientShell({
             style={{
               display: "flex", alignItems: "center", gap: 6,
               padding: "4px 9px 4px 4px",
-              borderRadius: 999,
+              borderRadius: "var(--r-pill)",
               border: `1px solid ${settingsOpen ? "var(--c-pink)" : "var(--c-border)"}`,
               background: settingsOpen ? "var(--c-pink-dim)" : "var(--c-surface2)",
               cursor: "pointer",
@@ -792,7 +792,7 @@ export function ClientShell({
                   {href === "/client/messages" && unread > 0 && (
                     <span style={{
                       position: "absolute", top: -4, right: -6,
-                      minWidth: 16, height: 16, borderRadius: 8,
+                      minWidth: 16, height: 16, borderRadius: "var(--r-sm)",
                       background: "var(--c-pink)", color: "var(--c-pink-fg, #fff)",
                       fontSize: 10, fontWeight: 700, lineHeight: "16px",
                       textAlign: "center", padding: "0 3px",

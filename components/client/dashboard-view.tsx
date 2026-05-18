@@ -133,7 +133,7 @@ function QuoteCard() {
       style={{
         background: "linear-gradient(135deg, color-mix(in srgb, var(--c-pink) 12%, transparent) 0%, color-mix(in srgb, var(--c-pink) 8%, transparent) 100%)",
         border: "1px solid color-mix(in srgb, var(--c-pink) 20%, transparent)",
-        borderRadius: 18,
+        borderRadius: "var(--r-xl)",
         padding: "22px 22px 18px",
         marginBottom: 20,
         position: "relative",
@@ -272,7 +272,7 @@ export function ClientDashboardView({ clientId, firstName }: { clientId: string;
         <div style={{
           background: "linear-gradient(135deg,color-mix(in srgb, var(--c-pink) 18%, transparent) 0%,color-mix(in srgb, var(--c-pink) 12%, transparent) 100%)",
           border: "1px solid color-mix(in srgb, var(--c-pink) 30%, transparent)",
-          borderRadius: 22,
+          borderRadius: "var(--r-2xl)",
           padding: "22px 22px 20px",
           marginBottom: 22,
           position: "relative",
@@ -339,7 +339,7 @@ export function ClientDashboardView({ clientId, firstName }: { clientId: string;
               width: "100%",
               padding: "18px",
               background: "var(--c-pink)",
-              borderRadius: 14,
+              borderRadius: "var(--r-lg)",
               color: "var(--c-pink-fg, #fff)",
               fontSize: 17,
               fontWeight: 800,
@@ -356,7 +356,7 @@ export function ClientDashboardView({ clientId, firstName }: { clientId: string;
         <div style={{
           background: "var(--c-surface)",
           border: "1px solid var(--c-border)",
-          borderRadius: 22,
+          borderRadius: "var(--r-2xl)",
           marginBottom: 22,
           ...enterStyle(60),
         }}>
@@ -371,7 +371,7 @@ export function ClientDashboardView({ clientId, firstName }: { clientId: string;
                 style={{
                   display: "inline-block",
                   padding: "11px 18px",
-                  borderRadius: 10,
+                  borderRadius: "var(--r-md)",
                   background: "var(--c-surface2)",
                   border: "1px solid var(--c-border)",
                   color: "var(--c-text)",
@@ -403,7 +403,7 @@ export function ClientDashboardView({ clientId, firstName }: { clientId: string;
                 display: "block",
                 background: "var(--c-surface)",
                 border: "1px solid var(--c-border)",
-                borderRadius: 18,
+                borderRadius: "var(--r-xl)",
                 padding: 16,
                 textDecoration: "none",
                 color: "inherit",
@@ -436,7 +436,7 @@ export function ClientDashboardView({ clientId, firstName }: { clientId: string;
             <div style={{
               background: "var(--c-surface)",
               border: "1px solid var(--c-border)",
-              borderRadius: 18,
+              borderRadius: "var(--r-xl)",
               padding: 16,
             }}>
               <Eyebrow style={{ letterSpacing: "1px", marginBottom: 8 }}>
@@ -463,7 +463,7 @@ export function ClientDashboardView({ clientId, firstName }: { clientId: string;
             display: "block",
             background: "var(--c-surface)",
             border: "1px solid var(--c-border)",
-            borderRadius: 18,
+            borderRadius: "var(--r-xl)",
             padding: 20,
             marginBottom: 20,
             textDecoration: "none",
@@ -496,7 +496,7 @@ export function ClientDashboardView({ clientId, firstName }: { clientId: string;
         <div style={{
           background: "var(--c-surface)",
           border: "1px solid var(--c-border)",
-          borderRadius: 14,
+          borderRadius: "var(--r-lg)",
           padding: "14px 16px",
           marginBottom: 20,
           ...enterStyle(270),

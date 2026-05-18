@@ -359,7 +359,7 @@ export function MessagesView({ userId, initialThreadId, layout = "client" }: { u
                 onClick={() => setThreadId(t.id)}
                 style={{
                   padding: "6px 14px",
-                  borderRadius: 20,
+                  borderRadius: "var(--r-xl)",
                   border: `1px solid ${active ? "var(--c-pink)" : "var(--c-border)"}`,
                   background: active ? "var(--c-pink-dim)" : "var(--c-surface)",
                   color: active ? "var(--c-pink)" : "var(--c-text-muted)",
@@ -525,7 +525,7 @@ function ChatPane({
                 border: isOwn
                   ? "none"
                   : (isCoach ? "1px solid hsl(var(--border))" : "1px solid var(--c-border)"),
-                borderRadius: isOwn ? "18px 4px 18px 18px" : "4px 18px 18px 18px",
+                borderRadius: isOwn ? "var(--r-xl) 6px var(--r-xl) var(--r-xl)" : "6px var(--r-xl) var(--r-xl) var(--r-xl)",
                 padding: isCoach ? "10px 15px" : "10px 14px",
                 fontSize: 13,
                 lineHeight: 1.5,
@@ -566,7 +566,7 @@ function ChatPane({
             flex: 1,
             background: isCoach ? "hsl(var(--background))" : "var(--c-surface2)",
             border: isCoach ? "1.5px solid hsl(var(--border))" : "1px solid var(--c-border)",
-            borderRadius: 24,
+            borderRadius: "var(--r-2xl)",
             padding: isCoach ? "10px 18px" : "11px 16px",
             color: isCoach ? "hsl(var(--foreground))" : "var(--c-text)",
             fontSize: 13,

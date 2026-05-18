@@ -31,7 +31,7 @@ function ExerciseAccordion({ ex, expanded, onToggle }: { ex: ExerciseInfo; expan
 
   return (
     <div style={{
-      borderRadius: 12,
+      borderRadius: "var(--r-md)",
       border: "1px solid var(--c-border-hover)",
       borderLeft: expanded ? "3px solid var(--c-pink)" : "3px solid var(--c-border)",
       overflow: "hidden",
@@ -73,7 +73,7 @@ function ExerciseAccordion({ ex, expanded, onToggle }: { ex: ExerciseInfo; expan
           borderTop: "1px solid var(--c-border)",
         }}>
           {src && (
-            <div style={{ position: "relative", paddingTop: "56.25%", borderRadius: 10, overflow: "hidden", background: "#000" }}>
+            <div style={{ position: "relative", paddingTop: "56.25%", borderRadius: "var(--r-md)", overflow: "hidden", background: "#000" }}>
               <iframe
                 src={src}
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"

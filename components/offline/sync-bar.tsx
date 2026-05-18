@@ -104,7 +104,7 @@ export function SyncBar() {
           alignItems: "center",
           gap: 6,
           padding: "6px 12px 6px 8px",
-          borderRadius: 999,
+          borderRadius: "var(--r-pill)",
           background: d.offline ? "#3a3a42" : d.synced ? "var(--c-success)" : "var(--c-warning)",
           border: "none",
           boxShadow: d.offline

@@ -160,7 +160,7 @@ export function ProgressView({
   const segStyle = (active: boolean): React.CSSProperties => ({
     flex: 1,
     padding: "7px 0",
-    borderRadius: 8,
+    borderRadius: "var(--r-sm)",
     border: "none",
     background: active ? "var(--c-surface)" : "transparent",
     fontWeight: 600,
@@ -185,7 +185,7 @@ export function ProgressView({
         <div style={{
           display: "flex",
           background: "var(--c-surface2)",
-          borderRadius: 10,
+          borderRadius: "var(--r-md)",
           padding: 3,
           marginBottom: 10,
         }}>
@@ -223,7 +223,7 @@ export function ProgressView({
                 style={{
                   width: i === tabIdx ? 18 : 5,
                   height: 5,
-                  borderRadius: 3,
+                  borderRadius: "var(--r-xs)",
                   background: i === tabIdx ? "var(--c-pink)" : "var(--c-border-hover)",
                   transition: "width 0.22s, background 0.22s",
                 }}
@@ -276,7 +276,7 @@ export function ProgressView({
                   />
                 </div>
                 {selId && (
-                  <div style={{ background: "var(--c-surface)", border: "1px solid var(--c-border)", borderRadius: 16, padding: "14px 16px", marginBottom: 22 }}>
+                  <div style={{ background: "var(--c-surface)", border: "1px solid var(--c-border)", borderRadius: "var(--r-lg)", padding: "14px 16px", marginBottom: 22 }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                       <div style={{ fontSize: 14, fontWeight: 700 }}>{selExName}</div>
                       {selectedTop1RM != null && (
@@ -331,7 +331,7 @@ export function ProgressView({
                         padding: "14px 16px",
                         background: selId === exId ? "var(--c-pink-dim)" : "var(--c-surface)",
                         border: `1px solid ${selId === exId ? "color-mix(in srgb, var(--c-pink) 30%, transparent)" : "var(--c-border)"}`,
-                        borderRadius: 14, cursor: "pointer", transition: "all 0.15s",
+                        borderRadius: "var(--r-lg)", cursor: "pointer", transition: "all 0.15s",
                         fontFamily: "inherit", color: "var(--c-text)", textAlign: "left",
                       }}
                     >
@@ -365,7 +365,7 @@ export function ProgressView({
         <div style={paneStyle}>
           <div style={paneInner}>
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-              <div style={{ background: "var(--c-surface)", border: "1px solid var(--c-border)", borderRadius: 16, padding: "16px 16px 12px" }}>
+              <div style={{ background: "var(--c-surface)", border: "1px solid var(--c-border)", borderRadius: "var(--r-lg)", padding: "16px 16px 12px" }}>
                 <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 14 }}>
                   <div style={{ fontSize: 14, fontWeight: 700 }}>Paino</div>
                   {latestValue(bwHistory) !== null && (
@@ -382,7 +382,7 @@ export function ProgressView({
                 />
               </div>
 
-              <div style={{ background: "var(--c-surface)", border: "1px solid var(--c-border)", borderRadius: 16, padding: "16px 16px 12px" }}>
+              <div style={{ background: "var(--c-surface)", border: "1px solid var(--c-border)", borderRadius: "var(--r-lg)", padding: "16px 16px 12px" }}>
                 <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 14 }}>
                   <div style={{ fontSize: 14, fontWeight: 700 }}>Vyötärö</div>
                   {latestValue(waistHistory) !== null && (
@@ -410,7 +410,7 @@ export function ProgressView({
                 <SectionLabel style={{ marginBottom: 10 }}>
                   Arvioitu yhteistulos
                 </SectionLabel>
-                <div style={{ background: "var(--c-surface)", border: "1px solid var(--c-border)", borderRadius: 16, padding: "16px" }}>
+                <div style={{ background: "var(--c-surface)", border: "1px solid var(--c-border)", borderRadius: "var(--r-lg)", padding: "16px" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
                     <div style={{ fontSize: 13, color: "var(--c-text-muted)" }}>Yhteensä (e1RM)</div>
                     <div style={{ fontSize: 24, fontWeight: 800, color: "var(--c-pink)" }}>
@@ -421,7 +421,7 @@ export function ProgressView({
                     {BIG_THREE.map(({ key, label }) => {
                       const e1rm = bigThreeE1rm[key];
                       return (
-                        <div key={key} style={{ background: "var(--c-surface2)", borderRadius: 10, padding: "10px 8px", textAlign: "center" }}>
+                        <div key={key} style={{ background: "var(--c-surface2)", borderRadius: "var(--r-md)", padding: "10px 8px", textAlign: "center" }}>
                           <div style={{ fontSize: 10, fontWeight: 700, color: "var(--c-text-muted)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 4 }}>{label}</div>
                           <div style={{ fontSize: 16, fontWeight: 800, color: e1rm != null ? "var(--c-text)" : "var(--c-text-subtle)" }}>
                             {e1rm != null ? `${formatW(roundKg(e1rm))}` : "—"}
@@ -500,7 +500,7 @@ function CardioPRRow({ pr }: { pr: CardioRecord }) {
         padding: "14px 16px",
         background: "var(--c-surface)",
         border: "1px solid var(--c-border)",
-        borderRadius: 14,
+        borderRadius: "var(--r-lg)",
       }}
     >
       <div style={{ minWidth: 0 }}>

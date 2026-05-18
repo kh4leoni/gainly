@@ -173,7 +173,7 @@ export function WorkoutLogger({ scheduledWorkoutId }: { scheduledWorkoutId: stri
     return (
       <div className="client-app" style={{ padding: "20px 16px" }}>
         {[0, 1, 2].map((i) => (
-          <div key={i} style={{ height: 90, borderRadius: 16, background: "var(--c-surface)", marginBottom: 12, opacity: 0.4 }} />
+          <div key={i} style={{ height: 90, borderRadius: "var(--r-lg)", background: "var(--c-surface)", marginBottom: 12, opacity: 0.4 }} />
         ))}
       </div>
     );
@@ -264,7 +264,7 @@ export function WorkoutLogger({ scheduledWorkoutId }: { scheduledWorkoutId: stri
             onClick={() => router.push("/client/dashboard")}
             style={{
               width: "100%", padding: "16px",
-              borderRadius: 16, border: "none",
+              borderRadius: "var(--r-lg)", border: "none",
               background: "var(--c-green)",
               color: "#fff", fontSize: 16, fontWeight: 800,
               cursor: "pointer", fontFamily: "inherit",
@@ -278,7 +278,7 @@ export function WorkoutLogger({ scheduledWorkoutId }: { scheduledWorkoutId: stri
             onClick={() => setShowCelebration(false)}
             style={{
               width: "100%", marginTop: 12, padding: "13px",
-              borderRadius: 14, border: "1px solid var(--c-border)",
+              borderRadius: "var(--r-lg)", border: "1px solid var(--c-border)",
               background: "transparent",
               color: "var(--c-text-muted)", fontSize: 14, fontWeight: 600,
               cursor: "pointer", fontFamily: "inherit",
@@ -313,7 +313,7 @@ export function WorkoutLogger({ scheduledWorkoutId }: { scheduledWorkoutId: stri
         <div style={{
           background: "color-mix(in srgb, var(--c-success) 10%, transparent)",
           border: "1px solid color-mix(in srgb, var(--c-success) 35%, transparent)",
-          borderRadius: 14,
+          borderRadius: "var(--r-lg)",
           padding: "12px 16px",
           marginBottom: 14,
           display: "flex",
@@ -363,7 +363,7 @@ export function WorkoutLogger({ scheduledWorkoutId }: { scheduledWorkoutId: stri
           style={{
             width: "100%", resize: "none",
             background: "var(--c-surface)",
-            border: "1px solid var(--c-border)", borderRadius: 14,
+            border: "1px solid var(--c-border)", borderRadius: "var(--r-lg)",
             padding: "12px 14px", fontSize: 14, color: "var(--c-text)",
             fontFamily: "inherit", outline: "none", boxSizing: "border-box",
           }}
@@ -378,7 +378,7 @@ export function WorkoutLogger({ scheduledWorkoutId }: { scheduledWorkoutId: stri
             disabled={complete.isPending || !allSetsConfirmed}
             title={!allSetsConfirmed ? "Merkitse kaikki sarjat tehdyksi ensin" : undefined}
             style={{
-              marginTop: 20, width: "100%", padding: "15px", borderRadius: 14,
+              marginTop: 20, width: "100%", padding: "15px", borderRadius: "var(--r-lg)",
               background: allSetsConfirmed ? "var(--c-green)" : "var(--c-surface2)",
               border: allSetsConfirmed ? "none" : "1px solid var(--c-border)",
               color: allSetsConfirmed ? "#fff" : "var(--c-text-muted)",
@@ -726,7 +726,7 @@ function LiftingExerciseBlock({ programExercise, workoutLogId }: { programExerci
     <div style={{
       background: "var(--c-surface)",
       border: `1px solid ${allDone ? "color-mix(in srgb, var(--c-success) 25%, transparent)" : "var(--c-border)"}`,
-      borderRadius: 18,
+      borderRadius: "var(--r-xl)",
       overflow: "hidden",
     }}>
       {/* ── Card header ── */}
@@ -792,7 +792,7 @@ function LiftingExerciseBlock({ programExercise, workoutLogId }: { programExerci
                       title="Laske levyt"
                       style={{
                         flexShrink: 0, height: 30, padding: "0 10px",
-                        borderRadius: 15, border: "1px solid var(--c-border)",
+                        borderRadius: "var(--r-lg)", border: "1px solid var(--c-border)",
                         background: "var(--c-surface2)",
                         color: "var(--c-text-muted)",
                         display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 5,
@@ -909,7 +909,7 @@ function LiftingExerciseBlock({ programExercise, workoutLogId }: { programExerci
             rows={2}
             style={{
               width: "100%", resize: "none", background: "var(--c-surface2)",
-              border: "1px solid var(--c-border)", borderRadius: 10,
+              border: "1px solid var(--c-border)", borderRadius: "var(--r-md)",
               padding: "8px 10px", fontSize: 13, color: "var(--c-text)",
               fontFamily: "inherit", outline: "none", boxSizing: "border-box",
             }}
@@ -970,7 +970,7 @@ function StepperCell({
     color: display === "–" ? "var(--c-text-subtle)" : "var(--c-text)",
     background: disabled ? "transparent" : "var(--c-surface2)",
     border: `1px solid ${disabled ? "transparent" : "var(--c-border)"}`,
-    borderRadius: 7, padding: "9px 0",
+    borderRadius: "var(--r-sm)", padding: "9px 0",
     minWidth: 0, outline: "none",
     fontFamily: "inherit",
     fontVariantNumeric: "tabular-nums",
@@ -1174,7 +1174,7 @@ function FreeExerciseBlock({ programExercise, workoutLogId }: { programExercise:
     <div style={{
       background: "var(--c-surface)",
       border: `1px solid ${done ? "color-mix(in srgb, var(--c-success) 25%, transparent)" : "var(--c-border)"}`,
-      borderRadius: 18, overflow: "hidden", padding: "14px 16px",
+      borderRadius: "var(--r-xl)", overflow: "hidden", padding: "14px 16px",
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: description ? 10 : 0 }}>
         <div style={{
@@ -1211,7 +1211,7 @@ function FreeExerciseBlock({ programExercise, workoutLogId }: { programExercise:
       {description && (
         <div style={{
           background: "var(--c-surface2)", border: "1px solid var(--c-border)",
-          borderRadius: 10, padding: "10px 12px", marginBottom: 12,
+          borderRadius: "var(--r-md)", padding: "10px 12px", marginBottom: 12,
           fontSize: 13, color: "var(--c-text)", lineHeight: 1.55, whiteSpace: "pre-wrap",
         }}>
           {description}
@@ -1223,7 +1223,7 @@ function FreeExerciseBlock({ programExercise, workoutLogId }: { programExercise:
         onClick={toggle}
         style={{
           width: "100%", padding: "12px",
-          borderRadius: 12,
+          borderRadius: "var(--r-md)",
           background: done ? "color-mix(in srgb, var(--c-success) 10%, transparent)" : "var(--c-surface2)",
           border: `1px solid ${done ? "color-mix(in srgb, var(--c-success) 40%, transparent)" : "var(--c-border)"}`,
           color: done ? "var(--c-green)" : "var(--c-text)",
@@ -1386,7 +1386,7 @@ function CardioExerciseBlock({ programExercise, workoutLogId }: { programExercis
     <div style={{
       background: "var(--c-surface)",
       border: `1px solid ${allDone ? "color-mix(in srgb, var(--c-success) 25%, transparent)" : "var(--c-border)"}`,
-      borderRadius: 18, overflow: "hidden",
+      borderRadius: "var(--r-xl)", overflow: "hidden",
     }}>
       <div style={{ padding: "14px 16px 12px", display: "flex", alignItems: "center", gap: 12 }}>
         <div style={{
@@ -1511,7 +1511,7 @@ function cardioInputStyle(confirmed: boolean): React.CSSProperties {
     color: "var(--c-text)",
     background: confirmed ? "transparent" : "var(--c-surface2)",
     border: `1px solid ${confirmed ? "transparent" : "var(--c-border)"}`,
-    borderRadius: 7, padding: "8px 4px",
+    borderRadius: "var(--r-sm)", padding: "8px 4px",
     outline: "none", fontFamily: "inherit",
   };
 }

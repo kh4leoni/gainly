@@ -45,13 +45,13 @@ export function KilpailutyokaluCard({
       }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingTop: 2 }}>
           {/* Mode selector */}
-          <div style={{ background: "var(--c-surface2, hsl(var(--muted)))", borderRadius: 10, padding: 3, display: "flex" }}>
+          <div style={{ background: "var(--c-surface2, hsl(var(--muted)))", borderRadius: "var(--r-md)", padding: 3, display: "flex" }}>
             {(Object.entries(ATTEMPT_MODES) as [AttemptMode, typeof ATTEMPT_MODES[AttemptMode]][]).map(([key, { label }]) => (
               <button
                 key={key}
                 onClick={() => setMode(key)}
                 style={{
-                  flex: 1, padding: "7px 0", borderRadius: 8, border: "none",
+                  flex: 1, padding: "7px 0", borderRadius: "var(--r-sm)", border: "none",
                   background: mode === key ? "var(--c-surface, hsl(var(--card)))" : "transparent",
                   fontWeight: 600, fontSize: 12, cursor: "pointer", fontFamily: "inherit",
                   color: mode === key ? "var(--c-text, hsl(var(--foreground)))" : "var(--c-text-muted, hsl(var(--muted-foreground)))",
@@ -69,7 +69,7 @@ export function KilpailutyokaluCard({
             const e1rm = bigThreeE1rm[key];
             const atts = e1rm != null ? calcAttempts(e1rm, ATTEMPT_MODES[mode].pcts) : null;
             return (
-              <div key={key} style={{ background: "var(--c-surface, hsl(var(--card)))", border: "1px solid var(--c-border, hsl(var(--border)))", borderRadius: 16, padding: "14px 16px" }}>
+              <div key={key} style={{ background: "var(--c-surface, hsl(var(--card)))", border: "1px solid var(--c-border, hsl(var(--border)))", borderRadius: "var(--r-lg)", padding: "14px 16px" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: atts ? 12 : 0 }}>
                   <div style={{ fontSize: 14, fontWeight: 700 }}>{label}</div>
                   {e1rm != null
@@ -82,7 +82,7 @@ export function KilpailutyokaluCard({
                       <div key={i} style={{
                         background: i === 2 ? "var(--c-pink-dim, color-mix(in srgb, var(--c-pink) 12%, transparent))" : "var(--c-surface2, hsl(var(--muted)))",
                         border: i === 2 ? "1px solid color-mix(in srgb, var(--c-pink) 25%, transparent)" : "1px solid transparent",
-                        borderRadius: 10, padding: "10px 8px", textAlign: "center",
+                        borderRadius: "var(--r-md)", padding: "10px 8px", textAlign: "center",
                       }}>
                         <div style={{ fontSize: 10, fontWeight: 700, color: i === 2 ? "var(--c-pink)" : "var(--c-text-muted, hsl(var(--muted-foreground)))", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 4 }}>
                           {i + 1}. nosto
@@ -105,7 +105,7 @@ export function KilpailutyokaluCard({
             });
             const total = thirds.every(v => v != null) ? thirds.reduce((s, v) => s! + v!, 0) : null;
             return total != null ? (
-              <div style={{ background: "var(--c-surface, hsl(var(--card)))", border: "1px solid var(--c-border, hsl(var(--border)))", borderRadius: 16, padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ background: "var(--c-surface, hsl(var(--card)))", border: "1px solid var(--c-border, hsl(var(--border)))", borderRadius: "var(--r-lg)", padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <div style={{ fontSize: 14, fontWeight: 700 }}>Yhteistulos (kilpailu)</div>
                 <div style={{ fontSize: 22, fontWeight: 800, color: "var(--c-pink)" }}>{total} kg</div>
               </div>

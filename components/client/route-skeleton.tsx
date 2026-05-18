@@ -12,7 +12,7 @@ function Card({ children, style }: { children: React.ReactNode; style?: React.CS
     <div style={{
       background: "var(--c-surface)",
       border: "1px solid var(--c-border)",
-      borderRadius: 16,
+      borderRadius: "var(--r-lg)",
       padding: "16px",
       ...style,
     }}>
@@ -51,7 +51,7 @@ function DashboardSkeleton() {
       <div style={{
         background: "linear-gradient(135deg,color-mix(in srgb, var(--c-pink) 8%, transparent) 0%,color-mix(in srgb, var(--c-pink) 6%, transparent) 100%)",
         border: "1px solid color-mix(in srgb, var(--c-pink) 15%, transparent)",
-        borderRadius: 18,
+        borderRadius: "var(--r-xl)",
         padding: 20,
         marginBottom: 16,
       }}>
@@ -95,7 +95,7 @@ function OhjelmaSkeleton() {
         <div key={i} style={{
           background: "var(--c-surface)",
           border: "1px solid var(--c-border)",
-          borderRadius: 16,
+          borderRadius: "var(--r-lg)",
           overflow: "hidden",
           marginBottom: 12,
         }}>
@@ -125,7 +125,7 @@ function ProgressSkeleton() {
       <div style={{
         background: "var(--c-surface)",
         border: "1px solid var(--c-border)",
-        borderRadius: 10,
+        borderRadius: "var(--r-md)",
         padding: "12px 14px",
         marginBottom: 20,
         display: "flex",
@@ -206,7 +206,7 @@ function WorkoutSkeleton() {
         <div key={i} style={{
           background: "var(--c-surface)",
           border: "1px solid var(--c-border)",
-          borderRadius: 16,
+          borderRadius: "var(--r-lg)",
           marginBottom: 12,
           overflow: "hidden",
         }}>

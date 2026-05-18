@@ -52,7 +52,7 @@ export function SyncBadge({
         alignItems: "center",
         gap: 4,
         padding: "2px 7px",
-        borderRadius: 20,
+        borderRadius: "var(--r-xl)",
         fontSize: 10,
         fontWeight: 700,
         letterSpacing: "0.3px",
