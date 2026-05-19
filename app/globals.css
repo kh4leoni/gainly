@@ -672,8 +672,8 @@ html.light [role="dialog"].client-themed {
   opacity: 1;
   transform: none;
   transition:
-    opacity 240ms var(--ease-ios),
-    transform 240ms var(--ease-ios);
+    opacity 380ms var(--ease-ios),
+    transform 380ms var(--ease-ios);
   will-change: opacity, transform;
 }
 .client-shell-scrolled .page-title-large {
@@ -700,15 +700,15 @@ html.light [role="dialog"].client-themed {
   pointer-events: none;
   will-change: opacity, transform;
   transition:
-    opacity 240ms var(--ease-ios),
-    transform 240ms var(--ease-ios);
+    opacity 380ms var(--ease-ios),
+    transform 380ms var(--ease-ios);
   background: linear-gradient(
     to bottom,
     rgba(var(--c-bg-rgb), 1) 0%,
-    rgba(var(--c-bg-rgb), 1) calc(env(safe-area-inset-top, 0px) + 26px),
-    rgba(var(--c-bg-rgb), 0.97) calc(env(safe-area-inset-top, 0px) + 32px),
-    rgba(var(--c-bg-rgb), 0.80) calc(env(safe-area-inset-top, 0px) + 38px),
-    rgba(var(--c-bg-rgb), 0.40) 100%
+    rgba(var(--c-bg-rgb), 1) calc(env(safe-area-inset-top, 0px) + 5px),
+    rgba(var(--c-bg-rgb), 0.92) calc(env(safe-area-inset-top, 0px) + 18px),
+    rgba(var(--c-bg-rgb), 0.60) calc(env(safe-area-inset-top, 0px) + 32px),
+    rgba(var(--c-bg-rgb), 0) 100%
   );
 }
 .client-shell-scrolled .client-compact-title {
@@ -752,4 +752,58 @@ html.light [role="dialog"].client-themed {
     rgba(var(--c-bg-rgb), 0.40) 100%
   );
   pointer-events: none;
+}
+
+/* ── App splash — animated Gainly text on client app open ─────────────────── */
+.app-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--c-bg);
+  pointer-events: none;
+  transition: opacity 420ms var(--ease-ios);
+}
+.app-splash-in { opacity: 1; }
+.app-splash-out { opacity: 0; }
+.app-splash-text {
+  font-size: 56px;
+  font-weight: 800;
+  letter-spacing: -1.8px;
+  line-height: 1;
+  background: linear-gradient(
+    90deg,
+    var(--c-text) 0%,
+    var(--c-text) 35%,
+    #FF1D8C 50%,
+    var(--c-text) 65%,
+    var(--c-text) 100%
+  );
+  background-size: 220% 100%;
+  background-position: 100% 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation:
+    app-splash-shimmer 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite,
+    app-splash-rise 520ms var(--ease-ios) both;
+}
+@keyframes app-splash-shimmer {
+  0%   { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+@keyframes app-splash-rise {
+  from { opacity: 0; transform: translateY(10px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-splash-text {
+    animation: none;
+    background: var(--c-text);
+    -webkit-background-clip: text;
+    background-clip: text;
+  }
 }

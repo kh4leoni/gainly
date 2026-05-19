@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/components/app-shell/theme-provider";
 import { makeQueryClient } from "@/lib/query-client";
 import { installSyncListeners } from "@/lib/offline/sync";
 import { NavigationProvider } from "@/lib/nav-context";
+import { PageTitleProvider } from "@/lib/page-title-context";
 
 let _client: ReturnType<typeof makeQueryClient> | undefined;
 
@@ -25,7 +26,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem storageKey="theme">
       <QueryClientProvider client={queryClient}>
-        <NavigationProvider>{children}</NavigationProvider>
+        <NavigationProvider>
+          <PageTitleProvider>{children}</PageTitleProvider>
+        </NavigationProvider>
       </QueryClientProvider>
     </ThemeProvider>
   );

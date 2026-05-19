@@ -4,9 +4,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
-import { getScheduledWorkout } from "@/lib/queries/workouts";
+import { getScheduledWorkout, getLastSetsByReps } from "@/lib/queries/workouts";
 import { toast } from "@/components/ui/use-toast";
 import { ExerciseInfoDialog } from "@/components/client/exercise-info-dialog";
+import { ExerciseHistoryDialog } from "@/components/client/exercise-history-dialog";
+import { usePageTitle } from "@/lib/page-title-context";
 import { PlateLoaderDialog } from "@/components/client/plate-loader-dialog";
 import { SyncBadge } from "@/components/offline/sync-badge";
 import {
@@ -56,6 +58,10 @@ export function WorkoutLogger({ scheduledWorkoutId }: { scheduledWorkoutId: stri
     queryKey: ["workout", scheduledWorkoutId],
     queryFn: () => getScheduledWorkout(supabase, scheduledWorkoutId),
   });
+
+  // Publish workout day name as the shell's page title so the large→compact
+  // title handoff (scroll-driven fade) applies to the logger view too.
+  usePageTitle(workout?.program_days?.name ?? "Treeni");
 
   const [workoutLogId, setWorkoutLogId] = useState<string | null>(null);
   const [dayNote, setDayNote] = useState("");
@@ -292,22 +298,23 @@ export function WorkoutLogger({ scheduledWorkoutId }: { scheduledWorkoutId: stri
   }
 
   return (
-    <div className="client-app" style={{ flex: 1, overflowY: "auto" }}>
+    <div className="client-app">
       <div style={{ padding: "20px 14px 32px" }}>
-      {/* Header */}
-      <div style={{ marginBottom: 18 }}>
-        {day?.program_weeks && (
-          <div style={{ fontSize: 11, color: "var(--c-text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 4 }}>
-            Viikko {day.program_weeks.week_number}
-          </div>
-        )}
-        <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-0.5px" }}>{day?.name ?? "Treeni"}</div>
-        {day?.description && (
-          <div style={{ fontSize: 13, color: "var(--c-text-muted)", fontStyle: "italic", marginTop: 8, lineHeight: 1.5 }}>
-            {day.description}
-          </div>
-        )}
-      </div>
+      {/* Header — day name is rendered by the shell (large→compact title handoff) */}
+      {(day?.program_weeks || day?.description) && (
+        <div style={{ marginBottom: 18 }}>
+          {day?.program_weeks && (
+            <div style={{ fontSize: 11, color: "var(--c-text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 4 }}>
+              Viikko {day.program_weeks.week_number}
+            </div>
+          )}
+          {day?.description && (
+            <div style={{ fontSize: 13, color: "var(--c-text-muted)", fontStyle: "italic", marginTop: 8, lineHeight: 1.5 }}>
+              {day.description}
+            </div>
+          )}
+        </div>
+      )}
 
       {isCompleted && (
         <div style={{
@@ -343,6 +350,7 @@ export function WorkoutLogger({ scheduledWorkoutId }: { scheduledWorkoutId: stri
             key={pe.id}
             programExercise={pe}
             workoutLogId={workoutLogId}
+            clientId={workout.client_id}
           />
         ))}
         {exercises.length === 0 && (
@@ -474,7 +482,7 @@ function resolveInitialRows(pe: any): RowState[] {
 }
 
 // ── Exercise block dispatcher ─────────────────────────────────────────────────
-function ExerciseBlock({ programExercise, workoutLogId }: { programExercise: any; workoutLogId: string | null }) {
+function ExerciseBlock({ programExercise, workoutLogId, clientId }: { programExercise: any; workoutLogId: string | null; clientId: string }) {
   const kind: string = programExercise.exercises?.kind ?? "lifting";
   if (kind === "free") {
     return <FreeExerciseBlock programExercise={programExercise} workoutLogId={workoutLogId} />;
@@ -482,11 +490,11 @@ function ExerciseBlock({ programExercise, workoutLogId }: { programExercise: any
   if (kind === "cardio") {
     return <CardioExerciseBlock programExercise={programExercise} workoutLogId={workoutLogId} />;
   }
-  return <LiftingExerciseBlock programExercise={programExercise} workoutLogId={workoutLogId} />;
+  return <LiftingExerciseBlock programExercise={programExercise} workoutLogId={workoutLogId} clientId={clientId} />;
 }
 
 // ── Lifting block (original ExerciseBlock) ────────────────────────────────────
-function LiftingExerciseBlock({ programExercise, workoutLogId }: { programExercise: any; workoutLogId: string | null }) {
+function LiftingExerciseBlock({ programExercise, workoutLogId, clientId }: { programExercise: any; workoutLogId: string | null; clientId: string }) {
   const supabase = createClient();
   const qc = useQueryClient();
 
@@ -536,6 +544,35 @@ function LiftingExerciseBlock({ programExercise, workoutLogId }: { programExerci
       }
     },
   });
+
+  // ── Edellinen suoritus -hint: viime kerran painot per toistomäärä ──
+  const exerciseId: string | null = programExercise.exercise_id ?? null;
+  const { data: lastByReps } = useQuery({
+    queryKey: ["last-by-reps", clientId, exerciseId],
+    queryFn: () => getLastSetsByReps(supabase, clientId, exerciseId!),
+    enabled: !!clientId && !!exerciseId,
+    staleTime: 60_000,
+  });
+
+  // Apply suggestion: kun lastByReps latautuu, jos rivin reps täsmää aiempaan
+  // suoritukseen ja painoa ei ole muokattu (weight === initialWeight) → täytä
+  // weight viime kerran painolla. Säilytä initialWeight (ohjelman target)
+  // ennallaan, jotta carry-forward-logiikka tunnistaa silti "mirroroitumisen"
+  // toistomäärien välillä.
+  const appliedHintRef = useRef(false);
+  useEffect(() => {
+    if (!lastByReps || appliedHintRef.current) return;
+    appliedHintRef.current = true;
+    setRows((prev) => prev.map((r) => {
+      if (r.confirmed || r.setLogId) return r;
+      const repsNum = r.reps ? parseInt(r.reps, 10) : null;
+      if (repsNum === null || Number.isNaN(repsNum)) return r;
+      if (r.weight !== r.initialWeight) return r;
+      const hint = lastByReps.get(repsNum);
+      if (!hint) return r;
+      return { ...r, weight: String(hint.weight) };
+    }));
+  }, [lastByReps]);
 
   const { sets: localSets, deletedIds } = useLocalSetLogsAndDeleted(workoutLogId);
   const { data: serverSets = [] } = useQuery({
@@ -812,6 +849,35 @@ function LiftingExerciseBlock({ programExercise, workoutLogId }: { programExerci
                 />
               );
             })()}
+            {exerciseId && clientId && (
+              <ExerciseHistoryDialog
+                exerciseName={programExercise.exercises?.name ?? "Harjoitus"}
+                exerciseId={exerciseId}
+                clientId={clientId}
+                trigger={
+                  <button
+                    type="button"
+                    title="Liikkeen historia"
+                    style={{
+                      flexShrink: 0, height: 30, padding: "0 10px",
+                      borderRadius: "var(--r-lg)", border: "1px solid var(--c-border)",
+                      background: "var(--c-surface2)",
+                      color: "var(--c-text-muted)",
+                      display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 5,
+                      cursor: "pointer", fontFamily: "inherit",
+                      fontSize: 11, fontWeight: 700,
+                      transition: "all 0.15s",
+                    }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <circle cx="12" cy="12" r="9" />
+                      <polyline points="12 7 12 12 15 14" />
+                    </svg>
+                    Historia
+                  </button>
+                }
+              />
+            )}
             <button
               type="button"
               onClick={() => { setNoteOpen((o) => !o); }}
