@@ -715,20 +715,6 @@ html.light [role="dialog"].client-themed {
   opacity: 1;
   transform: none;
 }
-.client-compact-title::after {
-  content: "";
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  height: 14px;
-  background: linear-gradient(
-    to bottom,
-    rgba(var(--c-bg-rgb), 0.40) 0%,
-    rgba(var(--c-bg-rgb), 0) 100%
-  );
-  pointer-events: none;
-}
 .client-compact-title-text {
   margin: 0;
   font-size: 17px;
