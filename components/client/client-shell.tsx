@@ -49,7 +49,6 @@ import { getUnreadCount } from "@/lib/queries/messages";
 import { RouteSkeleton } from "@/components/client/route-skeleton";
 import { AppSplash } from "@/components/client/app-splash";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
-import { isPrefetched } from "@/lib/prefetched-paths";
 import { usePageTitleValue } from "@/lib/page-title-context";
 import type { ReactNode } from "react";
 
@@ -529,11 +528,12 @@ export function ClientShell({
   });
   const unread = onMessages ? 0 : liveUnread;
 
-  // animKey: changes immediately on click (pendingHref), stays fixed when content arrives
-  // so animation fires at click time and doesn't double-fire when RSC response lands
-  const animKeyRef = useRef(pathname);
-  const animKey = pendingHref ?? animKeyRef.current;
-  if (pendingHref) animKeyRef.current = pendingHref;
+  // animKey: drives the slide animation on the content wrapper. Always keyed
+  // by pendingHref on click so the slide fires immediately with a skeleton.
+  // When the route swaps, pendingHref clears and animKey resolves to the new
+  // pathname — same string as the pendingHref was — so no second remount.
+  // The skeleton is replaced in place by real content as soon as it lands.
+  const animKey = pendingHref ?? pathname;
 
   const dirRef = useRef("c-ani");
   const dirPrevRef = useRef(pathname);
@@ -700,8 +700,11 @@ export function ClientShell({
               flexDirection: "column",
             }}
           >
-            {pendingHref && !isPrefetched(pendingHref) ? (
-              /* Skeleton shown while RSC is in-flight (only for non-prefetched routes) */
+            {pendingHref ? (
+              /* Skeleton during slide-in. Swaps to real content the moment
+                 pathname updates (pendingHref clears) — for prefetched routes
+                 this is near-instant, so the skeleton just flashes briefly
+                 inside the same animated wrapper. */
               <>
                 <PageTitle title={pageTitle(pendingHref)} />
                 <RouteSkeleton href={pendingHref} />
