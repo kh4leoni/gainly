@@ -47,7 +47,10 @@ import { usePendingNav } from "@/lib/nav-context";
 import { createClient } from "@/lib/supabase/client";
 import { getUnreadCount } from "@/lib/queries/messages";
 import { RouteSkeleton } from "@/components/client/route-skeleton";
+import { AppSplash } from "@/components/client/app-splash";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
+import { isPrefetched } from "@/lib/prefetched-paths";
+import { usePageTitleValue } from "@/lib/page-title-context";
 import type { ReactNode } from "react";
 
 const NAV = [
@@ -492,6 +495,10 @@ export function ClientShell({
   const pathname = usePathname();
   const { pendingHref, setPendingHref } = usePendingNav();
   const onMessages = pathname.startsWith("/client/messages") || !!pendingHref?.startsWith("/client/messages");
+  const dynamicTitle = usePageTitleValue();
+  // For the active route use the dynamically-published title if a page provides
+  // one (e.g. workout day name), otherwise fall back to the static route map.
+  const currentTitle = dynamicTitle ?? pageTitle(pathname);
 
   // The shell flips a single class .client-shell-scrolled at the threshold
   // where the large title's bottom would slide under the compact bar.
@@ -590,6 +597,7 @@ export function ClientShell({
         background: "var(--c-bg)",
       }}
     >
+      <AppSplash />
       <div
         ref={shellRef}
         style={{
@@ -692,8 +700,8 @@ export function ClientShell({
               flexDirection: "column",
             }}
           >
-            {pendingHref ? (
-              /* Skeleton shown while RSC is in-flight */
+            {pendingHref && !isPrefetched(pendingHref) ? (
+              /* Skeleton shown while RSC is in-flight (only for non-prefetched routes) */
               <>
                 <PageTitle title={pageTitle(pendingHref)} />
                 <RouteSkeleton href={pendingHref} />
@@ -713,7 +721,7 @@ export function ClientShell({
                   overflow: "hidden",
                 }}
               >
-                <PageTitle title={pageTitle(pathname)} />
+                <PageTitle title={currentTitle} />
                 <div style={{ flex: 1, position: "relative", overflow: "hidden" }}>
                   <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column" }}>
                     {children}
@@ -733,7 +741,7 @@ export function ClientShell({
                   flexDirection: "column",
                 }}
               >
-                <PageTitle title={pageTitle(pathname)} />
+                <PageTitle title={currentTitle} />
                 <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, paddingBottom: "var(--client-nav-inset)" }}>
                   {children}
                 </div>
@@ -746,9 +754,9 @@ export function ClientShell({
         {/* Compact title bar — scroll-driven fade/slide via --compact-progress.
             Sits above main so it covers the safe-area too. Hidden on the
             messages route and during route transitions. */}
-        {!isMessages && !pendingHref && pageTitle(pathname) && (
+        {!isMessages && !pendingHref && currentTitle && (
           <div className="client-compact-title" aria-hidden>
-            <h2 className="client-compact-title-text">{pageTitle(pathname)}</h2>
+            <h2 className="client-compact-title-text">{currentTitle}</h2>
           </div>
         )}
 

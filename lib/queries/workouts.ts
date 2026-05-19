@@ -329,6 +329,89 @@ export async function getWeeklyVolume(supabase: DB, clientId: string): Promise<n
   return Math.round(total);
 }
 
+export type LastSetHint = { weight: number; rpe: number | null; logged_at: string };
+
+export async function getLastSetsByReps(
+  supabase: DB,
+  clientId: string,
+  exerciseId: string,
+): Promise<Map<number, LastSetHint>> {
+  const { data, error } = await supabase
+    .from("set_logs")
+    .select("reps, weight, rpe, workout_logs!inner(client_id, logged_at)")
+    .eq("exercise_id", exerciseId)
+    .eq("workout_logs.client_id", clientId)
+    .not("reps", "is", null)
+    .not("weight", "is", null)
+    .order("logged_at", { referencedTable: "workout_logs", ascending: false })
+    .limit(200);
+  if (error) throw error;
+  const byReps = new Map<number, LastSetHint>();
+  for (const s of (data ?? []) as Array<{
+    reps: number | null;
+    weight: number | null;
+    rpe: number | null;
+    workout_logs: { logged_at: string } | { logged_at: string }[] | null;
+  }>) {
+    if (s.reps == null || s.weight == null) continue;
+    if (byReps.has(s.reps)) continue;
+    const wl = Array.isArray(s.workout_logs) ? s.workout_logs[0] : s.workout_logs;
+    byReps.set(s.reps, { weight: s.weight, rpe: s.rpe, logged_at: wl?.logged_at ?? "" });
+  }
+  return byReps;
+}
+
+export type ExerciseHistoryGroup = {
+  workoutLogId: string;
+  loggedAt: string;
+  sets: Array<{ set_number: number | null; weight: number | null; reps: number | null; rpe: number | null; is_pr: boolean }>;
+};
+
+export async function getExerciseHistory(
+  supabase: DB,
+  clientId: string,
+  exerciseId: string,
+  limit = 30,
+): Promise<ExerciseHistoryGroup[]> {
+  const { data, error } = await supabase
+    .from("set_logs")
+    .select(`
+      set_number, weight, reps, rpe, is_pr,
+      workout_logs!inner ( id, client_id, logged_at )
+    `)
+    .eq("exercise_id", exerciseId)
+    .eq("workout_logs.client_id", clientId)
+    .order("logged_at", { referencedTable: "workout_logs", ascending: false })
+    .order("set_number", { ascending: true })
+    .limit(limit * 8);
+  if (error) throw error;
+  const groups = new Map<string, ExerciseHistoryGroup>();
+  for (const s of (data ?? []) as Array<{
+    set_number: number | null;
+    weight: number | null;
+    reps: number | null;
+    rpe: number | null;
+    is_pr: boolean;
+    workout_logs: { id: string; logged_at: string } | { id: string; logged_at: string }[] | null;
+  }>) {
+    const wl = Array.isArray(s.workout_logs) ? s.workout_logs[0] : s.workout_logs;
+    if (!wl) continue;
+    if (!groups.has(wl.id)) {
+      groups.set(wl.id, { workoutLogId: wl.id, loggedAt: wl.logged_at, sets: [] });
+    }
+    groups.get(wl.id)!.sets.push({
+      set_number: s.set_number,
+      weight: s.weight,
+      reps: s.reps,
+      rpe: s.rpe,
+      is_pr: s.is_pr,
+    });
+  }
+  return Array.from(groups.values())
+    .sort((a, b) => b.loggedAt.localeCompare(a.loggedAt))
+    .slice(0, limit);
+}
+
 export async function getOneRmCurve(supabase: DB, clientId: string, exerciseId: string, days = 180) {
   const { data, error } = await supabase.rpc("one_rm_curve", {
     _client: clientId,

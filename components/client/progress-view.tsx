@@ -297,7 +297,7 @@ export function ProgressView({
                       <span style={{ fontWeight: 600, fontSize: 14 }}>{name}</span>
                       <span style={{ fontWeight: 700, color: "var(--c-pink)", fontSize: 15 }}>
                         {formatW(roundKg(e1rm))}{" "}
-                        <span style={{ fontSize: 11, color: "var(--c-text-muted)", fontWeight: 400 }}>kg / e1RM</span>
+                        <span style={{ fontSize: 11, color: "var(--c-text-muted)", fontWeight: 400 }}>kg</span>
                       </span>
                     </button>
                   ))}
