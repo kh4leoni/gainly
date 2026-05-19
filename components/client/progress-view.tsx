@@ -6,7 +6,6 @@ import { createClient } from "@/lib/supabase/client";
 import { MeasurementChart } from "@/components/client/measurement-chart";
 import { getRecentPRs, getCardioRecords, type CardioRecord } from "@/lib/queries/workouts";
 import { derivedRepMax, roundKg } from "@/lib/calc/one-rm";
-import { SearchableSelect } from "@/components/ui/searchable-select";
 import { KilpailutyokaluCard } from "@/components/client/kilpailutyokalu-card";
 import { matchBigThree, BIG_THREE } from "@/lib/powerlifting";
 import type { BigThreeKey } from "@/lib/powerlifting";
@@ -57,6 +56,7 @@ export function ProgressView({
   const supabase = createClient();
   const [tab, setTab] = useState<Tab>("ennätykset");
   const [selId, setSelId] = useState(exercises[0]?.id ?? "");
+  const [query, setQuery] = useState("");
   const [online, setOnline] = useState(true);
   const scrollerRef = useRef<HTMLDivElement>(null);
   const didInit = useRef(false);
@@ -145,6 +145,11 @@ export function ProgressView({
     })
     .sort((a, b) => b.e1rm - a.e1rm);
 
+  const q = query.trim().toLowerCase();
+  const filteredBests = q
+    ? rankedBests.filter((b) => b.name.toLowerCase().includes(q))
+    : rankedBests;
+
   // Big three e1RMs from PR data
   const bigThreeE1rm: Record<BigThreeKey, number | null> = { squat: null, bench: null, dead: null };
   for (const [exId, e1rm] of topE1rmByExercise.entries()) {
@@ -226,13 +231,36 @@ export function ProgressView({
                 <Subtitle style={{ marginBottom: 18, fontSize: 12 }}>
                   Parhaat suoritukset 1–5 toiston välillä + arviot.
                 </Subtitle>
-                <div style={{ marginBottom: 20 }}>
-                  <SearchableSelect
-                    options={exercises.map((ex) => ({ value: ex.id, label: ex.name }))}
-                    value={selId}
-                    onChange={setSelId}
-                    placeholder="Valitse harjoitus..."
+                <div style={{ position: "relative", marginBottom: 20 }}>
+                  <input
+                    type="text"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Hae liikenimellä, esim. squat"
+                    style={{
+                      width: "100%", boxSizing: "border-box",
+                      padding: "10px 36px 10px 14px",
+                      borderRadius: "var(--r-md)",
+                      background: "var(--c-surface)",
+                      border: "1px solid var(--c-border)",
+                      color: "var(--c-text)",
+                      fontSize: 14,
+                      fontFamily: "inherit",
+                      outline: "none",
+                    }}
                   />
+                  {query && (
+                    <button
+                      type="button"
+                      onClick={() => setQuery("")}
+                      aria-label="Tyhjennä haku"
+                      style={{
+                        position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)",
+                        background: "none", border: "none", cursor: "pointer",
+                        color: "var(--c-text-muted)", fontSize: 18, padding: 4, lineHeight: 1,
+                      }}
+                    >×</button>
+                  )}
                 </div>
                 {selId && (
                   <div style={{ background: "var(--c-surface)", border: "1px solid var(--c-border)", borderRadius: "var(--r-lg)", padding: "14px 16px", marginBottom: 22 }}>
@@ -281,7 +309,12 @@ export function ProgressView({
                       compact
                     />
                   )}
-                  {rankedBests.map(({ exId, e1rm, name }) => (
+                  {rankedBests.length > 0 && filteredBests.length === 0 && (
+                    <div style={{ textAlign: "center", padding: "20px 0", color: "var(--c-text-muted)", fontSize: 13 }}>
+                      Ei osumia haulle &ldquo;{query}&rdquo;.
+                    </div>
+                  )}
+                  {filteredBests.map(({ exId, e1rm, name }) => (
                     <button
                       key={exId}
                       onClick={() => setSelId(exId)}
