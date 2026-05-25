@@ -4,8 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { House, CalendarDots, TrendUp, ClockCounterClockwise, ChatCircle, Sun, Moon, SignOut, PencilSimple, CaretDown, Trash } from "@phosphor-icons/react";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { House, CalendarDots, TrendUp, ClockCounterClockwise, ChatCircle, Sun, Moon, SignOut, PencilSimple, Gear, Key, UserMinus } from "@phosphor-icons/react";
+import { ChangePasswordDialog } from "@/components/client/change-password-dialog";
+import { DeleteAccountDialog } from "@/components/client/delete-account-dialog";
 
 const ROUTE_TITLE: Record<string, string> = {
   "/client/dashboard": "Koti",
@@ -43,7 +44,7 @@ function PageTitle({ title }: { title: string }) {
 import { useTheme } from "next-themes";
 import { SyncBar } from "@/components/offline/sync-bar";
 import { useWorkoutPrefetch } from "@/hooks/use-workout-prefetch";
-import { logBodyweight, logWaist, updateProfileName, deleteBodyweight, deleteWaist } from "@/app/client/actions";
+import { updateProfileName } from "@/app/client/actions";
 import { usePendingNav } from "@/lib/nav-context";
 import { createClient } from "@/lib/supabase/client";
 import { getUnreadCount } from "@/lib/queries/messages";
@@ -61,8 +62,7 @@ const NAV = [
   { href: "/client/messages",  label: "Viestit",    Icon: ChatCircle },
 ] as const;
 
-type Me = { id: string; full_name: string | null } | null;
-type MeasurementEntry = { id?: string; value: number; logged_at: string };
+type Me = { id: string; full_name: string | null; email?: string | null } | null;
 
 function initials(name: string | null) {
   if (!name) return "?";
@@ -135,6 +135,7 @@ function OmatTiedotSection({ me }: { me: Me }) {
   const [isPending, startTransition] = useTransition();
   const btnRef = useRef<HTMLButtonElement>(null);
   const color = avatarColor(displayName || "?");
+  const email = me?.email ?? null;
 
   function save() {
     const trimmed = nameVal.trim();
@@ -155,6 +156,7 @@ function OmatTiedotSection({ me }: { me: Me }) {
   }
 
   return (
+    <div>
     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
       <div style={{
         width: 36, height: 36, borderRadius: "50%", background: color, flexShrink: 0,
@@ -222,212 +224,38 @@ function OmatTiedotSection({ me }: { me: Me }) {
         </>
       )}
     </div>
-  );
-}
-
-function MeasurementSection({ label, unit, max, initialHistory, onSave, onDelete }: {
-  label: string;
-  unit: string;
-  max: number;
-  initialHistory: MeasurementEntry[];
-  onSave: (value: number) => Promise<void>;
-  onDelete: (id: string) => Promise<void>;
-}) {
-  const [inputVal, setInputVal] = useState("");
-  const [history, setHistory] = useState<MeasurementEntry[]>(initialHistory);
-  const [isPending, startTransition] = useTransition();
-  const [historyOpen, setHistoryOpen] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [animKey, setAnimKey] = useState(0);
-  const [pendingDelete, setPendingDelete] = useState<MeasurementEntry | null>(null);
-  const btnRef = useRef<HTMLButtonElement>(null);
-
-  function requestDelete(entry: MeasurementEntry) {
-    if (!entry.id) return;
-    setPendingDelete(entry);
-  }
-
-  function confirmDelete() {
-    const entry = pendingDelete;
-    if (!entry?.id) return;
-    setHistory(prev => prev.filter(e => e.id !== entry.id));
-    startTransition(async () => {
-      try { await onDelete(entry.id!); } catch {}
-    });
-  }
-
-  function handleChange(v: string) {
-    setInputVal(v);
-    if (saved) setSaved(false);
-  }
-
-  function save() {
-    const n = parseFloat(inputVal.replace(",", "."));
-    if (isNaN(n) || n <= 0 || n >= max) return;
-    setHistory(prev => [{ value: n, logged_at: new Date().toISOString() }, ...prev]);
-    setSaved(true);
-    setAnimKey(k => k + 1);
-    const btn = btnRef.current;
-    if (btn) {
-      btn.classList.remove("bw-save-pop");
-      void btn.offsetWidth;
-      btn.classList.add("bw-save-pop");
-    }
-    startTransition(async () => {
-      try { await onSave(n); } catch {}
-    });
-  }
-
-  return (
-    <div>
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <span style={{ fontSize: 12, color: "var(--c-text-muted)", fontWeight: 500, flexShrink: 0 }}>{label}</span>
-        <div style={{ flex: 1 }} />
-        <input
-          type="number"
-          inputMode="decimal"
-          value={inputVal}
-          onChange={(e) => handleChange(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && save()}
-          placeholder="0.0"
-          step="0.1"
-          style={{
-            width: 68,
-            padding: "5px 8px",
-            borderRadius: "var(--r-sm)",
-            border: "1px solid var(--c-border)",
-            background: "var(--c-surface2)",
-            color: "var(--c-text)",
-            fontSize: 13,
-            fontWeight: 600,
-            outline: "none",
-            textAlign: "right",
-          }}
-        />
-        <span style={{ fontSize: 12, color: "var(--c-text-muted)", flexShrink: 0, width: 20 }}>{unit}</span>
-        <button
-          ref={btnRef}
-          type="button"
-          onClick={save}
-          disabled={isPending}
-          title="Tallenna"
-          className="bw-save-btn"
-          style={{
-            width: 30, height: 30, borderRadius: "50%", padding: 0, flexShrink: 0,
-            background: saved ? "color-mix(in srgb, var(--c-success) 15%, transparent)" : "var(--c-surface2)",
-            border: `1px solid ${saved ? "color-mix(in srgb, var(--c-success) 40%, transparent)" : "var(--c-border)"}`,
-            cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-            opacity: isPending ? 0.5 : 1,
-            transition: "background 200ms ease, border-color 200ms ease",
-          }}
-        >
-          <svg key={animKey} width="11" height="11" viewBox="0 0 24 24" fill="none"
-            stroke={saved ? "var(--c-success)" : "var(--c-text-subtle)"}
-            strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline className={animKey > 0 ? "check-draw" : ""} points="20 6 9 17 4 12"/>
-          </svg>
-        </button>
-      </div>
-
-      {history.length > 0 && (
-        <>
-          <div style={{ height: 10 }} />
-          <div style={{ height: 1, background: "var(--c-border)", margin: "0 -16px" }} />
-          <button
-            type="button"
-            onClick={() => setHistoryOpen(v => !v)}
-            style={{
-              width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
-              padding: "9px 0 0", background: "none", border: "none", cursor: "pointer",
-              color: "var(--c-text-muted)", fontSize: 11, fontWeight: 700,
-              letterSpacing: "0.06em", textTransform: "uppercase",
-            }}
-          >
-            <span>Historia</span>
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"
-              style={{ transform: historyOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 200ms ease" }}>
-              <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </button>
-
-          {historyOpen && (
-            <div style={{ marginTop: 6, maxHeight: 160, overflowY: "auto", display: "flex", flexDirection: "column", gap: 1 }}>
-              {history.map((entry, i) => (
-                <div key={entry.id ?? i} style={{
-                  display: "flex", justifyContent: "space-between", alignItems: "center",
-                  padding: "5px 8px", borderRadius: "var(--r-sm)",
-                  background: i === 0 ? "var(--c-surface2)" : "none",
-                }}>
-                  <span style={{ fontSize: 12, color: "var(--c-text-muted)" }}>
-                    {new Date(entry.logged_at).toLocaleDateString("fi-FI", { day: "numeric", month: "numeric", year: "numeric" })}
-                  </span>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: i === 0 ? "var(--c-text)" : "var(--c-text-muted)" }}>
-                      {entry.value} {unit}
-                    </span>
-                    {entry.id && (
-                      <button
-                        type="button"
-                        onClick={() => requestDelete(entry)}
-                        aria-label="Poista mittaus"
-                        title="Poista"
-                        style={{
-                          display: "flex", alignItems: "center", justifyContent: "center",
-                          width: 22, height: 22, padding: 0,
-                          background: "none", border: "none", cursor: "pointer",
-                          color: "var(--c-text-subtle)", borderRadius: "var(--r-sm)",
-                          transition: "color 150ms ease, background 150ms ease",
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.color = "var(--c-danger, #ef4444)";
-                          e.currentTarget.style.background = "color-mix(in srgb, var(--c-danger, #ef4444) 10%, transparent)";
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.color = "var(--c-text-subtle)";
-                          e.currentTarget.style.background = "none";
-                        }}
-                      >
-                        <Trash size={13} weight="regular" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </>
-      )}
-
-      <ConfirmDialog
-        open={pendingDelete !== null}
-        onOpenChange={(open) => { if (!open) setPendingDelete(null); }}
-        title="Poistetaanko mittaus?"
-        description={
-          pendingDelete
-            ? `${new Date(pendingDelete.logged_at).toLocaleDateString("fi-FI", { day: "numeric", month: "long", year: "numeric" })} – ${pendingDelete.value} ${unit}`
-            : ""
-        }
-        confirmLabel="Poista"
-        onConfirm={confirmDelete}
-      />
+    {email && (
+      <p style={{
+        marginTop: 8,
+        paddingLeft: 46,
+        fontSize: 11,
+        color: "var(--c-text-muted)",
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        whiteSpace: "nowrap",
+      }}>
+        {email}
+      </p>
+    )}
     </div>
   );
 }
 
+
 type Coach = { name: string | null; email: string | null; phone: string | null; coBrandLabel?: string | null } | null;
 
-function SettingsPanel({ me, coach, bwHistory, waistHistory, closing, onAnimationEnd }: {
+function SettingsPanel({ me, coach, closing, onAnimationEnd }: {
   me: Me;
   coach?: Coach;
-  bwHistory: MeasurementEntry[];
-  waistHistory: MeasurementEntry[];
   closing: boolean;
   onAnimationEnd: () => void;
 }) {
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [omatOpen, setOmatOpen] = useState(true);
-  const [mittauksetOpen, setMittauksetOpen] = useState(false);
+  const [tiliOpen, setTiliOpen] = useState(false);
+  const [pwOpen, setPwOpen] = useState(false);
+  const [delOpen, setDelOpen] = useState(false);
   useEffect(() => setMounted(true), []);
 
   const isDark = !mounted || resolvedTheme === "dark";
@@ -459,13 +287,39 @@ function SettingsPanel({ me, coach, bwHistory, waistHistory, closing, onAnimatio
 
       {D}
 
-      {/* Mittaukset */}
-      <CollapsibleSection title="Mittaukset" open={mittauksetOpen} onToggle={() => setMittauksetOpen(v => !v)}>
-        <MeasurementSection label="Paino" unit="kg" max={500} initialHistory={bwHistory} onSave={logBodyweight} onDelete={deleteBodyweight} />
-        <div style={{ height: 12 }} />
-        <div style={{ height: 1, background: "var(--c-border)", margin: "0 -16px" }} />
-        <div style={{ height: 12 }} />
-        <MeasurementSection label="Vyötärö" unit="cm" max={300} initialHistory={waistHistory} onSave={logWaist} onDelete={deleteWaist} />
+      {/* Tili */}
+      <CollapsibleSection title="Tili" open={tiliOpen} onToggle={() => setTiliOpen(v => !v)}>
+        <button
+          type="button"
+          onClick={() => setPwOpen(true)}
+          style={{
+            width: "100%", display: "flex", alignItems: "center", gap: 10,
+            padding: "9px 12px", borderRadius: "var(--r-md)", fontSize: 13, fontWeight: 500,
+            cursor: "pointer", border: "1px solid var(--c-border)",
+            background: "var(--c-surface2)", color: "var(--c-text)",
+            transition: "background 150ms ease",
+          }}
+        >
+          <Key size={15} color="var(--c-text-muted)" />
+          Vaihda salasana
+        </button>
+        <div style={{ height: 8 }} />
+        <button
+          type="button"
+          onClick={() => setDelOpen(true)}
+          style={{
+            width: "100%", display: "flex", alignItems: "center", gap: 10,
+            padding: "9px 12px", borderRadius: "var(--r-md)", fontSize: 13, fontWeight: 500,
+            cursor: "pointer",
+            border: "1px solid color-mix(in srgb, var(--c-danger, #ef4444) 30%, transparent)",
+            background: "color-mix(in srgb, var(--c-danger, #ef4444) 8%, transparent)",
+            color: "var(--c-danger, #ef4444)",
+            transition: "background 150ms ease",
+          }}
+        >
+          <UserMinus size={15} />
+          Poista tili
+        </button>
       </CollapsibleSection>
 
       {D}
@@ -529,6 +383,9 @@ function SettingsPanel({ me, coach, bwHistory, waistHistory, closing, onAnimatio
           Kirjaudu ulos
         </button>
       </form>
+
+      <ChangePasswordDialog open={pwOpen} onOpenChange={setPwOpen} />
+      <DeleteAccountDialog open={delOpen} onOpenChange={setDelOpen} />
     </div>
   );
 }
@@ -536,15 +393,11 @@ function SettingsPanel({ me, coach, bwHistory, waistHistory, closing, onAnimatio
 export function ClientShell({
   me,
   coach,
-  bwHistory = [],
-  waistHistory = [],
   unreadMessages = 0,
   children,
 }: {
   me: Me;
   coach?: Coach;
-  bwHistory?: MeasurementEntry[];
-  waistHistory?: MeasurementEntry[];
   unreadMessages?: number;
   children: ReactNode;
 }) {
@@ -708,11 +561,16 @@ export function ClientShell({
             <span style={{ fontSize: 12, color: "var(--c-text)", fontWeight: 600, maxWidth: 80, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {me?.full_name?.split(" ")[0] ?? ""}
             </span>
-            <CaretDown
-              size={11}
-              weight="bold"
-              color="var(--c-text-muted)"
-              style={{ transition: "transform 200ms ease", transform: settingsOpen ? "rotate(180deg)" : "rotate(0deg)", flexShrink: 0 }}
+            <Gear
+              size={14}
+              weight={settingsOpen ? "fill" : "regular"}
+              color={settingsOpen ? "var(--c-pink)" : "var(--c-text-muted)"}
+              style={{
+                marginLeft: 2,
+                transition: "transform 320ms cubic-bezier(0.34,1.56,0.64,1), color 200ms ease",
+                transform: settingsOpen ? "rotate(60deg)" : "rotate(0deg)",
+                flexShrink: 0,
+              }}
             />
           </button>
 
@@ -720,8 +578,6 @@ export function ClientShell({
             <SettingsPanel
               me={me}
               coach={coach}
-              bwHistory={bwHistory}
-              waistHistory={waistHistory}
               closing={settingsClosing}
               onAnimationEnd={handlePanelAnimationEnd}
             />

@@ -763,16 +763,18 @@ html.light [role="dialog"].client-themed {
 .app-splash-logo img {
   display: block;
 }
-/* Pink shimmer overlay masked to the logo's silhouette. Sweeps once
-   from left to right across the visible glyphs. */
+/* Shimmer overlay masked to the logo silhouette. Sweeps once from left
+   to right across the visible glyphs. Defaults to a theme-adaptive
+   neutral (white on dark, black on light); the co-brand variant turns
+   it pink to match the Gainly accent. */
 .app-splash-shine {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: linear-gradient(
+  background-image: linear-gradient(
     100deg,
     transparent 30%,
-    rgba(255, 29, 140, 0.85) 50%,
+    color-mix(in srgb, var(--c-text) 75%, transparent) 50%,
     transparent 70%
   );
   background-size: 220% 100%;
@@ -786,6 +788,14 @@ html.light [role="dialog"].client-themed {
   -webkit-mask-repeat: no-repeat;
   mask-repeat: no-repeat;
   animation: app-splash-shimmer 1100ms cubic-bezier(0.4, 0, 0.2, 1) 260ms both;
+}
+:root.gainly-cobrand .app-splash-shine {
+  background-image: linear-gradient(
+    100deg,
+    transparent 30%,
+    rgba(255, 29, 140, 0.85) 50%,
+    transparent 70%
+  );
 }
 @keyframes app-splash-shimmer {
   from { background-position: 120% 0; }
