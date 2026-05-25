@@ -203,7 +203,15 @@ function QuoteContent({ text }: { text: string }) {
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 
-export function ClientDashboardView({ clientId, firstName }: { clientId: string; firstName: string | null }) {
+export function ClientDashboardView({
+  clientId,
+  firstName,
+  bwQuickLog,
+}: {
+  clientId: string;
+  firstName: string | null;
+  bwQuickLog?: React.ReactNode;
+}) {
   const supabase = createClient();
   const { setPendingHref } = usePendingNav();
   usePrToast(clientId);
@@ -454,6 +462,9 @@ export function ClientDashboardView({ clientId, firstName }: { clientId: string;
           )}
         </div>
       )}
+
+      {/* Bodyweight quick-log — one-tap daily weigh-in */}
+      {bwQuickLog && <div style={enterStyle(170)}>{bwQuickLog}</div>}
 
       {/* Recent PRs */}
       {(latestPRs.data?.length ?? 0) > 0 && (
