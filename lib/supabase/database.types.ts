@@ -935,6 +935,12 @@ export type Database = {
         }
         Returns: Json
       }
+      email_user_exists: {
+        Args: {
+          _email: string
+        }
+        Returns: boolean
+      }
       is_client_of: {
         Args: {
           _coach: string
@@ -946,6 +952,16 @@ export type Database = {
           _client: string
         }
         Returns: boolean
+      }
+      my_pending_invitations: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          coach_id: string
+          coach_name: string
+          token: string
+          created_at: string
+        }[]
       }
       one_rm_curve: {
         Args: {

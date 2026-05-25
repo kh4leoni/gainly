@@ -27,7 +27,10 @@ export function InviteClientButton({ coachId }: { coachId: string }) {
       if (result.type === "invited") {
         toast({ title: "Kutsu lähetetty", description: `Kutsusähköposti lähetetty osoitteeseen ${email}.` });
       } else {
-        toast({ title: "Asiakas linkitetty", description: `${email} on lisätty asiakkaaksesi.` });
+        toast({
+          title: "Kutsu odottaa hyväksyntää",
+          description: `${email} on jo Gainlyn käyttäjä. Kutsu näkyy hänelle seuraavalla kirjautumisella.`,
+        });
       }
       setOpen(false);
       setEmail("");
@@ -48,6 +51,7 @@ export function InviteClientButton({ coachId }: { coachId: string }) {
           <DialogTitle>Kutsu asiakas</DialogTitle>
           <DialogDescription>
             Anna asiakkaan sähköpostiosoite. Jos hänellä ei ole vielä tiliä, hän saa kutsusähköpostin.
+            Asiakas hyväksyy kutsun ennen kuin valmennussuhde aktivoituu.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-3">

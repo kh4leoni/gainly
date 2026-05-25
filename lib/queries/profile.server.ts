@@ -22,11 +22,11 @@ export const getMyWaistHistoryCached = cache(async () => {
   const supabase = await createClient();
   const { data } = await supabase
     .from("waist_measurements")
-    .select("waist_cm, logged_at")
+    .select("id, waist_cm, logged_at")
     .eq("client_id", user.id)
     .order("logged_at", { ascending: false })
     .limit(20);
-  return (data ?? []).map(r => ({ value: r.waist_cm, logged_at: r.logged_at }));
+  return (data ?? []).map(r => ({ id: r.id, value: r.waist_cm, logged_at: r.logged_at }));
 });
 
 export const getMyBodyweightHistoryCached = cache(async () => {
@@ -35,11 +35,11 @@ export const getMyBodyweightHistoryCached = cache(async () => {
   const supabase = await createClient();
   const { data } = await supabase
     .from("bodyweights")
-    .select("weight_kg, logged_at")
+    .select("id, weight_kg, logged_at")
     .eq("client_id", user.id)
     .order("logged_at", { ascending: false })
     .limit(20);
-  return (data ?? []).map(r => ({ value: r.weight_kg, logged_at: r.logged_at }));
+  return (data ?? []).map(r => ({ id: r.id, value: r.weight_kg, logged_at: r.logged_at }));
 });
 
 export const getMyCoachCached = cache(async () => {

@@ -54,10 +54,13 @@ export default function AuthCallbackPage() {
       }
 
       const { data: { user } } = await supabase.auth.getUser();
-      const role =
-        (user?.app_metadata as { user_role?: string })?.user_role ??
-        (user?.user_metadata as { role?: string })?.role ??
-        "client";
+      // Never trust user_metadata — it is user-writable. If the JWT claim is
+      // absent (hook not yet run), fall back to a DB read of profiles.role.
+      let role = (user?.app_metadata as { user_role?: string })?.user_role ?? null;
+      if (!role && user) {
+        const { data } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+        role = (data as { role: string } | null)?.role ?? null;
+      }
 
       router.replace(role === "coach" ? "/coach/dashboard" : "/client/dashboard");
     }

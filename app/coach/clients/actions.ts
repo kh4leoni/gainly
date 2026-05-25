@@ -9,55 +9,42 @@ export async function inviteClient(coachId: string, email: string, name?: string
   if (!user || user.id !== coachId) throw new Error("Unauthorized");
 
   const serviceClient = createServiceClient();
-  // Hardcoded production URL — env var was unreliable.
   const siteUrl = "https://gainly-lilac.vercel.app";
-  const redirectTo = `${siteUrl}/auth/callback`;
-  console.log("[inviteClient] redirectTo:", redirectTo, "envSiteUrl:", process.env.NEXT_PUBLIC_SITE_URL);
 
-  // Check if user already exists
-  const { data: listData } = await serviceClient.auth.admin.listUsers({ page: 1, perPage: 1000 });
-  const foundUser = listData?.users.find((u) => u.email?.toLowerCase() === email.toLowerCase()) ?? null;
+  // 1. Always insert an invitations row. coach_clients is never written
+  //    here — only accept_invitation (SECURITY DEFINER) creates that link
+  //    after the invitee proves ownership of the email.
+  const { data: inv, error: invErr } = await serviceClient
+    .from("invitations")
+    .upsert(
+      { coach_id: coachId, email: email.toLowerCase(), invited_name: name ?? null, status: "pending" },
+      { onConflict: "coach_id,email" }
+    )
+    .select("token")
+    .single();
+  if (invErr || !inv) throw invErr ?? new Error("Failed to create invitation");
 
-  if (foundUser) {
-    const { data: profile } = await serviceClient
-      .from("profiles")
-      .select("role")
-      .eq("id", foundUser.id)
-      .single();
+  // 2. Send the Supabase invite email only if the email isn't already a
+  //    Gainly user. For existing users, the pending invitation surfaces
+  //    via the dashboard banner on their next login.
+  const { data: alreadyUser, error: existsErr } = await serviceClient.rpc(
+    "email_user_exists",
+    { _email: email }
+  );
+  if (existsErr) throw existsErr;
 
-    if (profile?.role && profile.role !== "client") {
-      throw new Error("That email belongs to a coach account");
-    }
-
-    const { error } = await serviceClient
-      .from("coach_clients")
-      .insert({ coach_id: coachId, client_id: foundUser.id, status: "active" });
-    if (error && !error.message.includes("duplicate")) throw error;
-
-    if (!foundUser.email_confirmed_at) {
-      await serviceClient.auth.admin.inviteUserByEmail(email, {
-        redirectTo,
-        data: { role: "client", full_name: name ?? "" },
-      });
-      return { type: "invited" as const };
-    }
-
+  if (alreadyUser === true) {
     return { type: "linked" as const };
   }
 
-  // New user — invite via Supabase, link to coach immediately using returned user id
-  const { data: inviteData, error: inviteErr } = await serviceClient.auth.admin.inviteUserByEmail(email, {
+  // After password setup the user lands on /client/dashboard, which renders
+  // a banner listing pending invitations (rendered from my_pending_invitations).
+  const redirectTo = `${siteUrl}/auth/callback`;
+  const { error: inviteErr } = await serviceClient.auth.admin.inviteUserByEmail(email, {
     redirectTo,
-    data: { role: "client", full_name: name ?? "" },
+    data: { full_name: name ?? "" },
   });
   if (inviteErr) throw inviteErr;
-
-  const newUserId = inviteData.user.id;
-
-  const { error: linkErr } = await serviceClient
-    .from("coach_clients")
-    .insert({ coach_id: coachId, client_id: newUserId, status: "active" });
-  if (linkErr && !linkErr.message.includes("duplicate")) throw linkErr;
 
   return { type: "invited" as const };
 }
