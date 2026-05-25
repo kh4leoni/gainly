@@ -740,7 +740,7 @@ html.light [role="dialog"].client-themed {
   pointer-events: none;
 }
 
-/* ── App splash — animated Gainly text on client app open ─────────────────── */
+/* ── App splash — animated Gainly logo on client app open ─────────────────── */
 .app-splash {
   position: fixed;
   inset: 0;
@@ -754,42 +754,48 @@ html.light [role="dialog"].client-themed {
 }
 .app-splash-in { opacity: 1; }
 .app-splash-out { opacity: 0; }
-.app-splash-text {
-  font-size: 56px;
-  font-weight: 800;
-  letter-spacing: -1.8px;
-  line-height: 1;
+.app-splash-logo {
+  position: relative;
+  display: inline-block;
+  line-height: 0;
+  animation: app-splash-rise 520ms var(--ease-ios) both;
+}
+.app-splash-logo img {
+  display: block;
+}
+/* Pink shimmer overlay masked to the logo's silhouette. Sweeps once
+   from left to right across the visible glyphs. */
+.app-splash-shine {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
   background: linear-gradient(
-    90deg,
-    var(--c-text) 0%,
-    var(--c-text) 35%,
-    #FF1D8C 50%,
-    var(--c-text) 65%,
-    var(--c-text) 100%
+    100deg,
+    transparent 30%,
+    rgba(255, 29, 140, 0.85) 50%,
+    transparent 70%
   );
   background-size: 220% 100%;
-  background-position: 100% 0;
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  color: transparent;
-  animation:
-    app-splash-shimmer 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite,
-    app-splash-rise 520ms var(--ease-ios) both;
+  background-position: 120% 0;
+  -webkit-mask-image: url("/LOGO_gainly.png");
+  mask-image: url("/LOGO_gainly.png");
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  animation: app-splash-shimmer 1100ms cubic-bezier(0.4, 0, 0.2, 1) 260ms both;
 }
 @keyframes app-splash-shimmer {
-  0%   { background-position: 100% 0; }
-  100% { background-position: -100% 0; }
+  from { background-position: 120% 0; }
+  to   { background-position: -120% 0; }
 }
 @keyframes app-splash-rise {
   from { opacity: 0; transform: translateY(10px) scale(0.96); }
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .app-splash-text {
-    animation: none;
-    background: var(--c-text);
-    -webkit-background-clip: text;
-    background-clip: text;
-  }
+  .app-splash-logo { animation: none; }
+  .app-splash-shine { display: none; }
 }
