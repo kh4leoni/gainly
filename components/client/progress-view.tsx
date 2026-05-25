@@ -4,6 +4,8 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { MeasurementChart } from "@/components/client/measurement-chart";
+import { MeasurementSection, type MeasurementEntry } from "@/components/client/measurement-section";
+import { logBodyweight, logWaist, deleteBodyweight, deleteWaist } from "@/app/client/actions";
 import { getRecentPRs, getCardioRecords, type CardioRecord } from "@/lib/queries/workouts";
 import { derivedRepMax, roundKg } from "@/lib/calc/one-rm";
 import { KilpailutyokaluCard } from "@/components/client/kilpailutyokalu-card";
@@ -22,7 +24,7 @@ type PR = {
   achieved_at: string;
   exercises: { id: string; name: string } | null;
 };
-type Measurement = { value: number; logged_at: string };
+type Measurement = MeasurementEntry;
 
 const TABS = ["ennätykset", "kehitys", "voimanosto"] as const;
 type Tab = typeof TABS[number];
@@ -370,7 +372,17 @@ export function ProgressView({
                   data={bwHistory}
                   unit="kg"
                   color="var(--c-info)"
-                  emptyText="Ei painomerkintöjä vielä. Lisää asetuksista."
+                  emptyText="Ei painomerkintöjä vielä."
+                />
+                <div style={{ height: 12 }} />
+                <div style={{ height: 1, background: "var(--c-border)", margin: "0 -16px 12px" }} />
+                <MeasurementSection
+                  label="Lisää"
+                  unit="kg"
+                  max={500}
+                  initialHistory={bwHistory}
+                  onSave={logBodyweight}
+                  onDelete={deleteBodyweight}
                 />
               </div>
 
@@ -387,7 +399,17 @@ export function ProgressView({
                   data={waistHistory}
                   unit="cm"
                   color="var(--c-info-alt)"
-                  emptyText="Ei vyötärösmittauksia vielä. Lisää asetuksista."
+                  emptyText="Ei vyötärösmittauksia vielä."
+                />
+                <div style={{ height: 12 }} />
+                <div style={{ height: 1, background: "var(--c-border)", margin: "0 -16px 12px" }} />
+                <MeasurementSection
+                  label="Lisää"
+                  unit="cm"
+                  max={300}
+                  initialHistory={waistHistory}
+                  onSave={logWaist}
+                  onDelete={deleteWaist}
                 />
               </div>
             </div>
