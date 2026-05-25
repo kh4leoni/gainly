@@ -4,6 +4,7 @@ import { getQueryClient } from "@/lib/get-query-client";
 import { getNextWorkout, getWeeklyVolume, getWeeklyCompletion, getLatestPRs } from "@/lib/queries/workouts";
 import { getMeCached } from "@/lib/queries/profile.server";
 import { ClientDashboardView } from "@/components/client/dashboard-view";
+import { InvitationBanner, type PendingInvitation } from "@/components/client/invitation-banner";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,9 @@ export default async function ClientDashboardPage() {
   const me = await getMeCached();
   const clientId = me?.id;
   const firstName = me?.full_name?.split(" ")[0] ?? null;
+
+  const { data: invitesData } = await supabase.rpc("my_pending_invitations");
+  const invitations = (invitesData ?? []) as PendingInvitation[];
 
   if (clientId) {
     await Promise.all([
@@ -25,6 +29,7 @@ export default async function ClientDashboardPage() {
 
   return (
     <HydrationBoundary state={dehydrate(qc)}>
+      <InvitationBanner invitations={invitations} />
       <ClientDashboardView clientId={clientId ?? ""} firstName={firstName} />
     </HydrationBoundary>
   );

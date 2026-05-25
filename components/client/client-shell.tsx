@@ -4,7 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { House, CalendarDots, TrendUp, ClockCounterClockwise, ChatCircle, Sun, Moon, SignOut, PencilSimple, CaretDown } from "@phosphor-icons/react";
+import { House, CalendarDots, TrendUp, ClockCounterClockwise, ChatCircle, Sun, Moon, SignOut, PencilSimple, CaretDown, Trash } from "@phosphor-icons/react";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 const ROUTE_TITLE: Record<string, string> = {
   "/client/dashboard": "Koti",
@@ -42,7 +43,7 @@ function PageTitle({ title }: { title: string }) {
 import { useTheme } from "next-themes";
 import { SyncBar } from "@/components/offline/sync-bar";
 import { useWorkoutPrefetch } from "@/hooks/use-workout-prefetch";
-import { logBodyweight, logWaist, updateProfileName } from "@/app/client/actions";
+import { logBodyweight, logWaist, updateProfileName, deleteBodyweight, deleteWaist } from "@/app/client/actions";
 import { usePendingNav } from "@/lib/nav-context";
 import { createClient } from "@/lib/supabase/client";
 import { getUnreadCount } from "@/lib/queries/messages";
@@ -61,7 +62,7 @@ const NAV = [
 ] as const;
 
 type Me = { id: string; full_name: string | null } | null;
-type MeasurementEntry = { value: number; logged_at: string };
+type MeasurementEntry = { id?: string; value: number; logged_at: string };
 
 function initials(name: string | null) {
   if (!name) return "?";
@@ -224,12 +225,13 @@ function OmatTiedotSection({ me }: { me: Me }) {
   );
 }
 
-function MeasurementSection({ label, unit, max, initialHistory, onSave }: {
+function MeasurementSection({ label, unit, max, initialHistory, onSave, onDelete }: {
   label: string;
   unit: string;
   max: number;
   initialHistory: MeasurementEntry[];
   onSave: (value: number) => Promise<void>;
+  onDelete: (id: string) => Promise<void>;
 }) {
   const [inputVal, setInputVal] = useState("");
   const [history, setHistory] = useState<MeasurementEntry[]>(initialHistory);
@@ -237,7 +239,22 @@ function MeasurementSection({ label, unit, max, initialHistory, onSave }: {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [saved, setSaved] = useState(false);
   const [animKey, setAnimKey] = useState(0);
+  const [pendingDelete, setPendingDelete] = useState<MeasurementEntry | null>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
+
+  function requestDelete(entry: MeasurementEntry) {
+    if (!entry.id) return;
+    setPendingDelete(entry);
+  }
+
+  function confirmDelete() {
+    const entry = pendingDelete;
+    if (!entry?.id) return;
+    setHistory(prev => prev.filter(e => e.id !== entry.id));
+    startTransition(async () => {
+      try { await onDelete(entry.id!); } catch {}
+    });
+  }
 
   function handleChange(v: string) {
     setInputVal(v);
@@ -336,7 +353,7 @@ function MeasurementSection({ label, unit, max, initialHistory, onSave }: {
           {historyOpen && (
             <div style={{ marginTop: 6, maxHeight: 160, overflowY: "auto", display: "flex", flexDirection: "column", gap: 1 }}>
               {history.map((entry, i) => (
-                <div key={i} style={{
+                <div key={entry.id ?? i} style={{
                   display: "flex", justifyContent: "space-between", alignItems: "center",
                   padding: "5px 8px", borderRadius: "var(--r-sm)",
                   background: i === 0 ? "var(--c-surface2)" : "none",
@@ -344,15 +361,55 @@ function MeasurementSection({ label, unit, max, initialHistory, onSave }: {
                   <span style={{ fontSize: 12, color: "var(--c-text-muted)" }}>
                     {new Date(entry.logged_at).toLocaleDateString("fi-FI", { day: "numeric", month: "numeric", year: "numeric" })}
                   </span>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: i === 0 ? "var(--c-text)" : "var(--c-text-muted)" }}>
-                    {entry.value} {unit}
-                  </span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: i === 0 ? "var(--c-text)" : "var(--c-text-muted)" }}>
+                      {entry.value} {unit}
+                    </span>
+                    {entry.id && (
+                      <button
+                        type="button"
+                        onClick={() => requestDelete(entry)}
+                        aria-label="Poista mittaus"
+                        title="Poista"
+                        style={{
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          width: 22, height: 22, padding: 0,
+                          background: "none", border: "none", cursor: "pointer",
+                          color: "var(--c-text-subtle)", borderRadius: "var(--r-sm)",
+                          transition: "color 150ms ease, background 150ms ease",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.color = "var(--c-danger, #ef4444)";
+                          e.currentTarget.style.background = "color-mix(in srgb, var(--c-danger, #ef4444) 10%, transparent)";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.color = "var(--c-text-subtle)";
+                          e.currentTarget.style.background = "none";
+                        }}
+                      >
+                        <Trash size={13} weight="regular" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
           )}
         </>
       )}
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        onOpenChange={(open) => { if (!open) setPendingDelete(null); }}
+        title="Poistetaanko mittaus?"
+        description={
+          pendingDelete
+            ? `${new Date(pendingDelete.logged_at).toLocaleDateString("fi-FI", { day: "numeric", month: "long", year: "numeric" })} – ${pendingDelete.value} ${unit}`
+            : ""
+        }
+        confirmLabel="Poista"
+        onConfirm={confirmDelete}
+      />
     </div>
   );
 }
@@ -404,11 +461,11 @@ function SettingsPanel({ me, coach, bwHistory, waistHistory, closing, onAnimatio
 
       {/* Mittaukset */}
       <CollapsibleSection title="Mittaukset" open={mittauksetOpen} onToggle={() => setMittauksetOpen(v => !v)}>
-        <MeasurementSection label="Paino" unit="kg" max={500} initialHistory={bwHistory} onSave={logBodyweight} />
+        <MeasurementSection label="Paino" unit="kg" max={500} initialHistory={bwHistory} onSave={logBodyweight} onDelete={deleteBodyweight} />
         <div style={{ height: 12 }} />
         <div style={{ height: 1, background: "var(--c-border)", margin: "0 -16px" }} />
         <div style={{ height: 12 }} />
-        <MeasurementSection label="Vyötärö" unit="cm" max={300} initialHistory={waistHistory} onSave={logWaist} />
+        <MeasurementSection label="Vyötärö" unit="cm" max={300} initialHistory={waistHistory} onSave={logWaist} onDelete={deleteWaist} />
       </CollapsibleSection>
 
       {D}

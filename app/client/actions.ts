@@ -40,3 +40,22 @@ export async function logWaist(waist_cm: number) {
   if (error) throw error;
   revalidatePath("/client");
 }
+
+export async function deleteBodyweight(id: string) {
+  const user = await getCachedUser();
+  if (!user) throw new Error("Not authenticated");
+  const supabase = await createClient();
+  // RLS restricts delete to rows where client_id = auth.uid().
+  const { error } = await supabase.from("bodyweights").delete().eq("id", id);
+  if (error) throw error;
+  revalidatePath("/client");
+}
+
+export async function deleteWaist(id: string) {
+  const user = await getCachedUser();
+  if (!user) throw new Error("Not authenticated");
+  const supabase = await createClient();
+  const { error } = await supabase.from("waist_measurements").delete().eq("id", id);
+  if (error) throw error;
+  revalidatePath("/client");
+}

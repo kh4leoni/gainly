@@ -33,8 +33,9 @@ export async function middleware(request: NextRequest) {
   }
 
   // Resolve role. Prefer JWT claim (set by custom_access_token_hook); fall back to DB.
+  // Never trust user_metadata — it is user-writable via supabase.auth.updateUser.
   let role: "coach" | "client" | null =
-    (user.app_metadata as any)?.user_role ?? (user.user_metadata as any)?.role ?? null;
+    (user.app_metadata as { user_role?: "coach" | "client" })?.user_role ?? null;
   if (!role) {
     const { data } = await supabase.from("profiles").select("role").eq("id", user.id).single();
     role = (data as { role: "coach" | "client" } | null)?.role ?? null;
