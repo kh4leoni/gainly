@@ -682,16 +682,19 @@ export function ClientShell({
           </div>
         )}
 
-        {/* ── Bottom nav: solid background with progressive fade above ── */}
+        {/* ── Bottom nav: solid background with progressive fade above ──
+            Extends 2px past the viewport bottom (matched by extra padding)
+            so iOS sub-pixel rounding doesn't leave a 1px transparent strip
+            against the home-indicator area. */}
         <nav
           className="client-fade-nav"
           style={{
             position: "absolute",
             left: 0,
             right: 0,
-            bottom: 0,
+            bottom: -2,
             display: "flex",
-            paddingBottom: "env(safe-area-inset-bottom, 0px)",
+            paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 2px)",
             zIndex: 60,
           }}
         >
@@ -708,8 +711,8 @@ export function ClientShell({
                   display: "flex",
                   flexDirection: "column",
                   alignItems: "center",
-                  gap: 4,
-                  padding: "10px 0 8px",
+                  gap: 2,
+                  padding: "6px 0 4px",
                   textDecoration: "none",
                   position: "relative",
                 }}

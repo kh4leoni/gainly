@@ -94,7 +94,7 @@ html.light body:has(.client-app) { background: #f5f4f8; }
   --c-text-subtle: rgba(240,238,245,0.24);
   --shimmer-base: #1e1e24;
   --shimmer-shine: #2c2c34;
-  --client-nav-inset: calc(env(safe-area-inset-bottom, 0px) + 64px);
+  --client-nav-inset: calc(env(safe-area-inset-bottom, 0px) + 52px);
   --client-nav-fade-height: 44px;
   /* ── iOS shape system (iOS 26 Liquid Glass scale) ──
      iOS uses ~17.5% ratio (10/57) for continuous corners. Without browser
