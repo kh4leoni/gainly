@@ -94,7 +94,12 @@ html.light body:has(.client-app) { background: #f5f4f8; }
   --c-text-subtle: rgba(240,238,245,0.24);
   --shimmer-base: #1e1e24;
   --shimmer-shine: #2c2c34;
-  --client-nav-inset: calc(env(safe-area-inset-bottom, 0px) + 52px);
+  /* Treat the iOS home-indicator strip as half-usable: nav content sits
+     inside it rather than fully above it, so the bar visually hugs the
+     bottom edge instead of floating ~34px above on iPhone 14+. Subtract
+     12px from the safe inset (clamped to 0 for non-notch devices) and
+     add the bar's own 52px content height. */
+  --client-nav-inset: calc(max(env(safe-area-inset-bottom, 0px) - 12px, 0px) + 52px);
   --client-nav-fade-height: 44px;
   /* ── iOS shape system (iOS 26 Liquid Glass scale) ──
      iOS uses ~17.5% ratio (10/57) for continuous corners. Without browser

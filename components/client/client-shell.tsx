@@ -685,7 +685,9 @@ export function ClientShell({
         {/* ── Bottom nav: solid background with progressive fade above ──
             Extends 2px past the viewport bottom (matched by extra padding)
             so iOS sub-pixel rounding doesn't leave a 1px transparent strip
-            against the home-indicator area. */}
+            against the home-indicator area. paddingBottom shaves 12px off
+            the safe inset (clamped to 0) so nav content sits closer to
+            the home indicator on iPhone 14+ instead of floating high. */}
         <nav
           className="client-fade-nav"
           style={{
@@ -694,7 +696,7 @@ export function ClientShell({
             right: 0,
             bottom: -2,
             display: "flex",
-            paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 2px)",
+            paddingBottom: "calc(max(env(safe-area-inset-bottom, 0px) - 12px, 0px) + 2px)",
             zIndex: 60,
           }}
         >
