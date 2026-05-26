@@ -88,4 +88,37 @@ self.addEventListener("sync", (event) => {
   }
 });
 
+// ── Web Push ────────────────────────────────────────────────────────
+type PushPayload = { title?: string; body?: string; url?: string; tag?: string };
+
+self.addEventListener("push", (event) => {
+  let data: PushPayload = {};
+  try { data = event.data?.json() ?? {}; } catch { /* keep defaults */ }
+  const title = data.title || "Gainly";
+  const options: NotificationOptions = {
+    body: data.body || "",
+    icon: "/icons/icon-192.png",
+    badge: "/icons/icon-192.png",
+    tag: data.tag,
+    data: { url: data.url || "/" },
+  };
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const target = (event.notification.data as { url?: string } | undefined)?.url || "/";
+  event.waitUntil((async () => {
+    const all = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    // Reuse an existing tab if any is already on our origin.
+    const existing = all.find((c) => "focus" in c);
+    if (existing) {
+      await (existing as WindowClient).focus();
+      (existing as WindowClient).navigate(target).catch(() => { /* cross-origin guard */ });
+      return;
+    }
+    await self.clients.openWindow(target);
+  })());
+});
+
 void supabaseUrl;

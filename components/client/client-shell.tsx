@@ -7,6 +7,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { House, CalendarDots, TrendUp, ClockCounterClockwise, ChatCircle, Sun, Moon, SignOut, PencilSimple, Gear, Key, UserMinus } from "@phosphor-icons/react";
 import { ChangePasswordDialog } from "@/components/client/change-password-dialog";
 import { DeleteAccountDialog } from "@/components/client/delete-account-dialog";
+import { PushMessagesToggle } from "@/components/settings/push-toggle";
 
 const ROUTE_TITLE: Record<string, string> = {
   "/client/dashboard": "Koti",
@@ -321,6 +322,11 @@ function SettingsPanel({ me, coach, closing, onAnimationEnd }: {
           Poista tili
         </button>
       </CollapsibleSection>
+
+      {D}
+
+      {/* Notifications */}
+      <PushMessagesToggle variant="client" />
 
       {D}
 
