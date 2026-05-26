@@ -135,7 +135,6 @@ function QuoteCard() {
         border: "1px solid color-mix(in srgb, var(--c-pink) 20%, transparent)",
         borderRadius: "var(--r-xl)",
         padding: "22px 22px 18px",
-        marginBottom: 20,
         position: "relative",
         overflow: "hidden",
         touchAction: "pan-y",
@@ -264,16 +263,15 @@ export function ClientDashboardView({
   });
 
   return (
-    <div
-      style={{
-        flex: 1,
-        // Add extra bottom padding when the fixed "Aloita treeni" CTA is
-        // showing so the last card isn't trapped beneath it.
-        padding: workout ? "8px 20px 96px" : "8px 20px 20px",
-      }}
-    >
+    <div style={{ flex: 1, padding: "20px 20px 20px" }}>
+      {/* ── Fold section ──
+          Cards flow naturally top-down. Hero ends up wherever the stack
+          ends — close to the bottom on phones where the stack fills the
+          fold, slightly higher when there's less content. Quote/week
+          desc sit immediately below, no leftover gap. */}
+      <section style={{ display: "flex", flexDirection: "column" }}>
       {/* Slim greeting line — kept compact so the workout hero owns the fold */}
-      <div style={{ marginBottom: 14, display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8, ...enterStyle(0) }}>
+      <div style={{ marginBottom: 16, display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8, ...enterStyle(0) }}>
         <div style={{ fontSize: 17, fontWeight: 700, letterSpacing: "-0.3px", lineHeight: 1.1 }}>
           Hei{firstName ? `, ${firstName}` : ""}.
         </div>
@@ -282,113 +280,14 @@ export function ClientDashboardView({
         </div>
       </div>
 
-      {/* HERO: Next workout — the dashboard's reason to exist */}
-      {workout ? (
-        <div style={{
-          background: "linear-gradient(135deg,color-mix(in srgb, var(--c-pink) 18%, transparent) 0%,color-mix(in srgb, var(--c-pink) 12%, transparent) 100%)",
-          border: "1px solid color-mix(in srgb, var(--c-pink) 30%, transparent)",
-          borderRadius: "var(--r-2xl)",
-          padding: "22px 22px 20px",
-          marginBottom: 22,
-          position: "relative",
-          ...enterStyle(60),
-        }}>
-          {exercises.length > 0 && (
-            <ExerciseInfoDialog
-              exercises={exercises
-                .slice()
-                .sort((a, b) => a.order_idx - b.order_idx)
-                .filter((e) => e.exercises != null)
-                .map((e) => ({
-                  name: e.exercises!.name,
-                  instructions: e.exercises!.instructions,
-                  video_path: e.exercises!.video_path,
-                }))}
-              title={workout.program_days?.name ?? "Harjoitteet"}
-              trigger={
-                <button
-                  type="button"
-                  title="Katso harjoitteiden kuvaukset"
-                  style={{
-                    position: "absolute", top: 14, right: 14,
-                    width: 34, height: 34, borderRadius: "50%",
-                    border: "1px solid color-mix(in srgb, var(--c-pink) 35%, transparent)",
-                    background: "color-mix(in srgb, var(--c-pink) 10%, transparent)",
-                    color: "var(--c-pink)",
-                    fontSize: 13, fontWeight: 700,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    cursor: "pointer",
-                  }}
-                >
-                  ?
-                </button>
-              }
-            />
-          )}
-          <div style={{ marginBottom: 14 }}>
-            <Eyebrow tone="accent" style={{ letterSpacing: "1.5px", marginBottom: 6 }}>
-              Seuraava treeni
-            </Eyebrow>
-            <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.8px", lineHeight: 1.1 }}>
-              {workout.program_days?.name ?? "Treeni"}
-            </div>
-          </div>
-
-          {workout.program_days?.description && (
-            <div style={{ fontSize: 13, color: "var(--c-text-muted)", fontStyle: "italic", lineHeight: 1.5, marginBottom: 14 }}>
-              {workout.program_days.description}
-            </div>
-          )}
-
-          {exNames.length > 0 && (
-            <div style={{ fontSize: 12, color: "var(--c-text-muted)" }}>
-              {exNames.join(" · ")}{exercises.length > 4 ? ` +${exercises.length - 4}` : ""}
-            </div>
-          )}
-        </div>
-      ) : (
-        <div style={{
-          background: "var(--c-surface)",
-          border: "1px solid var(--c-border)",
-          borderRadius: "var(--r-2xl)",
-          marginBottom: 22,
-          ...enterStyle(60),
-        }}>
-          <EmptyState
-            icon={Moon}
-            title="Ei tulevia treenejä"
-            description="Ohjelmassasi ei ole tulevia treenejä."
-            action={
-              <Link
-                href="/client/ohjelma"
-                onClick={() => setPendingHref("/client/ohjelma")}
-                style={{
-                  display: "inline-block",
-                  padding: "11px 18px",
-                  borderRadius: "var(--r-md)",
-                  background: "var(--c-surface2)",
-                  border: "1px solid var(--c-border)",
-                  color: "var(--c-text)",
-                  fontSize: 13,
-                  fontWeight: 600,
-                  textDecoration: "none",
-                }}
-              >
-                Selaa ohjelmaa
-              </Link>
-            }
-          />
-        </div>
-      )}
-
       {/* Weekly stats — 2-column grid */}
       {(wcTotal > 0 || volume > 0) && (
         <div style={{
           display: "grid",
           gridTemplateColumns: wcTotal > 0 && volume > 0 ? "1fr 1fr" : "1fr",
           gap: 12,
-          marginBottom: 20,
-          ...enterStyle(130),
+          marginBottom: 16,
+          ...enterStyle(90),
         }}>
           {wcTotal > 0 && (
             <Link
@@ -449,9 +348,6 @@ export function ClientDashboardView({
         </div>
       )}
 
-      {/* Bodyweight quick-log — one-tap daily weigh-in */}
-      {bwQuickLog && <div style={enterStyle(170)}>{bwQuickLog}</div>}
-
       {/* Recent PRs */}
       {(latestPRs.data?.length ?? 0) > 0 && (
         <Link
@@ -462,10 +358,10 @@ export function ClientDashboardView({
             border: "1px solid var(--c-border)",
             borderRadius: "var(--r-xl)",
             padding: 20,
-            marginBottom: 20,
+            marginBottom: 16,
             textDecoration: "none",
             color: "inherit",
-            ...enterStyle(200),
+            ...enterStyle(130),
           }}
         >
           <SectionLabel style={{ marginBottom: 14 }}>
@@ -488,51 +384,87 @@ export function ClientDashboardView({
         </Link>
       )}
 
-      {/* Week description */}
-      {workout?.program_days?.program_weeks?.description && (
+      {/* Bodyweight quick-log — sits right above the hero so logging the
+          morning weight and starting the workout are a thumb-pair.
+          When the BW card isn't active (e.g. user isn't tracking weight),
+          promote the QuoteCard into this slot so the fold doesn't get a
+          dead gap between the last stat and the hero. */}
+      {bwQuickLog
+        ? <div style={{ marginBottom: 16, ...enterStyle(170) }}>{bwQuickLog}</div>
+        : <div style={{ marginBottom: 16, ...enterStyle(170) }}><QuoteCard /></div>}
+
+      {/* HERO: Next workout — the dashboard's reason to exist.
+          `marginTop: auto` inside the fold section pushes it to the
+          bottom of the visible viewport on landing. */}
+      {workout ? (
         <div style={{
-          background: "var(--c-surface)",
-          border: "1px solid var(--c-border)",
-          borderRadius: "var(--r-lg)",
-          padding: "14px 16px",
-          marginBottom: 20,
-          ...enterStyle(270),
+          background: "linear-gradient(135deg,color-mix(in srgb, var(--c-pink) 18%, transparent) 0%,color-mix(in srgb, var(--c-pink) 12%, transparent) 100%)",
+          border: "1px solid color-mix(in srgb, var(--c-pink) 30%, transparent)",
+          borderRadius: "var(--r-2xl)",
+          padding: "22px 22px 20px",
+          marginBottom: 16,
+          position: "relative",
+          ...enterStyle(60),
         }}>
-          <Eyebrow style={{ marginBottom: 6 }}>Viikkojen kuvaus</Eyebrow>
-          <Subtitle>{workout.program_days.program_weeks.description}</Subtitle>
-        </div>
-      )}
+          {exercises.length > 0 && (
+            <ExerciseInfoDialog
+              exercises={exercises
+                .slice()
+                .sort((a, b) => a.order_idx - b.order_idx)
+                .filter((e) => e.exercises != null)
+                .map((e) => ({
+                  name: e.exercises!.name,
+                  instructions: e.exercises!.instructions,
+                  video_path: e.exercises!.video_path,
+                }))}
+              title={workout.program_days?.name ?? "Harjoitteet"}
+              trigger={
+                <button
+                  type="button"
+                  title="Katso harjoitteiden kuvaukset"
+                  style={{
+                    position: "absolute", top: 14, right: 14,
+                    width: 34, height: 34, borderRadius: "50%",
+                    border: "1px solid color-mix(in srgb, var(--c-pink) 35%, transparent)",
+                    background: "color-mix(in srgb, var(--c-pink) 10%, transparent)",
+                    color: "var(--c-pink)",
+                    fontSize: 13, fontWeight: 700,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    cursor: "pointer",
+                  }}
+                >
+                  ?
+                </button>
+              }
+            />
+          )}
+          <div style={{ marginBottom: 14 }}>
+            <Eyebrow tone="accent" style={{ letterSpacing: "1.5px", marginBottom: 6 }}>
+              Seuraava treeni
+            </Eyebrow>
+            <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.8px", lineHeight: 1.1 }}>
+              {workout.program_days?.name ?? "Treeni"}
+            </div>
+          </div>
 
-      {/* Motivational quotes — moved below the workout so it doesn't push the
-          primary action below the fold. Stays as a small daily moment. */}
-      <div style={enterStyle(340)}><QuoteCard /></div>
+          {workout.program_days?.description && (
+            <div style={{ fontSize: 13, color: "var(--c-text-muted)", fontStyle: "italic", lineHeight: 1.5, marginBottom: 14 }}>
+              {workout.program_days.description}
+            </div>
+          )}
 
-      {/* Fixed "Aloita treeni" CTA — anchored above the bottom nav so it's
-          comfortably within thumb reach. Only shown when there's a workout
-          to start. The centered max-width keeps it from spanning the full
-          viewport on tablets/desktop where the shell is also constrained. */}
-      {workout && (
-        <div
-          style={{
-            position: "fixed",
-            left: 0,
-            right: 0,
-            bottom: "calc(env(safe-area-inset-bottom, 0px) + 70px)",
-            display: "flex",
-            justifyContent: "center",
-            padding: "0 20px",
-            pointerEvents: "none",
-            zIndex: 55,
-          }}
-        >
+          {exNames.length > 0 && (
+            <div style={{ fontSize: 12, color: "var(--c-text-muted)", marginBottom: 20 }}>
+              {exNames.join(" · ")}{exercises.length > 4 ? ` +${exercises.length - 4}` : ""}
+            </div>
+          )}
+
           <Link
             href={`/client/workout/${workout.id}`}
             onClick={() => setPendingHref(`/client/workout/${workout.id}`)}
             style={{
-              pointerEvents: "auto",
               display: "block",
               width: "100%",
-              maxWidth: 440,
               padding: "18px",
               background: "var(--c-pink)",
               borderRadius: "var(--r-lg)",
@@ -541,14 +473,67 @@ export function ClientDashboardView({
               fontWeight: 800,
               textAlign: "center",
               textDecoration: "none",
-              boxShadow: "0 8px 28px var(--c-pink-glow), 0 2px 8px rgba(0,0,0,0.25)",
+              boxShadow: "0 6px 24px var(--c-pink-glow)",
               letterSpacing: "-0.3px",
             }}
           >
             Aloita treeni
           </Link>
         </div>
+      ) : (
+        <div style={{
+          background: "var(--c-surface)",
+          border: "1px solid var(--c-border)",
+          borderRadius: "var(--r-2xl)",
+          marginBottom: 16,
+          ...enterStyle(60),
+        }}>
+          <EmptyState
+            icon={Moon}
+            title="Ei tulevia treenejä"
+            description="Ohjelmassasi ei ole tulevia treenejä."
+            action={
+              <Link
+                href="/client/ohjelma"
+                onClick={() => setPendingHref("/client/ohjelma")}
+                style={{
+                  display: "inline-block",
+                  padding: "11px 18px",
+                  borderRadius: "var(--r-md)",
+                  background: "var(--c-surface2)",
+                  border: "1px solid var(--c-border)",
+                  color: "var(--c-text)",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  textDecoration: "none",
+                }}
+              >
+                Selaa ohjelmaa
+              </Link>
+            }
+          />
+        </div>
       )}
+      </section>
+
+      {/* Week description */}
+      {workout?.program_days?.program_weeks?.description && (
+        <div style={{
+          background: "var(--c-surface)",
+          border: "1px solid var(--c-border)",
+          borderRadius: "var(--r-lg)",
+          padding: "14px 16px",
+          marginBottom: 16,
+          ...enterStyle(270),
+        }}>
+          <Eyebrow style={{ marginBottom: 6 }}>Viikkojen kuvaus</Eyebrow>
+          <Subtitle>{workout.program_days.program_weeks.description}</Subtitle>
+        </div>
+      )}
+
+      {/* Motivational quotes — only rendered here when the BW slot used
+          it; if BW promoted the quote into the fold, don't repeat it. */}
+      {bwQuickLog && <div style={enterStyle(340)}><QuoteCard /></div>}
     </div>
   );
 }

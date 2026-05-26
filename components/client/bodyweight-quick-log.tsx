@@ -88,7 +88,6 @@ export function BodyweightQuickLog({
         border: "1px solid var(--c-border)",
         borderRadius: "var(--r-xl)",
         padding: "16px 18px 18px",
-        marginBottom: 20,
       }}
     >
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
