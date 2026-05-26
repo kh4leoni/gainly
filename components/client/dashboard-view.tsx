@@ -264,7 +264,14 @@ export function ClientDashboardView({
   });
 
   return (
-    <div style={{ flex: 1, padding: "8px 20px 20px" }}>
+    <div
+      style={{
+        flex: 1,
+        // Add extra bottom padding when the fixed "Aloita treeni" CTA is
+        // showing so the last card isn't trapped beneath it.
+        padding: workout ? "8px 20px 96px" : "8px 20px 20px",
+      }}
+    >
       {/* Slim greeting line — kept compact so the workout hero owns the fold */}
       <div style={{ marginBottom: 14, display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8, ...enterStyle(0) }}>
         <div style={{ fontSize: 17, fontWeight: 700, letterSpacing: "-0.3px", lineHeight: 1.1 }}>
@@ -334,31 +341,10 @@ export function ClientDashboardView({
           )}
 
           {exNames.length > 0 && (
-            <div style={{ fontSize: 12, color: "var(--c-text-muted)", marginBottom: 20 }}>
+            <div style={{ fontSize: 12, color: "var(--c-text-muted)" }}>
               {exNames.join(" · ")}{exercises.length > 4 ? ` +${exercises.length - 4}` : ""}
             </div>
           )}
-
-          <Link
-            href={`/client/workout/${workout.id}`}
-            onClick={() => setPendingHref(`/client/workout/${workout.id}`)}
-            style={{
-              display: "block",
-              width: "100%",
-              padding: "18px",
-              background: "var(--c-pink)",
-              borderRadius: "var(--r-lg)",
-              color: "var(--c-pink-fg, #fff)",
-              fontSize: 17,
-              fontWeight: 800,
-              textAlign: "center",
-              textDecoration: "none",
-              boxShadow: "0 6px 24px var(--c-pink-glow)",
-              letterSpacing: "-0.3px",
-            }}
-          >
-            Aloita treeni
-          </Link>
         </div>
       ) : (
         <div style={{
@@ -520,6 +506,49 @@ export function ClientDashboardView({
       {/* Motivational quotes — moved below the workout so it doesn't push the
           primary action below the fold. Stays as a small daily moment. */}
       <div style={enterStyle(340)}><QuoteCard /></div>
+
+      {/* Fixed "Aloita treeni" CTA — anchored above the bottom nav so it's
+          comfortably within thumb reach. Only shown when there's a workout
+          to start. The centered max-width keeps it from spanning the full
+          viewport on tablets/desktop where the shell is also constrained. */}
+      {workout && (
+        <div
+          style={{
+            position: "fixed",
+            left: 0,
+            right: 0,
+            bottom: "calc(env(safe-area-inset-bottom, 0px) + 70px)",
+            display: "flex",
+            justifyContent: "center",
+            padding: "0 20px",
+            pointerEvents: "none",
+            zIndex: 55,
+          }}
+        >
+          <Link
+            href={`/client/workout/${workout.id}`}
+            onClick={() => setPendingHref(`/client/workout/${workout.id}`)}
+            style={{
+              pointerEvents: "auto",
+              display: "block",
+              width: "100%",
+              maxWidth: 440,
+              padding: "18px",
+              background: "var(--c-pink)",
+              borderRadius: "var(--r-lg)",
+              color: "var(--c-pink-fg, #fff)",
+              fontSize: 17,
+              fontWeight: 800,
+              textAlign: "center",
+              textDecoration: "none",
+              boxShadow: "0 8px 28px var(--c-pink-glow), 0 2px 8px rgba(0,0,0,0.25)",
+              letterSpacing: "-0.3px",
+            }}
+          >
+            Aloita treeni
+          </Link>
+        </div>
+      )}
     </div>
   );
 }

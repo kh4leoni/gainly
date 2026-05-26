@@ -513,7 +513,7 @@ export function ClientShell({
         background: "var(--c-bg)",
       }}
     >
-      <AppSplash />
+      <AppSplash coBrandLabel={coach?.coBrandLabel ?? null} />
       <div
         ref={shellRef}
         style={{
