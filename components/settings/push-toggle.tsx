@@ -16,7 +16,7 @@ type Variant = "client" | "coach";
 
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "";
 
-export function PushMessagesToggle({ variant = "client" }: { variant?: Variant }) {
+export function PushMessagesToggle({ variant = "client", bare = false }: { variant?: Variant; bare?: boolean }) {
   const [supported, setSupported] = useState(true);
   const [enabled, setEnabled] = useState(false);
   const [busy, startTransition] = useTransition();
@@ -87,7 +87,7 @@ export function PushMessagesToggle({ variant = "client" }: { variant?: Variant }
 
   if (!supported) {
     return (
-      <div style={{ padding: "11px 16px" }}>
+      <div style={{ padding: bare ? 0 : "11px 16px" }}>
         <p style={{ fontSize: 11, color: dimColor, lineHeight: 1.4 }}>
           Ilmoituksia ei tueta tällä laitteella. iOS:llä lisää sovellus aloitusnäytölle (Jaa → Lisää aloitusnäyttöön).
         </p>
@@ -96,7 +96,7 @@ export function PushMessagesToggle({ variant = "client" }: { variant?: Variant }
   }
 
   return (
-    <div style={{ padding: "11px 16px" }}>
+    <div style={{ padding: bare ? 0 : "11px 16px" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: labelColor }}>
           Viesti-ilmoitukset

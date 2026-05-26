@@ -8,6 +8,46 @@ import { PushMessagesToggle } from "@/components/settings/push-toggle";
 
 type Me = { id: string; full_name: string | null; email?: string | null; phone?: string | null } | null;
 
+// Lightweight collapsible row used to hide the (lazily-loaded) push toggle
+// behind a tap. Matches the visual rhythm of the rest of the panel.
+function CoachCollapsibleSection({ title }: { title: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        style={{
+          width: "100%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "11px 16px",
+          background: "none",
+          border: "none",
+          cursor: "pointer",
+          color: "hsl(var(--muted-foreground))",
+          fontSize: 10,
+          fontWeight: 700,
+          letterSpacing: "0.08em",
+          textTransform: "uppercase",
+        }}
+      >
+        <span>{title}</span>
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"
+          style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 240ms ease", flexShrink: 0 }}>
+          <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </button>
+      {open && (
+        <div style={{ padding: "0 16px 12px" }}>
+          <PushMessagesToggle variant="coach" bare />
+        </div>
+      )}
+    </div>
+  );
+}
+
 function initials(name: string | null) {
   if (!name) return "?";
   const p = name.trim().split(" ");
@@ -196,7 +236,7 @@ function CoachSettingsPanel({ me, closing, onAnimationEnd }: {
 
       {D}
 
-      <PushMessagesToggle variant="coach" />
+      <CoachCollapsibleSection title="Ilmoitukset" />
 
       {D}
 
