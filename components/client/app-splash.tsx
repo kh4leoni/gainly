@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 
-export function AppSplash() {
+export function AppSplash({ coBrandLabel }: { coBrandLabel?: string | null }) {
   const [phase, setPhase] = useState<"in" | "out" | "gone">("in");
 
   useEffect(() => {
@@ -17,13 +17,19 @@ export function AppSplash() {
 
   if (phase === "gone") return null;
 
+  const cobrand = !!coBrandLabel;
+  const src = cobrand ? "/fs%20collab.png" : "/LOGO_gainly.png";
+  // Collab logo is roughly twice as wide as the solo Gainly mark; keep
+  // the same on-screen height by scaling the width up to compensate.
+  const width = cobrand ? 360 : 260;
+
   return (
     <div className={`app-splash app-splash-${phase}`} aria-hidden>
       <div className="app-splash-logo">
         <Image
-          src="/LOGO_gainly.png"
+          src={src}
           alt=""
-          width={260}
+          width={width}
           height={104}
           priority
           className="logo-adaptive"
