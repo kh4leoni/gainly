@@ -992,7 +992,7 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
     onSuccess: invalidate,
   });
 
-  if (!program || !block) {
+  if (!program) {
     return (
       <div style={{ ...TOKENS, background: "var(--bg-0)", minHeight: "100vh", padding: 24 }}>
         <div
@@ -1005,6 +1005,52 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
           }}
         />
         <style>{`@keyframes mv2pulse { 0%,100% { opacity: 1 } 50% { opacity: 0.5 } }`}</style>
+      </div>
+    );
+  }
+
+  if (!block) {
+    return (
+      <div
+        style={{
+          ...TOKENS,
+          background: "var(--bg-0)",
+          color: "var(--fg-0)",
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: 24,
+        }}
+      >
+        <div style={{ textAlign: "center", maxWidth: 360 }}>
+          <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>{program.title}</h2>
+          <p style={{ fontSize: 14, color: "var(--fg-2)", marginBottom: 20 }}>
+            Tässä ohjelmassa ei ole vielä yhtään jaksoa. Luo ensimmäinen aloittaaksesi.
+          </p>
+          <button
+            type="button"
+            onClick={() => addBlock.mutate()}
+            disabled={addBlock.isPending}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "10px 16px",
+              borderRadius: 10,
+              background: "var(--accent)",
+              color: "var(--accent-fg, #fff)",
+              border: "none",
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: addBlock.isPending ? "default" : "pointer",
+              opacity: addBlock.isPending ? 0.6 : 1,
+            }}
+          >
+            <Plus size={16} />
+            {addBlock.isPending ? "Luodaan…" : "Luo ensimmäinen jakso"}
+          </button>
+        </div>
       </div>
     );
   }
