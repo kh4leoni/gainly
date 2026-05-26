@@ -1423,7 +1423,7 @@ function Topbar({
         </div>
         {!isTemplate && (
           <Link
-            href={`/coach/client-programs/${programId}/edit`}
+            href={`/coach/client-programs/${programId}/edit-v1`}
             style={{
               display: "inline-flex",
               alignItems: "center",
@@ -1437,7 +1437,7 @@ function Topbar({
               fontWeight: 500,
               textDecoration: "none",
             }}
-            title="Palaa vanhaan näkymään"
+            title="Vaihda vanhaan editoriin"
           >
             ← v1
           </Link>

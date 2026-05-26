@@ -2,15 +2,13 @@ import { notFound } from "next/navigation";
 import { HydrationBoundary, dehydrate } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/server";
 import { getQueryClient } from "@/lib/get-query-client";
-import { getProgramFull, getProgramCompletion } from "@/lib/queries/programs";
+import { getProgramFull } from "@/lib/queries/programs";
 import { getExercises } from "@/lib/queries/exercises";
-import { ProgramEditorV2 } from "@/components/program-builder/program-editor-v2";
+import { ProgramEditor } from "@/components/program-builder/program-editor";
 
 export const dynamic = "force-dynamic";
 
-export default async function ClientProgramEditV2Page({
-  params,
-}: { params: Promise<{ id: string }> }) {
+export default async function ClientProgramEditV1Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createClient();
 
@@ -24,26 +22,15 @@ export default async function ClientProgramEditV2Page({
     notFound();
   }
 
-  const clientId = program.client_id;
   const qc = getQueryClient();
   await Promise.all([
-    qc.prefetchQuery({
-      queryKey: ["program", id],
-      queryFn: () => getProgramFull(supabase, id),
-    }),
-    qc.prefetchQuery({
-      queryKey: ["exercises"],
-      queryFn: () => getExercises(supabase),
-    }),
-    qc.prefetchQuery({
-      queryKey: ["program-completion", id],
-      queryFn: () => getProgramCompletion(supabase, id, clientId),
-    }),
+    qc.prefetchQuery({ queryKey: ["program", id], queryFn: () => getProgramFull(supabase, id) }),
+    qc.prefetchQuery({ queryKey: ["exercises"], queryFn: () => getExercises(supabase) }),
   ]);
 
   return (
     <HydrationBoundary state={dehydrate(qc)}>
-      <ProgramEditorV2 programId={id} clientId={clientId} />
+      <ProgramEditor programId={id} />
     </HydrationBoundary>
   );
 }

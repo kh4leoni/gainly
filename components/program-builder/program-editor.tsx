@@ -1397,11 +1397,11 @@ export function ProgramEditor({ programId }: { programId: string }) {
         <div className="flex shrink-0 items-center gap-1.5 md:gap-2">
           {!program.is_template && (
             <Link
-              href={`/coach/client-programs/${programId}/edit-v2`}
+              href={`/coach/client-programs/${programId}/edit`}
               className="hidden md:inline-flex items-center gap-1 rounded-lg border border-dashed border-primary/40 px-2.5 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
-              title="Kokeile uutta ohjelmointinäkymää"
+              title="Vaihda uuteen editoriin"
             >
-              Kokeile v2 →
+              Uusi editori →
             </Link>
           )}
           {program.is_template && <AssignProgramButton programId={programId} />}
