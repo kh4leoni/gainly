@@ -255,6 +255,7 @@ function SettingsPanel({ me, coach, closing, onAnimationEnd }: {
   const [mounted, setMounted] = useState(false);
   const [omatOpen, setOmatOpen] = useState(true);
   const [tiliOpen, setTiliOpen] = useState(false);
+  const [ilmoOpen, setIlmoOpen] = useState(false);
   const [pwOpen, setPwOpen] = useState(false);
   const [delOpen, setDelOpen] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -325,8 +326,12 @@ function SettingsPanel({ me, coach, closing, onAnimationEnd }: {
 
       {D}
 
-      {/* Notifications */}
-      <PushMessagesToggle variant="client" />
+      {/* Notifications — collapsed by default. The toggle queries Supabase
+          + PushManager on mount, so only render it once the user opens
+          the section to keep the panel snappy. */}
+      <CollapsibleSection title="Ilmoitukset" open={ilmoOpen} onToggle={() => setIlmoOpen(v => !v)}>
+        {ilmoOpen && <PushMessagesToggle variant="client" bare />}
+      </CollapsibleSection>
 
       {D}
 
