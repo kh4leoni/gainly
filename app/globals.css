@@ -8,6 +8,17 @@
   --c-warning: #F5A623;
   --c-info: #818CF8;
   --c-info-alt: #34D399;
+  /* Shared shape tokens — also redefined under .client-app/.client-themed,
+     but lifting them to :root means coach shell + portals get them too
+     (e.g. the SyncBar pill, which mounts in both shells). */
+  --r-xs: 8px;
+  --r-sm: 12px;
+  --r-md: 16px;
+  --r-lg: 22px;
+  --r-xl: 28px;
+  --r-2xl: 36px;
+  --r-pill: 9999px;
+  --r-circle: 50%;
   /* iOS UISwitch defaults — system green ON, system fill OFF */
   --c-toggle-on: #34C759;
   --c-toggle-off: rgba(120, 120, 128, 0.32);

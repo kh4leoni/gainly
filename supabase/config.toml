@@ -24,7 +24,11 @@ jwt_expiry = 3600
 enable_signup = false
 
 [auth.email]
-enable_signup = false
+# NOTE: in supabase CLI 1.226.4, setting `enable_signup = false` here
+# disables the email provider entirely (login + signup). Signup is
+# already blocked by the top-level `[auth] enable_signup = false`, so
+# we leave this true so password login keeps working.
+enable_signup = true
 double_confirm_changes = true
 enable_confirmations = false
 
