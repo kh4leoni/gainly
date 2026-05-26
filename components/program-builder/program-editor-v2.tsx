@@ -287,7 +287,10 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
   const [showCompletion] = useState(true);
 
   // ── Selection state ──
-  const blocks = program?.program_blocks ?? [];
+  // Memoize blocks so it's referentially stable when program is unchanged.
+  // Without this, the inline `?? []` produces a new array on every render
+  // and the selection-init effect would re-fire every render.
+  const blocks = useMemo(() => program?.program_blocks ?? [], [program]);
   const [selBlockId, setSelBlockId] = useState<string | null>(null);
   const [selWeekId, setSelWeekId] = useState<string | null>(null);
   const [selDayId, setSelDayId] = useState<string | null>(null);
