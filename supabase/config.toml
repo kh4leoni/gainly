@@ -37,3 +37,6 @@ enabled = true
 
 [analytics]
 enabled = false
+
+[functions.send-push]
+verify_jwt = false

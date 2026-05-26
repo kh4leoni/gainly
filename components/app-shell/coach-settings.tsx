@@ -4,6 +4,7 @@ import { useRef, useState, useEffect, useTransition } from "react";
 import { useTheme } from "next-themes";
 import { Sun, Moon, SignOut, PencilSimple, CaretDown } from "@phosphor-icons/react";
 import { updateCoachName, updateCoachEmail, updateCoachPhone } from "@/app/coach/actions";
+import { PushMessagesToggle } from "@/components/settings/push-toggle";
 
 type Me = { id: string; full_name: string | null; email?: string | null; phone?: string | null } | null;
 
@@ -192,6 +193,10 @@ function CoachSettingsPanel({ me, closing, onAnimationEnd }: {
           onSave={updateCoachPhone}
         />
       </div>
+
+      {D}
+
+      <PushMessagesToggle variant="coach" />
 
       {D}
 
