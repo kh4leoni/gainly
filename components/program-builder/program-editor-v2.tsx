@@ -92,32 +92,10 @@ type ExPatch = {
   target_hr_bpm?: number | null;
 };
 
-// ── Design tokens (scoped via style on root) ───────────────────────────────────
-
-const TOKENS: CSSProperties = {
-  // neutrals
-  ["--bg-0" as any]: "#0a0a0d",
-  ["--bg-1" as any]: "#111116",
-  ["--bg-2" as any]: "#17171f",
-  ["--bg-3" as any]: "#1f1f29",
-  ["--bg-4" as any]: "#2a2a36",
-  ["--line" as any]: "rgba(255,255,255,0.08)",
-  ["--line-2" as any]: "rgba(255,255,255,0.14)",
-  ["--fg-0" as any]: "#fafafa",
-  ["--fg-1" as any]: "#c8c8d0",
-  ["--fg-2" as any]: "#8a8a96",
-  ["--fg-3" as any]: "#5b5b66",
-  // brand
-  ["--pink" as any]: "#ff3d8a",
-  ["--pink-soft" as any]: "rgba(255,61,138,0.14)",
-  ["--pink-line" as any]: "rgba(255,61,138,0.4)",
-  ["--green" as any]: "#2ecf8b",
-  // accent (mirror pink)
-  ["--accent-fg" as any]: "#ff3d8a",
-  ["--accent-soft" as any]: "rgba(255,61,138,0.12)",
-  ["--accent-line" as any]: "rgba(255,61,138,0.4)",
-  ["--accent-contrast" as any]: "#1a0410",
-};
+// ── Design tokens ─────────────────────────────────────────────────────────────
+// Tokens live in CSS (see Mv2Style) so they can flip with html.light/.dark.
+// Subcomponents reference them via `var(--bg-0)` etc., so nothing needs to
+// know about the active theme.
 
 const COLORS = {
   rose: { fg: "#FF7AA8", bg: "rgba(255,122,168,0.10)", line: "rgba(255,122,168,0.35)" },
@@ -994,7 +972,8 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
 
   if (!program) {
     return (
-      <div style={{ ...TOKENS, background: "var(--bg-0)", minHeight: "100vh", padding: 24 }}>
+      <div className="mv2" style={{ background: "var(--bg-0)", minHeight: "100vh", padding: 24 }}>
+        <Mv2Style />
         <div
           style={{
             height: 200,
@@ -1012,8 +991,8 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
   if (!block) {
     return (
       <div
+        className="mv2"
         style={{
-          ...TOKENS,
           background: "var(--bg-0)",
           color: "var(--fg-0)",
           minHeight: "100vh",
@@ -1023,6 +1002,7 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
           padding: 24,
         }}
       >
+        <Mv2Style />
         <div style={{ textAlign: "center", maxWidth: 360 }}>
           <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>{program.title}</h2>
           <p style={{ fontSize: 14, color: "var(--fg-2)", marginBottom: 20 }}>
@@ -1038,9 +1018,9 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
               gap: 8,
               padding: "10px 16px",
               borderRadius: 10,
-              background: "var(--accent)",
-              color: "var(--accent-fg, #fff)",
-              border: "none",
+              background: "var(--accent-soft)",
+              color: "var(--accent-fg)",
+              border: "1px solid var(--accent-line)",
               fontSize: 14,
               fontWeight: 600,
               cursor: addBlock.isPending ? "default" : "pointer",
@@ -1068,7 +1048,6 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
     <div
       className="mv2"
       style={{
-        ...TOKENS,
         background: "var(--bg-0)",
         color: "var(--fg-0)",
         minHeight: "100vh",
@@ -1954,7 +1933,7 @@ function Legend({ dot, square, children }: { dot?: string; square?: boolean; chi
           width: 8,
           height: 8,
           borderRadius: square ? 2 : "50%",
-          background: square ? "rgba(255,255,255,0.12)" : dot,
+          background: square ? "var(--chip-bg-mid)" : dot,
         }}
       />
       {children}
@@ -2086,7 +2065,7 @@ function OverviewCell({
           alignItems: "center",
           gap: 5,
           paddingBottom: 4,
-          borderBottom: "1px solid rgba(255,255,255,0.05)",
+          borderBottom: "1px solid var(--line)",
         }}
       >
         <span
@@ -3280,7 +3259,7 @@ function ExercisePicker({
                 cursor: "pointer",
                 borderBottom: "1px solid var(--line)",
               }}
-              onMouseEnter={(ev) => (ev.currentTarget.style.background = "rgba(255,255,255,0.04)")}
+              onMouseEnter={(ev) => (ev.currentTarget.style.background = "var(--row-hover-2)")}
               onMouseLeave={(ev) => (ev.currentTarget.style.background = "transparent")}
             >
               {e.name}
@@ -3443,7 +3422,7 @@ function CurrentWeekTable({
                   onDelete={() => removeRow(i)}
                 />
               ))}
-              <tr style={{ borderTop: "1px solid var(--line)", background: "rgba(255,255,255,0.015)" }}>
+              <tr style={{ borderTop: "1px solid var(--line)", background: "var(--row-hover-soft)" }}>
                 <td
                   colSpan={6}
                   onClick={addRow}
@@ -3503,7 +3482,7 @@ function SortableSetRow({
     transform: CSS.Transform.toString(transform),
     transition,
     borderBottom: isLast ? "none" : "1px solid var(--line)",
-    background: isDragging ? "rgba(255,255,255,0.04)" : undefined,
+    background: isDragging ? "var(--row-hover-2)" : undefined,
     opacity: isDragging ? 0.7 : 1,
     position: "relative",
     zIndex: isDragging ? 10 : undefined,
@@ -3857,7 +3836,7 @@ function ProgressionBars({
               style={{
                 width: "100%",
                 height: 64,
-                background: "rgba(255,255,255,0.03)",
+                background: "var(--row-hover)",
                 borderRadius: 3,
                 position: "relative",
                 display: "flex",
@@ -3869,7 +3848,7 @@ function ProgressionBars({
                 style={{
                   width: "100%",
                   height: h + "%",
-                  background: cur ? accent : past ? "rgba(255,255,255,0.28)" : "rgba(255,255,255,0.10)",
+                  background: cur ? accent : past ? "var(--chip-bg-strong)" : "var(--chip-bg)",
                   borderRadius: 2,
                   transition: "height 0.3s",
                 }}
@@ -4014,7 +3993,7 @@ function SummaryRail({
                 <div
                   style={{
                     height: 5,
-                    background: "rgba(255,255,255,0.04)",
+                    background: "var(--row-hover-2)",
                     borderRadius: 2,
                     overflow: "hidden",
                   }}
@@ -4148,8 +4127,59 @@ function EmptyDetail({ onAdd }: { onAdd: () => void }) {
 function Mv2Style() {
   return (
     <style>{`
+      .mv2 {
+        --bg-0: #0a0a0d;
+        --bg-1: #111116;
+        --bg-2: #17171f;
+        --bg-3: #1f1f29;
+        --bg-4: #2a2a36;
+        --line: rgba(255,255,255,0.08);
+        --line-2: rgba(255,255,255,0.14);
+        --fg-0: #fafafa;
+        --fg-1: #c8c8d0;
+        --fg-2: #8a8a96;
+        --fg-3: #5b5b66;
+        --pink: #ff3d8a;
+        --pink-soft: rgba(255,61,138,0.14);
+        --pink-line: rgba(255,61,138,0.4);
+        --green: #2ecf8b;
+        --accent-fg: #ff3d8a;
+        --accent-soft: rgba(255,61,138,0.12);
+        --accent-line: rgba(255,61,138,0.4);
+        --accent-contrast: #1a0410;
+        --row-hover: rgba(255,255,255,0.03);
+        --row-hover-2: rgba(255,255,255,0.04);
+        --row-hover-soft: rgba(255,255,255,0.015);
+        --chip-bg: rgba(255,255,255,0.10);
+        --chip-bg-strong: rgba(255,255,255,0.28);
+        --chip-bg-mid: rgba(255,255,255,0.12);
+        --danger-soft: rgba(255,90,90,0.12);
+        --danger-fg: #ff6b6b;
+      }
+      html.light .mv2 {
+        --bg-0: #f5f4f8;
+        --bg-1: #ffffff;
+        --bg-2: #f0eef5;
+        --bg-3: #e8e6ef;
+        --bg-4: #d8d6e2;
+        --line: rgba(0,0,0,0.08);
+        --line-2: rgba(0,0,0,0.14);
+        --fg-0: #1a1820;
+        --fg-1: #3a3845;
+        --fg-2: #6a6878;
+        --fg-3: #9a98a8;
+        --accent-contrast: #ffffff;
+        --row-hover: rgba(0,0,0,0.04);
+        --row-hover-2: rgba(0,0,0,0.05);
+        --row-hover-soft: rgba(0,0,0,0.02);
+        --chip-bg: rgba(0,0,0,0.08);
+        --chip-bg-strong: rgba(0,0,0,0.30);
+        --chip-bg-mid: rgba(0,0,0,0.10);
+        --danger-soft: rgba(220,38,38,0.10);
+        --danger-fg: #c81b1b;
+      }
       .mv2 .mv2-row { transition: background 0.12s; }
-      .mv2 .mv2-row:hover { background: rgba(255,255,255,0.03); }
+      .mv2 .mv2-row:hover { background: var(--row-hover); }
       .mv2 .mv2-row .mv2-grip { opacity: 0; transition: opacity 0.12s; }
       .mv2 .mv2-row:hover .mv2-grip { opacity: 1; }
       .mv2 input::-webkit-outer-spin-button, .mv2 input::-webkit-inner-spin-button {
@@ -4157,15 +4187,16 @@ function Mv2Style() {
       }
       .mv2 input[type=number] { -moz-appearance: textfield; }
       .mv2 button:not(:disabled):hover { filter: brightness(1.1); }
+      html.light .mv2 button:not(:disabled):hover { filter: brightness(0.96); }
       .mv2 .mv2-week-del { opacity: 0.45; transition: opacity 0.12s, background 0.12s, color 0.12s; }
       .mv2 .mv2-week-head:hover .mv2-week-del,
       .mv2 .mv2-week-del:hover,
       .mv2 .mv2-week-del:focus-visible { opacity: 1; }
-      .mv2 .mv2-week-del:hover { background: rgba(255,90,90,0.12) !important; color: #ff6b6b !important; }
+      .mv2 .mv2-week-del:hover { background: var(--danger-soft) !important; color: var(--danger-fg) !important; }
       .mv2 .mv2-row-del { opacity: 0; transition: opacity 0.12s, background 0.12s, color 0.12s; }
       .mv2 .mv2-row:hover .mv2-row-del,
       .mv2 .mv2-row-del:focus-visible { opacity: 1; }
-      .mv2 .mv2-row-del:hover { background: rgba(255,90,90,0.12) !important; color: #ff6b6b !important; }
+      .mv2 .mv2-row-del:hover { background: var(--danger-soft) !important; color: var(--danger-fg) !important; }
       .mv2 .mv2-editable-pencil { transition: opacity 0.12s, color 0.12s; }
       .mv2 .mv2-editable-title:hover .mv2-editable-pencil { opacity: 1 !important; color: var(--accent-fg) !important; }
     `}</style>
