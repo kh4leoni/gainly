@@ -7,7 +7,7 @@ import { CacheFirst, NetworkFirst, Serwist, StaleWhileRevalidate } from "serwist
 // that would make old cached entries dangerous (e.g. user-data leak,
 // stale auth handling). On activation any cache key not matching the
 // current version prefix gets evicted.
-const SW_CACHE_VERSION = "v2026-05-27a";
+const SW_CACHE_VERSION = "v2026-05-27b";
 
 declare global {
   interface WorkerGlobalScope extends SerwistGlobalConfig {
@@ -36,6 +36,21 @@ const serwist = new Serwist({
       matcher: ({ request }) => request.mode === "navigate",
       handler: new NetworkFirst({
         cacheName: "pages",
+        networkTimeoutSeconds: 5,
+      }),
+    },
+    {
+      // Next.js RSC payload fetches (`?_rsc=…` or `RSC: 1` header) used
+      // during client-side navigation. The default `navigate`-mode
+      // matcher misses these because they're `mode: "cors"`. Without
+      // a handler an offline click on a nav link would silently fail
+      // with no body, leaving a blank screen — error.tsx then renders
+      // a friendly fallback, but caching the last good payload here
+      // means the page often loads at all.
+      matcher: ({ url, request }) =>
+        url.searchParams.has("_rsc") || request.headers.get("RSC") === "1",
+      handler: new NetworkFirst({
+        cacheName: "rsc",
         networkTimeoutSeconds: 5,
       }),
     },
