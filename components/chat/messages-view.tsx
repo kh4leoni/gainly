@@ -14,6 +14,45 @@ function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString("fi-FI", { hour: "2-digit", minute: "2-digit" });
 }
 
+const FI_WEEKDAY = ["sunnuntai", "maanantai", "tiistai", "keskiviikko", "torstai", "perjantai", "lauantai"];
+
+// Header label between message-day groups. Today / Eilen / weekday for the
+// last 6 days / dd.mm.yyyy further back. Capitalized.
+function formatDateLabel(iso: string): string {
+  const d = new Date(iso);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const day = new Date(d);
+  day.setHours(0, 0, 0, 0);
+  const diffDays = Math.round((today.getTime() - day.getTime()) / 86_400_000);
+  if (diffDays === 0) return "Tänään";
+  if (diffDays === 1) return "Eilen";
+  if (diffDays < 7) {
+    const w = FI_WEEKDAY[d.getDay()] ?? "";
+    return w.charAt(0).toUpperCase() + w.slice(1);
+  }
+  return `${d.getDate()}.${d.getMonth() + 1}.${d.getFullYear()}`;
+}
+
+function isSameDay(a: string, b: string): boolean {
+  const da = new Date(a);
+  const db = new Date(b);
+  return da.getFullYear() === db.getFullYear() && da.getMonth() === db.getMonth() && da.getDate() === db.getDate();
+}
+
+// Two consecutive messages count as the same "group" when sent by the same
+// person within ~5 min — collapse avatar + timestamp accordingly.
+function shouldGroup(
+  prev: { sender_id: string; created_at: string } | undefined,
+  cur: { sender_id: string; created_at: string } | undefined
+): boolean {
+  if (!prev || !cur) return false;
+  if (prev.sender_id !== cur.sender_id) return false;
+  if (!isSameDay(prev.created_at, cur.created_at)) return false;
+  const gap = new Date(cur.created_at).getTime() - new Date(prev.created_at).getTime();
+  return gap < 5 * 60_000;
+}
+
 function avatarColor(name: string | null): string {
   const palette = ["#ec4899", "#f97316", "#8b5cf6", "#14b8a6", "#6366f1", "#f43f5e", "#10b981", "#f59e0b"];
   if (!name) return "#ec4899";
@@ -309,25 +348,19 @@ export function MessagesView({ userId, initialThreadId, layout = "client" }: { u
           flexShrink: 0,
           background: "var(--c-surface)",
         }}>
-          <div style={{ position: "relative" }}>
-            <div style={{
-              width: 44, height: 44, borderRadius: "50%",
-              background: "linear-gradient(135deg,var(--c-pink),#9B4DCA)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 14, fontWeight: 800, color: "#fff",
-            }}>
-              {nameInitials(otherProfile.full_name)}
-            </div>
-            <div style={{
-              position: "absolute", bottom: 1, right: 1,
-              width: 10, height: 10, borderRadius: "50%",
-              background: "var(--c-green)",
-              border: "2px solid var(--c-bg)",
-              animation: "c-pulse 2s infinite",
-            }} />
+          <div style={{
+            width: 44, height: 44, borderRadius: "50%",
+            background: "linear-gradient(135deg,var(--c-pink),#9B4DCA)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 14, fontWeight: 800, color: "#fff",
+            flexShrink: 0,
+          }}>
+            {nameInitials(otherProfile.full_name)}
           </div>
-          <div>
-            <div style={{ fontWeight: 700, fontSize: 15 }}>{otherProfile.full_name ?? "Valmentaja"}</div>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontWeight: 700, fontSize: 15, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {otherProfile.full_name ?? "Valmentaja"}
+            </div>
             <div style={{
               fontSize: 12,
               fontFamily: "var(--font-dancing)",
@@ -339,7 +372,6 @@ export function MessagesView({ userId, initialThreadId, layout = "client" }: { u
               valmentaja
             </div>
           </div>
-          <div style={{ marginLeft: "auto", fontSize: 11, color: "var(--c-green)" }}>● Online</div>
         </div>
       ) : (
         <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--c-border)", fontSize: 14, fontWeight: 700, flexShrink: 0, background: "var(--c-surface)" }}>
@@ -485,129 +517,309 @@ function ChatPane({
     background: isCoach ? "hsl(var(--card))" : "var(--c-surface)",
   };
 
+  // Last own message that the other party has marked as read. Used for the
+  // single "Nähty"/check label at the bottom of the own thread, iMessage style.
+  const lastOwnReadIdx = (() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const m = messages[i];
+      if (m && m.sender_id === userId && m.read_at) return i;
+    }
+    return -1;
+  })();
+
   return (
     <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden", background: isCoach ? "hsl(var(--background))" : undefined }}>
       {/* Message list */}
       <div ref={listRef} style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: isCoach ? 12 : 10, padding: isCoach ? "24px 28px" : "20px" }}>
-        {loading && (
-          <div style={{ textAlign: "center", color: isCoach ? "hsl(var(--muted-foreground))" : "var(--c-text-muted)", fontSize: 13 }}>
-            Ladataan...
-          </div>
-        )}
-        {messages.map((m) => {
-          const isOwn = m.sender_id === userId;
-          return (
-            <div key={m.id} style={{ display: "flex", justifyContent: isOwn ? "flex-end" : "flex-start", gap: 8, alignItems: "flex-end" }}>
-              {!isOwn && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 2, padding: isCoach ? "24px 28px" : "16px 16px 12px" }}>
+          {loading && messages.length === 0 && (
+            <ChatSkeleton isCoach={isCoach} />
+          )}
+
+          {!loading && messages.length === 0 && threadId && (
+            <ChatEmptyState isCoach={isCoach} />
+          )}
+
+          {messages.map((m, idx) => {
+            const isOwn = m.sender_id === userId;
+            const prev = messages[idx - 1];
+            const next = messages[idx + 1];
+            const grouped = shouldGroup(prev, m);
+            const groupEnd = !shouldGroup(m, next);
+            const showDateSep = !prev || !isSameDay(prev.created_at, m.created_at);
+            const isLastReadOwn = idx === lastOwnReadIdx;
+
+            return (
+              <div key={m.id}>
+                {showDateSep && (
+                  <div style={{
+                    display: "flex", alignItems: "center", gap: 10,
+                    margin: "14px 0 10px",
+                    color: isCoach ? "hsl(var(--muted-foreground))" : "var(--c-text-subtle)",
+                    fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase",
+                  }}>
+                    <div style={{ flex: 1, height: 1, background: isCoach ? "hsl(var(--border))" : "var(--c-border)" }} />
+                    <span>{formatDateLabel(m.created_at)}</span>
+                    <div style={{ flex: 1, height: 1, background: isCoach ? "hsl(var(--border))" : "var(--c-border)" }} />
+                  </div>
+                )}
+
                 <div style={{
-                  width: isCoach ? 32 : 28,
-                  height: isCoach ? 32 : 28,
-                  borderRadius: "50%",
-                  background: isCoach ? otherColor : "linear-gradient(135deg,var(--c-pink),#9B4DCA)",
                   display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: isCoach ? 11 : 10,
-                  fontWeight: 800,
-                  color: "#fff",
-                  flexShrink: 0,
-                  boxShadow: isCoach ? `0 1px 4px ${otherColor}55` : "none",
+                  justifyContent: isOwn ? "flex-end" : "flex-start",
+                  gap: 8,
+                  alignItems: "flex-end",
+                  marginTop: grouped ? 2 : 8,
                 }}>
-                  {isCoach ? otherInitials : nameInitials(otherProfile?.full_name ?? null)}
+                  {!isOwn && (
+                    groupEnd ? (
+                      <div style={{
+                        width: isCoach ? 32 : 28,
+                        height: isCoach ? 32 : 28,
+                        borderRadius: "50%",
+                        background: isCoach ? otherColor : "linear-gradient(135deg,var(--c-pink),#9B4DCA)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: isCoach ? 11 : 10,
+                        fontWeight: 800,
+                        color: "#fff",
+                        flexShrink: 0,
+                        boxShadow: isCoach ? `0 1px 4px ${otherColor}55` : "none",
+                      }}>
+                        {isCoach ? otherInitials : nameInitials(otherProfile?.full_name ?? null)}
+                      </div>
+                    ) : (
+                      <div style={{ width: isCoach ? 32 : 28, flexShrink: 0 }} />
+                    )
+                  )}
+                  <div style={{
+                    maxWidth: "75%",
+                    background: isOwn
+                      ? (isCoach ? "#FF1D8C" : "var(--c-pink)")
+                      : (isCoach ? "hsl(var(--card))" : "var(--c-surface2)"),
+                    border: isOwn
+                      ? "none"
+                      : (isCoach ? "1px solid hsl(var(--border))" : "1px solid var(--c-border)"),
+                    // iOS-style asymmetric bubbles. Outer corner stays 18 only
+                    // on the FIRST and LAST message of a group; intermediate
+                    // bubbles use a smaller 6 to glue them visually.
+                    borderRadius: bubbleRadius(isOwn, !grouped, groupEnd),
+                    padding: isCoach ? "9px 14px" : "9px 13px",
+                    fontSize: 14,
+                    lineHeight: 1.4,
+                    color: isOwn
+                      ? (isCoach ? "#fff" : "var(--c-pink-fg, #fff)")
+                      : (isCoach ? "hsl(var(--foreground))" : "var(--c-text)"),
+                    boxShadow: isOwn
+                      ? (isCoach ? "0 2px 12px rgba(255,29,140,0.25)" : "0 1px 8px var(--c-pink-glow)")
+                      : (isCoach ? "0 1px 3px rgba(0,0,0,0.06)" : "none"),
+                    whiteSpace: "pre-wrap",
+                    wordBreak: "break-word",
+                  }}>
+                    {m.content}
+                  </div>
                 </div>
-              )}
-              <div style={{
-                maxWidth: "72%",
-                background: isOwn
-                  ? (isCoach ? "#FF1D8C" : "var(--c-pink)")
-                  : (isCoach ? "hsl(var(--card))" : "var(--c-surface2)"),
-                border: isOwn
-                  ? "none"
-                  : (isCoach ? "1px solid hsl(var(--border))" : "1px solid var(--c-border)"),
-                borderRadius: isOwn ? "var(--r-xl) 6px var(--r-xl) var(--r-xl)" : "6px var(--r-xl) var(--r-xl) var(--r-xl)",
-                padding: isCoach ? "10px 15px" : "10px 14px",
-                fontSize: 13,
-                lineHeight: 1.5,
-                color: isOwn
-                  ? (isCoach ? "#fff" : "var(--c-pink-fg, #fff)")
-                  : (isCoach ? "hsl(var(--foreground))" : "var(--c-text)"),
-                boxShadow: isOwn
-                  ? (isCoach ? "0 2px 12px rgba(255,29,140,0.35)" : "0 0 16px var(--c-pink-glow)")
-                  : (isCoach ? "0 1px 3px rgba(0,0,0,0.06)" : "none"),
-              }}>
-                <div>{m.content}</div>
-                <div style={{
-                  fontSize: 10,
-                  color: isOwn
-                    ? "rgba(255,255,255,0.65)"
-                    : (isCoach ? "hsl(var(--muted-foreground))" : "var(--c-text-subtle)"),
-                  marginTop: 3,
-                  textAlign: isOwn ? "right" : "left",
-                }}>
-                  {formatTime(m.created_at)}
-                </div>
+
+                {/* Timestamp shown only at the END of a group, beneath the
+                    bubble. Less visual noise than per-message timestamps. */}
+                {groupEnd && (
+                  <div style={{
+                    fontSize: 10,
+                    color: isCoach ? "hsl(var(--muted-foreground))" : "var(--c-text-subtle)",
+                    marginTop: 3,
+                    marginLeft: isOwn ? 0 : (isCoach ? 40 : 36),
+                    marginRight: isOwn ? 2 : 0,
+                    textAlign: isOwn ? "right" : "left",
+                  }}>
+                    {formatTime(m.created_at)}
+                  </div>
+                )}
+
+                {/* Single "Nähty" tag under the latest own message that the
+                    other party has read. */}
+                {isLastReadOwn && (
+                  <div style={{
+                    fontSize: 10,
+                    color: isCoach ? "hsl(var(--muted-foreground))" : "var(--c-text-subtle)",
+                    marginTop: 2,
+                    marginRight: 2,
+                    textAlign: "right",
+                    fontWeight: 600,
+                  }}>
+                    Nähty
+                  </div>
+                )}
               </div>
-            </div>
-          );
-        })}
-        <div ref={endRef} />
+            );
+          })}
+          <div ref={endRef} />
         </div>
       </div>
 
-      {/* Input */}
-      <div style={{ ...inputAreaStyle, flexShrink: 0 }}>
-        <input
+      {/* Composer */}
+      <div style={{
+        ...inputAreaStyle,
+        flexShrink: 0,
+        alignItems: "flex-end",
+        // iOS keyboard / home-indicator safe-area on the client shell
+        paddingBottom: isCoach ? inputAreaStyle.padding?.toString().split(" ")[0] : `calc(env(safe-area-inset-bottom, 0px) + 12px)`,
+      }}>
+        <Composer
           value={content}
-          onChange={(e) => setContent(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(); } }}
-          placeholder="Kirjoita viesti..."
-          style={{
-            flex: 1,
-            background: isCoach ? "hsl(var(--background))" : "var(--c-surface2)",
-            border: isCoach ? "1.5px solid hsl(var(--border))" : "1px solid var(--c-border)",
-            borderRadius: "var(--r-2xl)",
-            padding: isCoach ? "10px 18px" : "11px 16px",
-            color: isCoach ? "hsl(var(--foreground))" : "var(--c-text)",
-            fontSize: 13,
-            outline: "none",
-            fontFamily: "inherit",
-            transition: "border-color 0.2s, box-shadow 0.2s",
-          }}
-          onFocus={(e) => {
-            e.target.style.borderColor = isCoach ? "#FF1D8C" : "var(--c-pink)";
-            e.target.style.boxShadow = isCoach ? "0 0 0 3px rgba(255,29,140,0.12)" : "0 0 0 3px color-mix(in srgb, var(--c-pink) 12%, transparent)";
-          }}
-          onBlur={(e) => {
-            e.target.style.borderColor = isCoach ? "hsl(var(--border))" : "var(--c-border)";
-            e.target.style.boxShadow = "none";
-          }}
+          onChange={setContent}
+          onSubmit={() => void send()}
+          isCoach={isCoach}
         />
-        <button
-          onClick={() => void send()}
-          disabled={!content.trim()}
-          style={{
-            width: 42,
-            height: 42,
-            borderRadius: "50%",
-            background: content.trim() ? (isCoach ? "#FF1D8C" : "var(--c-pink)") : (isCoach ? "hsl(var(--muted))" : "var(--c-surface3)"),
-            border: "none",
-            cursor: content.trim() ? "pointer" : "default",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: isCoach ? "#fff" : "var(--c-pink-fg, #fff)",
-            flexShrink: 0,
-            boxShadow: content.trim() ? (isCoach ? "0 2px 12px rgba(255,29,140,0.4)" : "0 2px 12px color-mix(in srgb, var(--c-pink) 40%, transparent)") : "none",
-            transition: "all 0.18s",
-            opacity: content.trim() ? 1 : 0.45,
-          }}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
-          </svg>
-        </button>
       </div>
     </div>
+  );
+}
+
+// Asymmetric corners: bubble is "pinched" toward its tail (right for own,
+// left for other) on the first / last bubble of a group, and softens to a
+// uniform medium radius for intermediate bubbles.
+function bubbleRadius(isOwn: boolean, isGroupStart: boolean, isGroupEnd: boolean): string {
+  const big = 18;
+  const small = 6;
+  const tail = 4;
+  if (isOwn) {
+    const tr = isGroupStart ? big : small;
+    const br = isGroupEnd ? tail : small;
+    return `${big}px ${tr}px ${br}px ${big}px`;
+  }
+  const tl = isGroupStart ? big : small;
+  const bl = isGroupEnd ? tail : small;
+  return `${tl}px ${big}px ${big}px ${bl}px`;
+}
+
+function ChatEmptyState({ isCoach }: { isCoach: boolean }) {
+  return (
+    <div style={{
+      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+      padding: "48px 24px",
+      color: isCoach ? "hsl(var(--muted-foreground))" : "var(--c-text-muted)",
+      textAlign: "center",
+      gap: 10,
+    }}>
+      <div style={{ fontSize: 32, opacity: 0.5 }}>💬</div>
+      <div style={{ fontSize: 14, fontWeight: 600 }}>
+        Ei vielä viestejä
+      </div>
+      <div style={{ fontSize: 12, opacity: 0.7, maxWidth: 240 }}>
+        Sano hei valmentajallesi tai kysy mitä vain treeniisi liittyen.
+      </div>
+    </div>
+  );
+}
+
+function ChatSkeleton({ isCoach }: { isCoach: boolean }) {
+  const bg = isCoach ? "hsl(var(--muted))" : "var(--c-surface2)";
+  const Row = ({ own, width }: { own: boolean; width: number }) => (
+    <div style={{ display: "flex", justifyContent: own ? "flex-end" : "flex-start", marginBottom: 12 }}>
+      <div style={{
+        width, height: 32,
+        background: bg,
+        borderRadius: own ? "18px 4px 4px 18px" : "4px 18px 18px 4px",
+        animation: "msg-pulse 1.4s ease-in-out infinite",
+      }} />
+    </div>
+  );
+  return (
+    <>
+      <style>{`@keyframes msg-pulse { 0%,100% { opacity: 0.6 } 50% { opacity: 0.3 } }`}</style>
+      <Row own={false} width={180} />
+      <Row own={true}  width={140} />
+      <Row own={false} width={220} />
+      <Row own={true}  width={90} />
+    </>
+  );
+}
+
+function Composer({
+  value,
+  onChange,
+  onSubmit,
+  isCoach,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  onSubmit: () => void;
+  isCoach: boolean;
+}) {
+  const taRef = useRef<HTMLTextAreaElement>(null);
+  // Grow with content up to 5 rows (~120px), then scroll.
+  useEffect(() => {
+    const el = taRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
+  }, [value]);
+
+  const trimmed = value.trim();
+  return (
+    <>
+      <textarea
+        ref={taRef}
+        value={value}
+        rows={1}
+        onChange={(e) => onChange(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); onSubmit(); }
+        }}
+        placeholder="Kirjoita viesti…"
+        style={{
+          flex: 1,
+          minHeight: 38,
+          maxHeight: 120,
+          resize: "none",
+          background: isCoach ? "hsl(var(--background))" : "var(--c-surface2)",
+          border: isCoach ? "1.5px solid hsl(var(--border))" : "1px solid var(--c-border)",
+          borderRadius: 20,
+          padding: "9px 14px",
+          color: isCoach ? "hsl(var(--foreground))" : "var(--c-text)",
+          fontSize: 14,
+          lineHeight: 1.35,
+          outline: "none",
+          fontFamily: "inherit",
+          transition: "border-color 0.2s, box-shadow 0.2s",
+          overflowY: "auto",
+        }}
+        onFocus={(e) => {
+          e.target.style.borderColor = isCoach ? "#FF1D8C" : "var(--c-pink)";
+          e.target.style.boxShadow = isCoach ? "0 0 0 3px rgba(255,29,140,0.12)" : "0 0 0 3px color-mix(in srgb, var(--c-pink) 12%, transparent)";
+        }}
+        onBlur={(e) => {
+          e.target.style.borderColor = isCoach ? "hsl(var(--border))" : "var(--c-border)";
+          e.target.style.boxShadow = "none";
+        }}
+      />
+      <button
+        type="button"
+        onClick={onSubmit}
+        disabled={!trimmed}
+        aria-label="Lähetä viesti"
+        style={{
+          width: 38,
+          height: 38,
+          borderRadius: "50%",
+          background: trimmed ? (isCoach ? "#FF1D8C" : "var(--c-pink)") : (isCoach ? "hsl(var(--muted))" : "var(--c-surface3)"),
+          border: "none",
+          cursor: trimmed ? "pointer" : "default",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: isCoach ? "#fff" : "var(--c-pink-fg, #fff)",
+          flexShrink: 0,
+          boxShadow: trimmed ? (isCoach ? "0 2px 10px rgba(255,29,140,0.4)" : "0 2px 10px var(--c-pink-glow)") : "none",
+          transition: "background 0.15s, opacity 0.15s, transform 0.1s",
+          opacity: trimmed ? 1 : 0.45,
+        }}
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M5 12l14-7-7 14-2-5-5-2z" />
+        </svg>
+      </button>
+    </>
   );
 }
