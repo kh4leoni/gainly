@@ -3,17 +3,33 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 
+// Only play once per browser session. Without this flag, every cached-HTML
+// load (eg. offline navigation between tabs) remounts React and re-runs
+// the splash animation.
+const SHOWN_KEY = "gainly_splash_shown";
+
 export function AppSplash({ coBrandLabel }: { coBrandLabel?: string | null }) {
-  const [phase, setPhase] = useState<"in" | "out" | "gone">("in");
+  // Compute initial visibility synchronously so we never flash the splash
+  // on subsequent mounts within the same session.
+  const [phase, setPhase] = useState<"in" | "out" | "gone">(() => {
+    if (typeof window === "undefined") return "in";
+    try {
+      return sessionStorage.getItem(SHOWN_KEY) === "1" ? "gone" : "in";
+    } catch {
+      return "in";
+    }
+  });
 
   useEffect(() => {
+    if (phase === "gone") return;
+    try { sessionStorage.setItem(SHOWN_KEY, "1"); } catch { /* private mode etc. */ }
     const t1 = window.setTimeout(() => setPhase("out"), 850);
     const t2 = window.setTimeout(() => setPhase("gone"), 1300);
     return () => {
       window.clearTimeout(t1);
       window.clearTimeout(t2);
     };
-  }, []);
+  }, [phase]);
 
   if (phase === "gone") return null;
 

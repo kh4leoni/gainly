@@ -5,6 +5,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "@/components/app-shell/theme-provider";
 import { makeQueryClient } from "@/lib/query-client";
 import { installSyncListeners } from "@/lib/offline/sync";
+import { installCacheIsolation } from "@/lib/auth/install-cache-isolation";
 import { NavigationProvider } from "@/lib/nav-context";
 import { PageTitleProvider } from "@/lib/page-title-context";
 
@@ -20,7 +21,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(getClient);
 
   useEffect(() => {
-    return installSyncListeners();
+    const stopSync = installSyncListeners();
+    const stopCache = installCacheIsolation();
+    return () => { stopSync(); stopCache(); };
   }, []);
 
   return (
