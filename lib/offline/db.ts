@@ -36,3 +36,13 @@ export function getDB(): GainlyDB {
   if (!_db) _db = new GainlyDB();
   return _db;
 }
+
+// Internal: drop the singleton so a subsequent `indexedDB.deleteDatabase`
+// isn't blocked by an open connection. Used by the cache-isolation hook
+// on user switch — application code should never need this.
+export function _resetDB() {
+  if (_db) {
+    try { _db.close(); } catch { /* ignore */ }
+    _db = undefined;
+  }
+}
