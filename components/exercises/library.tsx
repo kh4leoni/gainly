@@ -3,14 +3,14 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
-import { getExercises, createExercise, updateExercise } from "@/lib/queries/exercises";
+import { getExercises, createExercise, updateExercise, deleteExercise, getExerciseUsage, type ExerciseUsage } from "@/lib/queries/exercises";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Pencil, Play, Plus } from "lucide-react";
+import { Pencil, Play, Plus, Trash2 } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 
 const MUSCLE_GROUPS: Record<string, string> = {
@@ -286,6 +286,30 @@ export function ExerciseLibrary() {
     onError: (e: any) => toast({ title: "Epäonnistui", description: e.message, variant: "destructive" }),
   });
 
+  // Usage check for the active edit target. Refetches when the dialog
+  // opens on a different exercise. Stale-while-revalidate is fine: the
+  // delete mutation re-runs the count fresh after success anyway.
+  const usage = useQuery({
+    queryKey: ["exercise-usage", editExercise?.id],
+    queryFn: () => editExercise ? getExerciseUsage(supabase, editExercise.id) : Promise.resolve(null as ExerciseUsage | null),
+    enabled: !!editExercise,
+    staleTime: 0,
+  });
+
+  const del = useMutation({
+    mutationFn: async () => {
+      if (!editExercise) return;
+      await deleteExercise(supabase, editExercise.id);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["exercises"] });
+      setEditExercise(null);
+      toast({ title: "Liike poistettu" });
+    },
+    onError: (e: any) => toast({ title: "Poisto epäonnistui", description: e.message, variant: "destructive" }),
+  });
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
   function openEdit(e: Exercise) {
     setEditExercise(e);
     setEName(e.name);
@@ -293,6 +317,7 @@ export function ExerciseLibrary() {
     setESelectedGroups(new Set((e.muscle_groups ?? []).map((m) => m.toLowerCase())));
     setEVideoUrl(e.video_path ?? "");
     setEKind(((e as any).kind as "lifting" | "cardio" | "free") ?? "lifting");
+    setConfirmDelete(false);
   }
 
   return (
@@ -517,11 +542,22 @@ export function ExerciseLibrary() {
               <Input value={eVideoUrl} onChange={(e) => setEVideoUrl(e.target.value)} placeholder="https://youtube.com/watch?v=…" />
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditExercise(null)}>Peruuta</Button>
-            <Button disabled={!eName || edit.isPending} onClick={() => edit.mutate()}>
-              {edit.isPending ? "Tallennetaan…" : "Tallenna"}
-            </Button>
+          <DialogFooter className="sm:justify-between">
+            <DeleteExerciseButton
+              usage={usage.data ?? null}
+              loading={usage.isLoading}
+              confirming={confirmDelete}
+              onAskConfirm={() => setConfirmDelete(true)}
+              onCancelConfirm={() => setConfirmDelete(false)}
+              onConfirm={() => del.mutate()}
+              deleting={del.isPending}
+            />
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setEditExercise(null)}>Peruuta</Button>
+              <Button disabled={!eName || edit.isPending} onClick={() => edit.mutate()}>
+                {edit.isPending ? "Tallennetaan…" : "Tallenna"}
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -541,6 +577,80 @@ export function ExerciseLibrary() {
           </div>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+// DELETE control + inline confirm step. Disabled (with hint) when the
+// exercise is still referenced by programs / set logs / PRs / cardio
+// records. Coaches can rename or archive in their head — the destruction
+// path is reserved for genuinely unused entries.
+function DeleteExerciseButton({
+  usage,
+  loading,
+  confirming,
+  onAskConfirm,
+  onCancelConfirm,
+  onConfirm,
+  deleting,
+}: {
+  usage: ExerciseUsage | null;
+  loading: boolean;
+  confirming: boolean;
+  onAskConfirm: () => void;
+  onCancelConfirm: () => void;
+  onConfirm: () => void;
+  deleting: boolean;
+}) {
+  if (loading || !usage) {
+    return (
+      <Button variant="ghost" size="sm" disabled className="text-muted-foreground">
+        <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+        Tarkistetaan…
+      </Button>
+    );
+  }
+  const blockers: string[] = [];
+  if (usage.programExercises > 0) blockers.push(`${usage.programExercises} ohjelma${usage.programExercises === 1 ? "ssa" : "ssa"}`);
+  if (usage.setLogs > 0)          blockers.push(`${usage.setLogs} settilokia`);
+  if (usage.cardioRecords > 0)    blockers.push(`${usage.cardioRecords} kardiomerkintää`);
+  if (usage.personalRecords > 0)  blockers.push(`${usage.personalRecords} PR:ää`);
+
+  if (blockers.length > 0) {
+    return (
+      <Button
+        variant="ghost"
+        size="sm"
+        disabled
+        title={`Käytössä: ${blockers.join(", ")}. Poistaminen estetty historian suojaamiseksi.`}
+        className="text-muted-foreground"
+      >
+        <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+        Käytössä, ei voi poistaa
+      </Button>
+    );
+  }
+
+  if (!confirming) {
+    return (
+      <Button variant="ghost" size="sm" onClick={onAskConfirm} className="text-destructive hover:bg-destructive/10">
+        <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+        Poista liike
+      </Button>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      <Button variant="ghost" size="sm" onClick={onCancelConfirm}>Peruuta</Button>
+      <Button
+        variant="destructive"
+        size="sm"
+        onClick={onConfirm}
+        disabled={deleting}
+      >
+        {deleting ? "Poistetaan…" : "Vahvista poisto"}
+      </Button>
     </div>
   );
 }
