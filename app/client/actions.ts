@@ -24,6 +24,7 @@ export async function updateProfileName(full_name: string) {
   if (!user) throw new Error("Not authenticated");
   const trimmed = full_name.trim();
   if (!trimmed) throw new Error("Name cannot be empty");
+  if (trimmed.length > 200) throw new Error("Name too long (max 200)");
   const supabase = await createClient();
   const { error } = await supabase
     .from("profiles")

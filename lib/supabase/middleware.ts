@@ -3,7 +3,10 @@ import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "./database.types";
 
 export async function updateSession(request: NextRequest) {
-  let response = NextResponse.next({ request });
+  // Pass the request's headers explicitly into NextResponse.next so any
+  // header mutation we did upstream (e.g. `x-nonce` for CSP) propagates
+  // into the RSC + route handler request.
+  let response = NextResponse.next({ request: { headers: request.headers } });
 
   const supabase = createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -15,7 +18,7 @@ export async function updateSession(request: NextRequest) {
         },
         setAll(cookiesToSet: Array<{ name: string; value: string; options?: Record<string, unknown> }>) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-          response = NextResponse.next({ request });
+          response = NextResponse.next({ request: { headers: request.headers } });
           cookiesToSet.forEach(({ name, value, options }) =>
             response.cookies.set(name, value, options as any)
           );
