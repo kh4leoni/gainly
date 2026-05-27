@@ -65,9 +65,11 @@ Deno.serve(async (req) => {
   const recipientId = thread.coach_id === msg.sender_id ? thread.client_id : thread.coach_id;
   if (recipientId === msg.sender_id) return json({ skipped: "self" });
 
-  // Check recipient preference and load sender display name in parallel.
+  // Check recipient preference + role and load sender display name in parallel.
+  // Role decides which shell the notification deep-links into — coaches
+  // mustn't be sent to /client/messages or vice versa.
   const [{ data: recipient }, { data: sender }] = await Promise.all([
-    admin.from("profiles").select("push_messages").eq("id", recipientId).maybeSingle(),
+    admin.from("profiles").select("push_messages, role").eq("id", recipientId).maybeSingle(),
     admin.from("profiles").select("full_name").eq("id", msg.sender_id).maybeSingle(),
   ]);
   if (!recipient?.push_messages) return json({ skipped: "opted_out" });
@@ -81,9 +83,10 @@ Deno.serve(async (req) => {
 
   const senderName = sender?.full_name?.trim() || "Uusi viesti";
   const preview = (msg.content ?? "").slice(0, 140);
-  const target = APP_ORIGIN
-    ? `${APP_ORIGIN}/client/messages?thread=${msg.thread_id}`
+  const messagesPath = recipient.role === "coach"
+    ? `/coach/messages?thread=${msg.thread_id}`
     : `/client/messages?thread=${msg.thread_id}`;
+  const target = APP_ORIGIN ? `${APP_ORIGIN}${messagesPath}` : messagesPath;
 
   const payload = JSON.stringify({
     title: senderName,
