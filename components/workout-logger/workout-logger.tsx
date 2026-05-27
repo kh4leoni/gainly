@@ -54,9 +54,14 @@ export function WorkoutLogger({ scheduledWorkoutId }: { scheduledWorkoutId: stri
   const router = useRouter();
   const [showCelebration, setShowCelebration] = useState(false);
 
-  const { data: workout } = useQuery({
+  const { data: workout, error: workoutError, isLoading: workoutLoading } = useQuery({
     queryKey: ["workout", scheduledWorkoutId],
     queryFn: () => getScheduledWorkout(supabase, scheduledWorkoutId),
+    // Don't bubble RLS / network failures to a parent boundary —
+    // the offline / cross-user case has to render a friendly fallback
+    // below instead of crashing the whole tree.
+    retry: false,
+    throwOnError: false,
   });
 
   // Publish workout day name as the shell's page title so the large→compact
@@ -176,6 +181,38 @@ export function WorkoutLogger({ scheduledWorkoutId }: { scheduledWorkoutId: stri
   );
 
   if (!workout) {
+    // Still loading vs definitively missing. Missing usually means the
+    // workout id was cached from another user (stale offline cache) or
+    // the row was deleted server-side. Don't try to render the logger
+    // shell — just say so.
+    if (workoutError || !workoutLoading) {
+      return (
+        <div className="client-app" style={{ padding: "60px 24px", textAlign: "center" }}>
+          <div style={{ fontSize: 32, opacity: 0.4, marginBottom: 12 }}>🏋️</div>
+          <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>Treeniä ei löytynyt</h2>
+          <p style={{ fontSize: 13, color: "var(--c-text-muted)", maxWidth: 280, margin: "0 auto 20px", lineHeight: 1.5 }}>
+            Tämä treeni ei ole enää käytettävissä. Mene takaisin etusivulle ja avaa
+            ohjelma uudelleen.
+          </p>
+          <button
+            type="button"
+            onClick={() => router.replace("/client/dashboard")}
+            style={{
+              padding: "10px 18px",
+              borderRadius: "var(--r-md)",
+              background: "var(--c-pink)",
+              color: "var(--c-pink-fg, #fff)",
+              border: "none",
+              fontSize: 13,
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            Takaisin etusivulle
+          </button>
+        </div>
+      );
+    }
     return (
       <div className="client-app" style={{ padding: "20px 16px" }}>
         {[0, 1, 2].map((i) => (
