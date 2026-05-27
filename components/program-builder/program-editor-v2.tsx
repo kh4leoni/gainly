@@ -415,6 +415,32 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
     },
   });
 
+  const updateBlock = useMutation({
+    mutationFn: async ({ id, name }: { id: string; name: string | null }) => {
+      const { error } = await supabase
+        .from("program_blocks")
+        .update({ name })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onMutate: async ({ id, name }) => {
+      await qc.cancelQueries({ queryKey: ["program", programId] });
+      const prev = qc.getQueryData<ProgramFull>(["program", programId]);
+      qc.setQueryData(["program", programId], (old: ProgramFull) => {
+        if (!old) return old;
+        const next = structuredClone(old);
+        const b = next.program_blocks?.find((x) => x.id === id);
+        if (b) b.name = name;
+        return next;
+      });
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(["program", programId], ctx.prev);
+    },
+    onSettled: invalidate,
+  });
+
   const duplicateBlock = useMutation({
     mutationFn: async (blockId: string) => {
       const src = program?.program_blocks?.find((b) => b.id === blockId);
@@ -1039,7 +1065,6 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
   }
 
   const blockIdx = blocks.findIndex((b) => b.id === block.id);
-  const blockName = block.name?.trim() || `Jakso ${block.block_number}`;
   const totalWorkouts = weeks.reduce((a, w) => a + w.program_days.length, 0);
   const totalSets = weeks.reduce(
     (a, w) =>
@@ -1078,8 +1103,9 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
 
       {/* Phase strip */}
       <PhaseStrip
-        blockName={blockName}
+        blockName={block.name}
         blockNumber={block.block_number}
+        onBlockNameSave={(name) => updateBlock.mutate({ id: block.id, name })}
         weekCount={weeks.length}
         workoutCount={totalWorkouts}
         setCount={totalSets}
@@ -1555,6 +1581,7 @@ function Mv2Button({
 function PhaseStrip({
   blockName,
   blockNumber,
+  onBlockNameSave,
   weekCount,
   workoutCount,
   setCount,
@@ -1566,8 +1593,9 @@ function PhaseStrip({
   canDelete,
   onDuplicate,
 }: {
-  blockName: string;
+  blockName: string | null;
   blockNumber: number;
+  onBlockNameSave: (next: string | null) => void;
   weekCount: number;
   workoutCount: number;
   setCount: number;
@@ -1611,11 +1639,17 @@ function PhaseStrip({
       >
         <ChevronLeft size={13} />
       </button>
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <span style={{ fontSize: 10, fontWeight: 700, color: "var(--accent-fg)", letterSpacing: "0.05em", textTransform: "uppercase" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 }}>
+        <span style={{ fontSize: 10, fontWeight: 700, color: "var(--accent-fg)", letterSpacing: "0.05em", textTransform: "uppercase", flexShrink: 0 }}>
           Jakso {blockNumber}
         </span>
-        <span style={{ fontSize: 14, fontWeight: 600 }}>{blockName}</span>
+        <div style={{ fontSize: 14, fontWeight: 600, minWidth: 0, flex: 1, maxWidth: 280 }}>
+          <EditableTitle
+            value={blockName}
+            fallback={`Jakso ${blockNumber}`}
+            onSave={onBlockNameSave}
+          />
+        </div>
       </div>
       <button
         onClick={onNext}
