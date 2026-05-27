@@ -9,29 +9,30 @@ import Image from "next/image";
 const SHOWN_KEY = "gainly_splash_shown";
 
 export function AppSplash({ coBrandLabel }: { coBrandLabel?: string | null }) {
-  // Compute initial visibility synchronously so we never flash the splash
-  // on subsequent mounts within the same session.
-  const [phase, setPhase] = useState<"in" | "out" | "gone">(() => {
-    if (typeof window === "undefined") return "in";
-    try {
-      return sessionStorage.getItem(SHOWN_KEY) === "1" ? "gone" : "in";
-    } catch {
-      return "in";
-    }
-  });
+  // Never render anything during SSR or before the mount effect runs.
+  // The previous approach checked sessionStorage in the useState
+  // initializer, but that still flashed the splash on every cached-HTML
+  // load: SSR rendered `phase="in"` (no window available there), the
+  // browser painted the splash from the static HTML, and only then did
+  // React hydrate, see the sessionStorage flag, and remove it. The flash
+  // was that ~16-32 ms gap. Render-after-mount fixes it cleanly.
+  const [phase, setPhase] = useState<"hidden" | "in" | "out">("hidden");
 
   useEffect(() => {
-    if (phase === "gone") return;
+    let alreadyShown = false;
+    try { alreadyShown = sessionStorage.getItem(SHOWN_KEY) === "1"; } catch { /* ignore */ }
+    if (alreadyShown) return;
     try { sessionStorage.setItem(SHOWN_KEY, "1"); } catch { /* private mode etc. */ }
+    setPhase("in");
     const t1 = window.setTimeout(() => setPhase("out"), 850);
-    const t2 = window.setTimeout(() => setPhase("gone"), 1300);
+    const t2 = window.setTimeout(() => setPhase("hidden"), 1300);
     return () => {
       window.clearTimeout(t1);
       window.clearTimeout(t2);
     };
-  }, [phase]);
+  }, []);
 
-  if (phase === "gone") return null;
+  if (phase === "hidden") return null;
 
   const cobrand = !!coBrandLabel;
   const src = cobrand ? "/fs%20collab.png" : "/LOGO_gainly.png";

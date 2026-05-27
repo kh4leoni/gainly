@@ -58,11 +58,14 @@ export function installCacheIsolation(): () => void {
   if (typeof window === "undefined") return () => {};
   const supabase = createClient();
 
-  // Snap-fire on mount in case a SIGNED_IN already happened before we
-  // attached the listener (HMR, slow hydration).
+  // Snap-fire on mount. `getSession()` reads from cookies / localStorage
+  // synchronously-ish — no network — so this works offline. `getUser()`
+  // would have hung or returned null in airplane mode, defeating the
+  // whole point: a stale cache from a previous user would never get
+  // wiped because the local snapshot couldn't be compared.
   void (async () => {
-    const { data } = await supabase.auth.getUser();
-    const currentId = data.user?.id ?? null;
+    const { data } = await supabase.auth.getSession();
+    const currentId = data.session?.user?.id ?? null;
     const last = (() => { try { return localStorage.getItem(LAST_USER_KEY); } catch { return null; } })();
     if (last !== currentId) {
       await wipeAllCaches();
@@ -70,6 +73,13 @@ export function installCacheIsolation(): () => void {
         if (currentId) localStorage.setItem(LAST_USER_KEY, currentId);
         else localStorage.removeItem(LAST_USER_KEY);
       } catch { /* ignore */ }
+      // After wiping, reload so the freshly-rendered pages don't keep
+      // displaying the stale data the user reported before the swap.
+      // Skip on the initial mount when `last` was already null (first
+      // ever launch) — nothing to swap from.
+      if (last !== null) {
+        window.location.reload();
+      }
     }
   })();
 
