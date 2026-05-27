@@ -1,0 +1,25 @@
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    # Group patches + minor bumps so the inbox doesn't explode.
+    # Majors land as individual PRs (manual review needed).
+    groups:
+      patch-and-minor:
+        update-types: ["patch", "minor"]
+    ignore:
+      # Pin React/Next majors — bumping them needs coordinated test pass.
+      - dependency-name: "react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-dom"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "next"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"

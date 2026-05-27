@@ -3,6 +3,12 @@ import { defaultCache } from "@serwist/next/worker";
 import type { PrecacheEntry, SerwistGlobalConfig } from "serwist";
 import { CacheFirst, NetworkFirst, Serwist, StaleWhileRevalidate } from "serwist";
 
+// Bump this when cache strategies or response shapes change in a way
+// that would make old cached entries dangerous (e.g. user-data leak,
+// stale auth handling). On activation any cache key not matching the
+// current version prefix gets evicted.
+const SW_CACHE_VERSION = "v2026-05-27a";
+
 declare global {
   interface WorkerGlobalScope extends SerwistGlobalConfig {
     __SW_MANIFEST: (PrecacheEntry | string)[] | undefined;
@@ -68,6 +74,25 @@ const serwist = new Serwist({
 });
 
 serwist.addEventListeners();
+
+// Cache versioning: on activation, drop every cache bucket whose name
+// doesn't carry the current SW version tag. Combined with the cache-
+// isolation listener in app/providers.tsx (user-switch wipe) this keeps
+// us from ever serving content cached under an older strategy.
+self.addEventListener("activate", (event) => {
+  event.waitUntil((async () => {
+    const tag = SW_CACHE_VERSION;
+    // Stamp the tag into a sentinel key the next activate can compare.
+    const sentinel = await caches.open("__gainly_version");
+    const prev = await sentinel.match("/version");
+    const prevTag = prev ? await prev.text() : null;
+    if (prevTag && prevTag !== tag) {
+      const names = await caches.keys();
+      await Promise.all(names.filter((n) => n !== "__gainly_version").map((n) => caches.delete(n)));
+    }
+    await sentinel.put("/version", new Response(tag));
+  })());
+});
 
 self.addEventListener("message", (event) => {
   if (event.data?.type === "SYNC_NOW") {

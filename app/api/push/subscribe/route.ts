@@ -10,7 +10,29 @@ type SubscribePayload = {
   user_agent?: unknown;
 };
 
+// Lightweight CSRF defence: any state-changing request to this endpoint
+// must come from our own origin. Browsers always set `Origin` on POST/
+// DELETE (or `Sec-Fetch-Site: same-origin` for fetch requests). Combined
+// with the `SameSite=Lax` cookies Supabase ships, this closes the
+// remaining sub-domain-redirect vector for CSRF.
+function rejectIfCrossOrigin(req: Request): NextResponse | null {
+  const sfs = req.headers.get("sec-fetch-site");
+  if (sfs && sfs !== "same-origin" && sfs !== "none") {
+    return NextResponse.json({ error: "cross-origin request rejected" }, { status: 403 });
+  }
+  const origin = req.headers.get("origin");
+  if (origin) {
+    const allowed = process.env.NEXT_PUBLIC_SITE_URL;
+    if (allowed && origin !== new URL(allowed).origin) {
+      return NextResponse.json({ error: "cross-origin request rejected" }, { status: 403 });
+    }
+  }
+  return null;
+}
+
 export async function POST(req: Request) {
+  const csrf = rejectIfCrossOrigin(req);
+  if (csrf) return csrf;
   const user = await getCachedUser();
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
@@ -26,8 +48,26 @@ export async function POST(req: Request) {
   }
 
   const supabase = await createClient();
-  // Endpoint is globally unique. If it already exists, take it over for
-  // the current user (e.g. someone else used to be logged in on this device).
+  // Look up any existing row for this endpoint first. If it belongs to a
+  // different user, refuse the takeover — the legitimate owner of that
+  // endpoint must unsubscribe from their device before another account
+  // can claim it. Without this, an attacker who learned an endpoint URL
+  // (eg. server-log leak) could redirect another user's push stream to
+  // their own browser.
+  const { data: existing, error: lookupErr } = await supabase
+    .from("push_subscriptions")
+    .select("user_id")
+    .eq("endpoint", endpoint)
+    .maybeSingle();
+  if (lookupErr) return NextResponse.json({ error: lookupErr.message }, { status: 500 });
+
+  if (existing && existing.user_id !== user.id) {
+    return NextResponse.json(
+      { error: "endpoint already claimed by another account" },
+      { status: 409 }
+    );
+  }
+
   const { error } = await supabase
     .from("push_subscriptions")
     .upsert(
@@ -40,6 +80,8 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE(req: Request) {
+  const csrf = rejectIfCrossOrigin(req);
+  if (csrf) return csrf;
   const user = await getCachedUser();
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 

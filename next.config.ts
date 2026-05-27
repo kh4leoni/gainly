@@ -36,6 +36,14 @@ const nextConfig: NextConfig = {
           { key: "Referrer-Policy",            value: "strict-origin-when-cross-origin" },
           { key: "Permissions-Policy",         value: "camera=(), microphone=(), geolocation=()" },
           { key: "Strict-Transport-Security",  value: "max-age=63072000; includeSubDomains; preload" },
+          // Cross-Origin isolation: blocks Spectre-class side channels by
+          // refusing window references to / from cross-origin contexts.
+          // Not COEP require-corp because that breaks Supabase storage
+          // images served from a different subdomain without a CORP
+          // header. same-origin-allow-popups keeps OAuth popup flows
+          // (Supabase magic links opening in popup) intact.
+          { key: "Cross-Origin-Opener-Policy",  value: "same-origin-allow-popups" },
+          { key: "Cross-Origin-Resource-Policy", value: "same-origin" },
         ],
       },
     ];
