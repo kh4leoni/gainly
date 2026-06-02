@@ -282,7 +282,10 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
 
   // ── Layout state ──
   const [phaseView, setPhaseView] = useState<"expanded" | "compact" | "off">("compact");
-  const [showSummaryRail, setShowSummaryRail] = useState(true);
+  // Off by default: the rail eats ~230px of horizontal space, which on
+  // smaller Safari windows squeezed the set table so the RPE column got
+  // clipped. Coach opts in via the "Lisäasetukset oikealla" toggle.
+  const [showSummaryRail, setShowSummaryRail] = useState(false);
   const [showProgression] = useState(true);
   const [showCompletion] = useState(true);
 
@@ -1575,7 +1578,7 @@ function Topbar({
                   ))}
                 </div>
                 <label style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 12, color: "var(--fg-1)", padding: "4px 0", cursor: "pointer" }}>
-                  Viikkoyhteenveto oikealla
+                  Lisäasetukset oikealla
                   <input
                     type="checkbox"
                     checked={showSummaryRail}
@@ -4050,6 +4053,61 @@ function ProgressionDelta({
   );
 }
 
+// ── PDF export (print-to-PDF via clean popup window) ───────────────────────────
+
+function escapeHtml(s: string): string {
+  return s.replace(
+    /[&<>"']/g,
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] ?? c)
+  );
+}
+
+// Build a minimal standalone HTML doc for one week and open the browser print
+// dialog (user picks "Save as PDF"). Avoids fighting the app's screen layout —
+// the popup has its own clean print styles.
+function exportWeekToPdf(week: Week, block: Block) {
+  const title = `${block.name?.trim() || `Jakso ${block.block_number}`} — ${
+    week.name?.trim() || `Viikko ${week.week_number}`
+  }`;
+  const days = [...week.program_days].sort((a, b) => a.day_number - b.day_number);
+  const body = days
+    .map((d) => {
+      const rows = d.program_exercises
+        .map(
+          (pe) =>
+            `<tr><td>${escapeHtml(pe.exercises?.name ?? "—")}</td><td>${escapeHtml(
+              plannedSetsLine(configsFromExercise(pe))
+            )}</td></tr>`
+        )
+        .join("");
+      return `<section><h2>${escapeHtml(dayDisplayName(d))}</h2><table><thead><tr><th>Liike</th><th>Sarjat</th></tr></thead><tbody>${
+        rows || `<tr><td colspan="2">Ei liikkeitä</td></tr>`
+      }</tbody></table></section>`;
+    })
+    .join("");
+
+  const html = `<!doctype html><html lang="fi"><head><meta charset="utf-8"><title>${escapeHtml(
+    title
+  )}</title><style>
+*{font-family:-apple-system,system-ui,sans-serif;box-sizing:border-box}
+body{margin:32px;color:#111}
+h1{font-size:20px;margin:0 0 16px}
+section{margin-bottom:20px;page-break-inside:avoid}
+h2{font-size:14px;margin:0 0 6px;border-bottom:1px solid #ccc;padding-bottom:4px}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{text-align:left;color:#666;font-weight:600;font-size:10px;text-transform:uppercase;padding:4px 6px}
+td{padding:4px 6px;border-top:1px solid #eee;vertical-align:top}
+td:first-child{width:40%;font-weight:500}
+</style></head><body><h1>${escapeHtml(title)}</h1>${body}</body></html>`;
+
+  const w = window.open("", "_blank");
+  if (!w) return;
+  w.document.write(html);
+  w.document.close();
+  w.focus();
+  setTimeout(() => w.print(), 250);
+}
+
 // ── Summary rail ──────────────────────────────────────────────────────────────
 
 function SummaryRail({
@@ -4065,24 +4123,16 @@ function SummaryRail({
   onSetActiveWeek: () => void;
   onClearActiveWeek: () => void;
 }) {
-  const totalSets = week.program_days.reduce(
-    (a, d) => a + d.program_exercises.reduce((b, e) => b + configsFromExercise(e).length, 0),
-    0
-  );
-  const totalEx = week.program_days.reduce((a, d) => a + d.program_exercises.length, 0);
-  const totalReps = week.program_days.reduce(
-    (a, d) =>
-      a +
-      d.program_exercises.reduce(
-        (b, e) =>
-          b +
-          configsFromExercise(e).reduce((c, s) => c + (s.reps ? parseInt(s.reps, 10) || 0 : 0), 0),
-        0
-      ),
-    0
-  );
-
   const nextWeekNum = (block.program_weeks[block.program_weeks.length - 1]?.week_number ?? week.week_number) + 1;
+
+  // Every quick action routes through a confirmation step first.
+  const [pending, setPending] = useState<{
+    title: string;
+    description: string;
+    confirmLabel: string;
+    variant?: "destructive" | "default";
+    onConfirm: () => void;
+  } | null>(null);
 
   return (
     <div
@@ -4099,119 +4149,106 @@ function SummaryRail({
       }}
     >
       <div>
-        <div style={{ fontSize: 10, fontWeight: 700, color: "var(--fg-3)", letterSpacing: "0.05em", textTransform: "uppercase" }}>
-          Viikko {week.week_number}
-        </div>
-        <div style={{ fontSize: 16, fontWeight: 600, marginTop: 4 }}>
-          {week.name?.trim() || `Viikko ${week.week_number}`}
-        </div>
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-        <StatTile label="Treenejä" value={week.program_days.length} />
-        <StatTile label="Liikkeitä" value={totalEx} />
-        <StatTile label="Sarjoja" value={totalSets} />
-        <StatTile label="Toistoja" value={totalReps} />
-      </div>
-
-      <div>
-        <div style={{ fontSize: 10, fontWeight: 700, color: "var(--fg-3)", letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: 9 }}>
-          Volyymijakauma
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-          {week.program_days.map((d) => {
-            const c = dayColor(d.day_number);
-            const sets = d.program_exercises.reduce((a, e) => a + configsFromExercise(e).length, 0);
-            const pct = totalSets > 0 ? (sets / totalSets) * 100 : 0;
-            return (
-              <div key={d.id}>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10.5, marginBottom: 3 }}>
-                  <span style={{ fontFamily: "ui-monospace, monospace", color: c.fg }}>
-                    {dayBadge(d)} · {dayDisplayName(d).slice(0, 14)}
-                  </span>
-                  <span style={{ fontFamily: "ui-monospace, monospace", color: "var(--fg-2)" }}>
-                    {sets} sarjaa
-                  </span>
-                </div>
-                <div
-                  style={{
-                    height: 5,
-                    background: "var(--row-hover-2)",
-                    borderRadius: 2,
-                    overflow: "hidden",
-                  }}
-                >
-                  <div style={{ width: pct + "%", height: "100%", background: c.fg, opacity: 0.7 }} />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      <div>
         <div style={{ fontSize: 10, fontWeight: 700, color: "var(--fg-3)", letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: 9 }}>
           Pikatoiminnot
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           {week.is_active ? (
-            <RailButton onClick={onClearActiveWeek}>
+            <RailButton
+              onClick={() =>
+                setPending({
+                  title: "Poistetaanko aktiivisuus?",
+                  description: `Viikkoa ${week.week_number} ei enää merkitä aktiiviseksi.`,
+                  confirmLabel: "Poista aktiivisuus",
+                  onConfirm: onClearActiveWeek,
+                })
+              }
+            >
               <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--green)", display: "inline-block" }} />
               Aktiivinen — poista
             </RailButton>
           ) : (
-            <RailButton onClick={onSetActiveWeek}>
+            <RailButton
+              onClick={() =>
+                setPending({
+                  title: "Asetetaanko viikko aktiiviseksi?",
+                  description: `Viikko ${week.week_number} merkitään aktiiviseksi ja aiempi aktiivinen viikko poistetaan.`,
+                  confirmLabel: "Aseta aktiiviseksi",
+                  variant: "default",
+                  onConfirm: onSetActiveWeek,
+                })
+              }
+            >
               <span style={{ width: 8, height: 8, borderRadius: "50%", border: "1px solid var(--fg-3)", display: "inline-block" }} />
               Aseta aktiiviseksi
             </RailButton>
           )}
-          <RailButton onClick={onDuplicateWeek}>
+          <RailButton
+            onClick={() =>
+              setPending({
+                title: `Monistetaanko viikoksi ${nextWeekNum}?`,
+                description: `Tämän viikon treenit ja sarjat kopioidaan uudeksi viikoksi ${nextWeekNum}.`,
+                confirmLabel: "Monista",
+                variant: "default",
+                onConfirm: onDuplicateWeek,
+              })
+            }
+          >
             <Copy size={12} /> Monista viikoksi {nextWeekNum}
           </RailButton>
-          <RailButton>
+          <RailButton
+            onClick={() =>
+              setPending({
+                title: "Lisätäänkö painoja 2,5 %?",
+                description: "Kaikkien tämän viikon liikkeiden kuormia nostetaan 2,5 %.",
+                confirmLabel: "Lisää painoja",
+                variant: "default",
+                onConfirm: () => {},
+              })
+            }
+          >
             <TrendingUp size={12} /> Lisää 2.5 % painoja
           </RailButton>
-          <RailButton>↓ Muunna deloadiksi</RailButton>
-          <RailButton>
+          <RailButton
+            onClick={() =>
+              setPending({
+                title: "Muunnetaanko deloadiksi?",
+                description: "Tämän viikon volyymi ja kuormat kevennetään deload-viikoksi.",
+                confirmLabel: "Muunna deloadiksi",
+                variant: "default",
+                onConfirm: () => {},
+              })
+            }
+          >
+            ↓ Muunna deloadiksi
+          </RailButton>
+          <RailButton
+            onClick={() =>
+              setPending({
+                title: "Viedäänkö PDF?",
+                description: "Tämä viikko avataan tulostusnäkymään. Valitse \"Tallenna PDF:nä\".",
+                confirmLabel: "Vie PDF",
+                variant: "default",
+                onConfirm: () => exportWeekToPdf(week, block),
+              })
+            }
+          >
             <ClipboardList size={12} /> Vie PDF
           </RailButton>
         </div>
       </div>
-    </div>
-  );
-}
 
-function StatTile({ label, value }: { label: string; value: number }) {
-  return (
-    <div
-      style={{
-        background: "var(--bg-2)",
-        border: "1px solid var(--line)",
-        borderRadius: 8,
-        padding: "9px 11px",
-      }}
-    >
-      <div
-        style={{
-          fontFamily: "ui-monospace, monospace",
-          fontSize: 19,
-          fontWeight: 600,
-          letterSpacing: "-0.02em",
+      <ConfirmDialog
+        open={!!pending}
+        onOpenChange={(o) => {
+          if (!o) setPending(null);
         }}
-      >
-        {value}
-      </div>
-      <div
-        style={{
-          fontSize: 10,
-          color: "var(--fg-3)",
-          textTransform: "uppercase",
-          letterSpacing: "0.05em",
-          marginTop: 2,
-        }}
-      >
-        {label}
-      </div>
+        title={pending?.title ?? ""}
+        description={pending?.description ?? ""}
+        confirmLabel={pending?.confirmLabel}
+        variant={pending?.variant}
+        onConfirm={() => pending?.onConfirm()}
+      />
     </div>
   );
 }
