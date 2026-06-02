@@ -4100,12 +4100,49 @@ td{padding:4px 6px;border-top:1px solid #eee;vertical-align:top}
 td:first-child{width:40%;font-weight:500}
 </style></head><body><h1>${escapeHtml(title)}</h1>${body}</body></html>`;
 
-  const w = window.open("", "_blank");
-  if (!w) return;
-  w.document.write(html);
-  w.document.close();
-  w.focus();
-  setTimeout(() => w.print(), 250);
+  // Hidden iframe instead of window.open — popup blockers (esp. Safari) kill
+  // the popup, especially when the click originates inside a dialog.
+  const iframe = document.createElement("iframe");
+  iframe.setAttribute("aria-hidden", "true");
+  Object.assign(iframe.style, {
+    position: "fixed",
+    right: "0",
+    bottom: "0",
+    width: "0",
+    height: "0",
+    border: "0",
+  });
+  document.body.appendChild(iframe);
+  const w = iframe.contentWindow;
+  const doc = w?.document;
+  if (!w || !doc) {
+    iframe.remove();
+    return;
+  }
+  // Write synchronously, then print — do NOT wait for iframe.onload. The empty
+  // about:blank fires load before document.write runs, which in Chrome prod
+  // meant print() ran against a blank doc (or no-op). document.write is sync,
+  // so the content is in the DOM right after close().
+  doc.open();
+  doc.write(html);
+  doc.close();
+
+  // Clean up on afterprint, not a short timer: Safari's print() is
+  // non-blocking, so a quick timeout would yank the iframe before it renders.
+  let done = false;
+  const cleanup = () => {
+    if (done) return;
+    done = true;
+    iframe.remove();
+  };
+  w.onafterprint = cleanup;
+  // One frame for layout to settle, then print.
+  setTimeout(() => {
+    w.focus();
+    w.print();
+  }, 100);
+  // Fallback for browsers that never fire afterprint.
+  setTimeout(cleanup, 60000);
 }
 
 // ── Summary rail ──────────────────────────────────────────────────────────────
