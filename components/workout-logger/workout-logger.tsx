@@ -40,11 +40,20 @@ function rpeLabel(v: number | null | undefined): string {
   return String(v);
 }
 
-function targetRpeIdx(t: number | null): number {
-  if (t === null) return 0;
-  if (t === 0 || t === 5) return 0;
-  const i = (RPE_STEPS as readonly number[]).indexOf(t);
+// Target rpe may be a number (legacy) or a free-text range string ("6-7").
+// For seeding the single-value stepper we take the lower bound.
+function targetRpeIdx(t: number | string | null): number {
+  if (t == null) return 0;
+  const n = typeof t === "number" ? t : parseFloat(String(t).split("-")[0] ?? "");
+  if (Number.isNaN(n) || n === 0 || n === 5) return 0;
+  const i = (RPE_STEPS as readonly number[]).indexOf(n);
   return i >= 0 ? i : 0;
+}
+
+// A prescribed range ("10-12") is a target hint, not a loggable value — never
+// prefill it into the editable field (Number("10-12") is NaN).
+function isRange(s: string | null | undefined): boolean {
+  return !!s && s.includes("-");
 }
 
 // ── Main logger ───────────────────────────────────────────────────────────────
@@ -478,14 +487,15 @@ type RowState = {
   initialReps: string;
 };
 
-type SetConfig = { reps: string | null; weight: number | null; rpe: number | null };
+type SetConfig = { reps: string | null; weight: number | null; rpe: string | null };
 
 function resolveInitialRows(pe: any): RowState[] {
   const cfgs: SetConfig[] | null = pe.set_configs ?? null;
   if (cfgs && cfgs.length > 0) {
     return cfgs.map((c) => {
       const weight = c.weight != null ? String(c.weight) : (pe.intensity != null ? String(pe.intensity) : "");
-      const reps = c.reps ?? pe.reps ?? "";
+      const targetReps = c.reps ?? pe.reps ?? "";
+      const reps = isRange(targetReps) ? "" : targetReps;
       return {
         weight,
         reps,
@@ -503,7 +513,7 @@ function resolveInitialRows(pe: any): RowState[] {
   const perSetRpe: (number | null)[] | null = pe.target_rpes ?? null;
   return Array.from({ length: sets }, (_, i) => {
     const weight = pe.intensity != null ? String(pe.intensity) : "";
-    const reps = pe.reps ?? "";
+    const reps = isRange(pe.reps) ? "" : (pe.reps ?? "");
     return {
       weight,
       reps,
@@ -792,7 +802,7 @@ function LiftingExerciseBlock({ programExercise, workoutLogId, clientId }: { pro
     return Array.from({ length: targetSets }, (_, i) => ({
       reps: programExercise.reps ?? null,
       weight: programExercise.intensity ?? null,
-      rpe: rpeVals[i] ?? null,
+      rpe: rpeVals[i] != null ? String(rpeVals[i]) : null,
     }));
   })();
 
@@ -938,7 +948,7 @@ function LiftingExerciseBlock({ programExercise, workoutLogId, clientId }: { pro
             {headerCfgs.map((c, i) => {
               const repsLbl = c.reps ? `${c.reps} toistoa` : "— toistoa";
               const weightLbl = c.weight != null ? `, ${c.weight} kg` : "";
-              const rpeLbl = c.rpe != null ? `, rpe ${c.rpe === 5 ? "<6" : c.rpe}` : "";
+              const rpeLbl = c.rpe ? `, rpe ${c.rpe === "5" ? "<6" : c.rpe}` : "";
               const isActive = i === firstOpenIdx;
               const isDone = rows[i]?.confirmed ?? false;
               return (
