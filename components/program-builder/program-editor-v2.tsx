@@ -808,6 +808,58 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
     onSettled: invalidate,
   });
 
+  const deleteExercise = useMutation({
+    mutationFn: async ({ peId, dayId }: { peId: string; dayId: string }) => {
+      const { error: delErr } = await supabase.from("program_exercises").delete().eq("id", peId);
+      if (delErr) throw delErr;
+      // Renumber remaining exercises in this day to 0..N-1 (two-phase to avoid
+      // any (day_id, order_idx) collisions, matching reorderExercises)
+      const d = (program?.program_blocks ?? [])
+        .flatMap((b) => b.program_weeks)
+        .flatMap((w) => w.program_days)
+        .find((x) => x.id === dayId);
+      const remaining = (d?.program_exercises ?? [])
+        .filter((e) => e.id !== peId)
+        .sort((a, b) => a.order_idx - b.order_idx);
+      if (remaining.length === 0) return;
+      const r1 = await Promise.all(remaining.map((e, i) =>
+        supabase.from("program_exercises").update({ order_idx: 1000 + i }).eq("id", e.id)
+      ));
+      const e1 = r1.find((r) => r.error)?.error;
+      if (e1) throw e1;
+      const r2 = await Promise.all(remaining.map((e, i) =>
+        supabase.from("program_exercises").update({ order_idx: i }).eq("id", e.id)
+      ));
+      const e2 = r2.find((r) => r.error)?.error;
+      if (e2) throw e2;
+    },
+    onMutate: async ({ peId, dayId }) => {
+      await qc.cancelQueries({ queryKey: ["program", programId] });
+      const prev = qc.getQueryData<ProgramFull>(["program", programId]);
+      qc.setQueryData(["program", programId], (old: ProgramFull) => {
+        if (!old) return old;
+        const next = structuredClone(old);
+        for (const b of next.program_blocks ?? [])
+          for (const w of b.program_weeks ?? [])
+            for (const d of w.program_days ?? []) {
+              if (d.id !== dayId) continue;
+              d.program_exercises = (d.program_exercises ?? [])
+                .filter((e) => e.id !== peId)
+                .sort((a, b) => a.order_idx - b.order_idx)
+                .map((e, i) => ({ ...e, order_idx: i }));
+            }
+        return next;
+      });
+      return { prev };
+    },
+    onError: (_e, _p, ctx) => {
+      if (ctx?.prev) qc.setQueryData(["program", programId], ctx.prev);
+    },
+    onSettled: invalidate,
+  });
+
+  const [pendingDeleteExercise, setPendingDeleteExercise] = useState<{ id: string; dayId: string; label: string } | null>(null);
+
   const renameWeek = useMutation({
     mutationFn: async ({ weekId, name }: { weekId: string; name: string | null }) => {
       const { error } = await supabase.from("program_weeks").update({ name }).eq("id", weekId);
@@ -1221,6 +1273,28 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
       />
 
       <ConfirmDialog
+        open={!!pendingDeleteExercise}
+        onOpenChange={(o) => { if (!o) setPendingDeleteExercise(null); }}
+        title="Poistetaanko liike?"
+        description={`Liike "${pendingDeleteExercise?.label ?? ""}" sarjoineen poistetaan pysyvästi.`}
+        confirmLabel="Poista liike"
+        onConfirm={() => {
+          if (!pendingDeleteExercise) return;
+          const { id: peId, dayId } = pendingDeleteExercise;
+          // Keep the exercise selection sensible after the row disappears
+          const delIdx = exercises.findIndex((e) => e.id === peId);
+          const newLen = exercises.length - 1;
+          setSelExIdx((i) => {
+            let n = i;
+            if (delIdx !== -1 && delIdx < i) n = i - 1;
+            return Math.max(0, Math.min(n, newLen - 1));
+          });
+          deleteExercise.mutate({ peId, dayId });
+          setPendingDeleteExercise(null);
+        }}
+      />
+
+      <ConfirmDialog
         open={!!pendingDeleteWeek}
         onOpenChange={(o) => { if (!o) setPendingDeleteWeek(null); }}
         title="Poistetaanko viikko?"
@@ -1270,6 +1344,9 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
             onAdd={() => addExerciseMut.mutate(day.id)}
             onReorder={(orderedIds) => reorderExercises.mutate({ dayId: day.id, orderedIds })}
             onRenameDay={(name) => renameDay.mutate({ dayId: day.id, name })}
+            onRequestDeleteExercise={(pe) =>
+              setPendingDeleteExercise({ id: pe.id, dayId: day.id, label: pe.exercises?.name ?? "Liike" })
+            }
           />
         )}
 
@@ -2658,6 +2735,7 @@ function ExercisesColumn({
   onAdd,
   onReorder,
   onRenameDay,
+  onRequestDeleteExercise,
 }: {
   day: Day;
   selExIdx: number;
@@ -2665,6 +2743,7 @@ function ExercisesColumn({
   onAdd: () => void;
   onReorder: (orderedIds: string[]) => void;
   onRenameDay: (name: string | null) => void;
+  onRequestDeleteExercise: (pe: ProgramExerciseRow) => void;
 }) {
   const c = dayColor(day.day_number);
   const sensors = useDndSensors();
@@ -2714,6 +2793,7 @@ function ExercisesColumn({
               selected={i === selExIdx}
               accentFg={c.fg}
               onSelect={() => onSelect(i)}
+              onDelete={() => onRequestDeleteExercise(pe)}
             />
           ))}
         </SC>
@@ -2728,12 +2808,14 @@ function SortableExerciseRow({
   selected,
   accentFg,
   onSelect,
+  onDelete,
 }: {
   pe: ProgramExerciseRow;
   idx: number;
   selected: boolean;
   accentFg: string;
   onSelect: () => void;
+  onDelete: () => void;
 }) {
   const { setNodeRef, transform, transition, isDragging, attributes, listeners } = useSortable({ id: pe.id });
   const style: CSSProperties = {
@@ -2783,6 +2865,30 @@ function SortableExerciseRow({
             {summary}
           </div>
         </div>
+        <button
+          className="mv2-row-del"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete();
+          }}
+          title="Poista liike"
+          aria-label="Poista liike"
+          style={{
+            width: 18,
+            height: 18,
+            borderRadius: 4,
+            background: "transparent",
+            border: "none",
+            color: "var(--fg-3)",
+            cursor: "pointer",
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 0,
+          }}
+        >
+          <X size={12} />
+        </button>
         <ChevronRight size={13} style={{ color: selected ? "var(--accent-fg)" : "var(--fg-3)" }} />
       </div>
     </div>

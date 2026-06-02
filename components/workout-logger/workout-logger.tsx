@@ -804,7 +804,7 @@ function LiftingExerciseBlock({ programExercise, workoutLogId, clientId }: { pro
       overflow: "hidden",
     }}>
       {/* ── Card header ── */}
-      <div style={{ padding: "14px 16px 12px", display: "flex", alignItems: "center", gap: 12 }}>
+      <div style={{ padding: "14px 16px 12px", display: "flex", alignItems: "flex-start", gap: 12 }}>
         {/* Progress circle */}
         <div style={{
           width: 36, height: 36, borderRadius: "50%", flexShrink: 0,
@@ -821,11 +821,11 @@ function LiftingExerciseBlock({ programExercise, workoutLogId, clientId }: { pro
 
         {/* Name + meta */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <div style={{ fontWeight: 700, fontSize: 15, color: "var(--c-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0 }}>
-              {programExercise.exercises?.name ?? "Harjoitus"}
-            </div>
-            {(programExercise.exercises?.instructions || programExercise.exercises?.video_path) && (
+          <div style={{ fontWeight: 700, fontSize: 15, color: "var(--c-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {programExercise.exercises?.name ?? "Harjoitus"}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
+            {(
               <ExerciseInfoDialog
                 exercises={[{
                   name: programExercise.exercises?.name ?? "Harjoitus",
