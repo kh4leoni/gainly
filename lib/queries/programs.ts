@@ -19,7 +19,8 @@ export type ProgramExerciseRow = {
   intensity_type: string | null;
   target_rpe: number | null;
   target_rpes: (number | null)[] | null;
-  set_configs: Array<{ reps: string | null; weight: number | null; rpe: number | null }> | null;
+  // reps/rpe are free-text to allow coach-prescribed ranges ("10-12", "6-7").
+  set_configs: Array<{ reps: string | null; weight: number | null; rpe: string | null }> | null;
   rest_sec: number | null;
   notes: string | null;
   free_text: string | null;

@@ -216,7 +216,14 @@ function ExerciseRow({ pe, exercises, onUpdate, onAssign, onDelete, dragHandlePr
   const exerciseName = (pe.exercises as { name: string } | null)?.name ?? null;
 
   const [configs, setConfigs] = useState<SetConfig[]>(() => {
-    if (pe.set_configs && pe.set_configs.length > 0) return pe.set_configs;
+    if (pe.set_configs && pe.set_configs.length > 0) {
+      // Deprecated v1 editor uses a numeric RPE stepper. If a range string
+      // ("6-7") was set in v2, degrade gracefully to its lower bound here.
+      return pe.set_configs.map((c) => ({
+        ...c,
+        rpe: c.rpe == null ? null : parseFloat(String(c.rpe).split("-")[0] ?? "") || null,
+      }));
+    }
     const count = pe.sets ?? 1;
     const rpes = pe.target_rpes ?? [];
     return Array.from({ length: count }, (_, i) => ({

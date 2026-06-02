@@ -14,12 +14,12 @@ function fmtNum(n: number): string {
 function setsLine(pe: ProgramExerciseRow): string {
   const cfgs = pe.set_configs && pe.set_configs.length > 0
     ? pe.set_configs
-    : Array.from({ length: pe.sets ?? 0 }, () => ({ reps: pe.reps, weight: null, rpe: pe.target_rpe ?? null }));
+    : Array.from({ length: pe.sets ?? 0 }, () => ({ reps: pe.reps, weight: null, rpe: pe.target_rpe != null ? String(pe.target_rpe) : null }));
   if (cfgs.length === 0) return "—";
   const items = cfgs.map((c) => {
     const reps = c.reps ?? "?";
     const w = c.weight != null ? `${fmtNum(c.weight)}kg` : null;
-    const rpe = c.rpe != null ? `@${fmtNum(c.rpe)}` : null;
+    const rpe = c.rpe ? `@${c.rpe}` : null;
     return [reps, w, rpe].filter(Boolean).join(" ");
   });
   // Compress consecutive identical items as "N×item"

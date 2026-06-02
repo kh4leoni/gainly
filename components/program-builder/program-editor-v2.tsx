@@ -76,7 +76,9 @@ import {
 type Block = ProgramFull["program_blocks"][number];
 type Week = Block["program_weeks"][number];
 type Day = Week["program_days"][number];
-type SetConfig = { reps: string | null; weight: number | null; rpe: number | null };
+// reps and rpe are free-text so a coach can prescribe ranges ("10-12", "6-7").
+// Clients still log a single value; ranges are target hints only.
+type SetConfig = { reps: string | null; weight: number | null; rpe: string | null };
 type ExPatch = {
   id: string;
   sets?: number | null;
@@ -135,7 +137,7 @@ function configsFromExercise(pe: ProgramExerciseRow): SetConfig[] {
   return Array.from({ length: count }, (_, i) => ({
     reps: pe.reps ?? null,
     weight: pe.intensity ?? null,
-    rpe: rpes[i] ?? pe.target_rpe ?? null,
+    rpe: rpeToStr(rpes[i] ?? pe.target_rpe ?? null),
   }));
 }
 
@@ -143,14 +145,36 @@ function fmtNum(n: number): string {
   return Number.isInteger(n) ? String(n) : String(n);
 }
 
+// Legacy numeric rpe → string for the unified range-capable field.
+function rpeToStr(n: number | null | undefined): string | null {
+  return n == null ? null : String(n);
+}
+
+// Numeric bounds parsed from a free-text range like "10-12" or "6-7" → [10,12].
+// Single values ("8") → [8]. Empty/garbage → []. Tolerates legacy numeric
+// values still present in older set_configs rows (rpe used to be a number).
+function rangeBounds(s: string | number | null): number[] {
+  if (s == null || s === "") return [];
+  return String(s)
+    .split("-")
+    .map((p) => parseFloat(p.trim()))
+    .filter((n) => !Number.isNaN(n));
+}
+
+// Keep only digits, dot and a single dash; empty → null.
+function normalizeRange(v: string): string | null {
+  const t = v.replace(/[^\d.-]/g, "").trim();
+  return t || null;
+}
+
 // Summary range: collapses when all values are equal. Used in the Exercises
 // column / neighbor cards where vertical space is tight.
 function repsLabel(cfgs: SetConfig[]): string {
   if (cfgs.length === 0) return "—";
-  const nums = cfgs.map((s) => (s.reps ? parseInt(s.reps, 10) : NaN)).filter((n) => !isNaN(n));
-  if (nums.length === 0) return `${cfgs.length}×—`;
-  const min = Math.min(...nums);
-  const max = Math.max(...nums);
+  const bounds = cfgs.flatMap((s) => rangeBounds(s.reps));
+  if (bounds.length === 0) return `${cfgs.length}×—`;
+  const min = Math.min(...bounds);
+  const max = Math.max(...bounds);
   return min === max ? `${cfgs.length}×${min}` : `${cfgs.length}×${min}-${max}`;
 }
 
@@ -163,10 +187,10 @@ function weightLabel(cfgs: SetConfig[]): string {
 }
 
 function rpeLabel(cfgs: SetConfig[]): string {
-  const rs = cfgs.map((s) => s.rpe).filter((r): r is number => typeof r === "number");
-  if (rs.length === 0) return "@—";
-  const min = Math.min(...rs);
-  const max = Math.max(...rs);
+  const bounds = cfgs.flatMap((s) => rangeBounds(s.rpe));
+  if (bounds.length === 0) return "@—";
+  const min = Math.min(...bounds);
+  const max = Math.max(...bounds);
   return min === max ? `@${min}` : `@${min}-${max}`;
 }
 
@@ -176,7 +200,7 @@ function rpeLabel(cfgs: SetConfig[]): string {
 //   uniform reps + has weights → "4×8 · 100 @7, 100 @7, 105 @8 kg"
 //   uniform reps + bodyweight → "4×8 · @7, @7, @8 (oma p.)"
 //   varying reps + has weights → "5×100 @7, 5×100 @7, 8×80 @7 kg"
-type SetDatum = { reps: string | null; weight: number | null; rpe: number | null };
+type SetDatum = { reps: string | null; weight: number | null; rpe: string | null };
 
 // Per-set inline summary: each set rendered as "reps/weight/rpe", sets
 // separated by ", ". "kg" unit appended once at the end when any weights
@@ -186,9 +210,11 @@ function buildSetsLine(items: SetDatum[]): string {
   if (items.length === 0) return "—";
   const anyWeight = items.some((s) => typeof s.weight === "number" && s.weight > 0);
   const tokens = items.map((s) => {
-    const reps = s.reps && s.reps.trim() !== "" ? s.reps : "—";
+    const repsStr = s.reps != null ? String(s.reps) : "";
+    const reps = repsStr.trim() !== "" ? repsStr : "—";
     const w = typeof s.weight === "number" && s.weight > 0 ? fmtNum(s.weight) : "—";
-    const rpe = typeof s.rpe === "number" ? fmtNum(s.rpe) : "—";
+    const rpeStr = s.rpe != null ? String(s.rpe) : "";
+    const rpe = rpeStr.trim() !== "" ? rpeStr : "—";
     return `${reps}×${w}@${rpe}`;
   });
   const list = tokens.join(", ");
@@ -204,7 +230,7 @@ function achievedSetsLine(logs: CompletedSet[]): string {
     logs.map((l) => ({
       reps: l.reps != null ? String(l.reps) : null,
       weight: l.weight,
-      rpe: l.rpe,
+      rpe: l.rpe != null ? String(l.rpe) : null,
     }))
   );
 }
@@ -3114,8 +3140,12 @@ function ExerciseDetail({
 
   // Stats
   const totalReps = cfgs.reduce((a, s) => a + (s.reps ? parseInt(s.reps, 10) || 0 : 0), 0);
-  const rpes = cfgs.map((s) => s.rpe).filter((r): r is number => typeof r === "number");
-  const avgRpe = rpes.length ? (rpes.reduce((a, b) => a + b, 0) / rpes.length).toFixed(1) : "—";
+  // Average RPE across sets; for range values use the midpoint of each set.
+  const rpeMids = cfgs.flatMap((s) => {
+    const b = rangeBounds(s.rpe);
+    return b.length ? [(Math.min(...b) + Math.max(...b)) / 2] : [];
+  });
+  const avgRpe = rpeMids.length ? (rpeMids.reduce((a, b) => a + b, 0) / rpeMids.length).toFixed(1) : "—";
 
   return (
     <div style={{ padding: "20px 26px 30px", display: "flex", flexDirection: "column", gap: 18 }}>
@@ -3649,8 +3679,9 @@ function SortableSetRow({
         <CellInput
           key={`r-${idx}-${s.reps ?? ""}`}
           defaultValue={s.reps ?? ""}
-          type="number"
-          onCommit={(v) => onChange({ reps: v.trim() || null })}
+          inputMode="numeric"
+          placeholder="esim. 10-12"
+          onCommit={(v) => onChange({ reps: normalizeRange(v) })}
         />
       </td>
       <td style={{ padding: "6px 10px", position: "relative" }}>
@@ -3666,8 +3697,9 @@ function SortableSetRow({
         <CellInput
           key={`rpe-${idx}-${s.rpe ?? ""}`}
           defaultValue={s.rpe ?? ""}
-          type="number"
-          onCommit={(v) => onChange({ rpe: v ? Number(v) : null })}
+          inputMode="numeric"
+          placeholder="esim. 6-7"
+          onCommit={(v) => onChange({ rpe: normalizeRange(v) })}
           textColor={accentFg}
           bold
         />
@@ -3691,6 +3723,8 @@ function SortableSetRow({
 function CellInput({
   defaultValue,
   type,
+  inputMode,
+  placeholder = "—",
   rightAdorn,
   onCommit,
   textColor,
@@ -3698,6 +3732,8 @@ function CellInput({
 }: {
   defaultValue: string | number;
   type?: string;
+  inputMode?: "numeric" | "decimal" | "text";
+  placeholder?: string;
   rightAdorn?: string;
   onCommit: (v: string) => void;
   textColor?: string;
@@ -3708,7 +3744,8 @@ function CellInput({
       <input
         defaultValue={defaultValue}
         type={type}
-        placeholder="—"
+        inputMode={inputMode}
+        placeholder={placeholder}
         onBlur={(e) => onCommit(e.currentTarget.value)}
         onKeyDown={(e) => {
           if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
