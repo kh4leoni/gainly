@@ -1416,8 +1416,10 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
         }}
       />
 
-      {/* Drill-down */}
-      <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
+      {/* Drill-down — scrolls horizontally as a whole when the columns + editor
+          can't fit, so the editor keeps a usable width instead of being squeezed
+          into a narrow strip between the fixed session/exercise columns. */}
+      <div style={{ display: "flex", flex: 1, minHeight: 0, overflowX: "auto", overflowY: "hidden" }}>
         {week && (
           <SessionsColumn
             week={week}
@@ -1453,7 +1455,7 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
         <div
           style={{
             flex: 1,
-            minWidth: 0,
+            minWidth: 780,
             overflow: "auto",
             background: "var(--bg-0)",
           }}
@@ -1968,20 +1970,19 @@ function PhaseOverview({
   }, []);
 
   // Fit-to-width: when all weeks fit at a readable min column width, fill the
-  // row (zoom 1). When they don't, keep columns at the min and zoom the whole
-  // grid down proportionally so everything stays visible — nothing is hidden.
-  const { cols, zoom } = useMemo(() => {
+  // row. When they don't, pin columns to the readable min and let the wrapper
+  // scroll horizontally — never shrink (zoom out) the whole grid.
+  const cols = useMemo(() => {
     const N = weeks.length;
-    const LABEL = 64, ADD = 72, GAP = 5, PADX = 18, MINCOL = 120, MINZOOM = 0.5;
+    const LABEL = 64, ADD = 72, GAP = 5, PADX = 18, MINCOL = 120;
     if (wrapW <= 0 || N === 0) {
-      return { cols: `${LABEL}px repeat(${N}, minmax(0, 1fr)) ${ADD}px`, zoom: 1 };
+      return `${LABEL}px repeat(${N}, minmax(0, 1fr)) ${ADD}px`;
     }
     const fixed = LABEL + ADD + GAP * (N + 1) + PADX * 2;
     if ((wrapW - fixed) / N >= MINCOL) {
-      return { cols: `${LABEL}px repeat(${N}, minmax(0, 1fr)) ${ADD}px`, zoom: 1 };
+      return `${LABEL}px repeat(${N}, minmax(0, 1fr)) ${ADD}px`;
     }
-    const natural = fixed + MINCOL * N;
-    return { cols: `${LABEL}px repeat(${N}, ${MINCOL}px) ${ADD}px`, zoom: Math.max(MINZOOM, wrapW / natural) };
+    return `${LABEL}px repeat(${N}, ${MINCOL}px) ${ADD}px`;
   }, [weeks.length, wrapW]);
 
   if (weeks.length === 0) {
@@ -2054,7 +2055,6 @@ function PhaseOverview({
           gridTemplateRows: `26px repeat(${dayNumbers.length || 1}, minmax(76px, auto))`,
           gap: 5,
           padding: "10px 18px 14px",
-          zoom,
         }}
       >
         {/* corner */}
@@ -3179,39 +3179,20 @@ function ColumnShell({
 
 // ── Exercise detail ───────────────────────────────────────────────────────────
 
-// Scale-to-fit wrapper. Lays its children out at a fixed `natural` width when
-// the container is narrower than that, then zooms the whole thing down to fit —
-// so nothing is hidden/clipped on small windows (e.g. macOS Safari split view).
-// Above `natural` it behaves normally (width:100%, no zoom). `zoom` (not
-// transform) keeps text crisp and click targets aligned.
+// Keeps the editor content at a readable `natural` min-width. It never shrinks
+// or zooms; when space is tight the whole drill-down row scrolls horizontally
+// (see the row's overflowX), so the editor stays full-size and the RPE column
+// is always reachable.
 function FitScale({
   natural,
-  minZoom = 0.55,
   children,
   style,
 }: {
   natural: number;
-  minZoom?: number;
   children: ReactNode;
   style?: CSSProperties;
 }) {
-  const ref = useRef<HTMLDivElement | null>(null);
-  const [w, setW] = useState(0);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    setW(el.clientWidth);
-    const ro = new ResizeObserver((e) => setW(e[0]?.contentRect.width ?? el.clientWidth));
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
-  const needs = w > 0 && w < natural;
-  const zoom = needs ? Math.max(minZoom, w / natural) : 1;
-  return (
-    <div ref={ref} style={{ width: "100%", overflowX: needs && zoom <= minZoom ? "auto" : "visible" }}>
-      <div style={{ width: needs ? natural : "100%", zoom, ...style }}>{children}</div>
-    </div>
-  );
+  return <div style={{ minWidth: natural, ...style }}>{children}</div>;
 }
 
 function HistorySessionBlock({ session, accent }: { session: HistorySession; accent: string }) {
@@ -3464,7 +3445,7 @@ function ExerciseDetail({
   return (
     <>
     <div style={{ padding: "20px 26px 30px" }}>
-      <FitScale natural={600} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+      <FitScale natural={720} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
       <div style={{ display: "flex", gap: 8, fontSize: 11, color: "var(--fg-3)" }}>
         <span>
           Vk {week.week_number} · {week.name?.trim() || `Viikko ${week.week_number}`}
@@ -3898,7 +3879,12 @@ function CurrentWeekTable({
           </Mv2Button>
         </div>
       </div>
-      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+      {/* Horizontal scroll instead of clipping: when the window narrows past the
+          point where the set columns can't fit (notably on macOS/Safari, whose
+          inputs claim a wider intrinsic min-width), the table keeps a readable
+          min-width and scrolls — nothing is hidden. */}
+      <div style={{ overflowX: "auto" }}>
+      <table style={{ width: "100%", minWidth: 380, borderCollapse: "collapse", fontSize: 13 }}>
         <thead>
           <tr style={{ background: "var(--bg-2)" }}>
             {["", "Sarja", "Toistot", "Kuorma", "RPE", ""].map((h, i) => (
@@ -3950,6 +3936,7 @@ function CurrentWeekTable({
           </SC>
         </DndContext>
       </table>
+      </div>
       <div
         style={{
           padding: "8px 14px",
@@ -4086,12 +4073,14 @@ function CellInput({
         type={type}
         inputMode={inputMode}
         placeholder={placeholder}
+        size={1}
         onBlur={(e) => onCommit(e.currentTarget.value)}
         onKeyDown={(e) => {
           if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
         }}
         style={{
           width: "100%",
+          minWidth: 0,
           background: "var(--bg-2)",
           border: "1px solid var(--line)",
           borderRadius: 5,

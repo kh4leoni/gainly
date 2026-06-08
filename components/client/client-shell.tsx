@@ -4,10 +4,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { House, CalendarDots, TrendUp, ClockCounterClockwise, ChatCircle, Sun, Moon, SignOut, PencilSimple, Gear, Key, UserMinus } from "@phosphor-icons/react";
+import { House, CalendarDots, TrendUp, ClockCounterClockwise, ChatCircle, Sun, Moon, SignOut, PencilSimple, Gear, Key, UserMinus, Sparkle, CaretRight } from "@phosphor-icons/react";
 import { ChangePasswordDialog } from "@/components/client/change-password-dialog";
 import { DeleteAccountDialog } from "@/components/client/delete-account-dialog";
 import { PushMessagesToggle } from "@/components/settings/push-toggle";
+import { WhatsNewDialog } from "@/components/changelog/whats-new-dialog";
+import { useChangelog } from "@/hooks/use-changelog";
 
 const ROUTE_TITLE: Record<string, string> = {
   "/client/dashboard": "Koti",
@@ -245,11 +247,13 @@ function OmatTiedotSection({ me }: { me: Me }) {
 
 type Coach = { name: string | null; email: string | null; phone: string | null; coBrandLabel?: string | null } | null;
 
-function SettingsPanel({ me, coach, closing, onAnimationEnd }: {
+function SettingsPanel({ me, coach, closing, onAnimationEnd, hasUnread, markRead }: {
   me: Me;
   coach?: Coach;
   closing: boolean;
   onAnimationEnd: () => void;
+  hasUnread: boolean;
+  markRead: () => void;
 }) {
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
@@ -258,6 +262,7 @@ function SettingsPanel({ me, coach, closing, onAnimationEnd }: {
   const [ilmoOpen, setIlmoOpen] = useState(false);
   const [pwOpen, setPwOpen] = useState(false);
   const [delOpen, setDelOpen] = useState(false);
+  const [whatsNewOpen, setWhatsNewOpen] = useState(false);
   useEffect(() => setMounted(true), []);
 
   const isDark = !mounted || resolvedTheme === "dark";
@@ -286,6 +291,36 @@ function SettingsPanel({ me, coach, closing, onAnimationEnd }: {
       <CollapsibleSection title="Omat tiedot" open={omatOpen} onToggle={() => setOmatOpen(v => !v)}>
         <OmatTiedotSection me={me} />
       </CollapsibleSection>
+
+      {D}
+
+      {/* Uutta Gainlyssä */}
+      <div style={{ padding: "8px 12px" }}>
+        <button
+          type="button"
+          onClick={() => { setWhatsNewOpen(true); markRead(); }}
+          style={{
+            width: "100%", display: "flex", alignItems: "center", gap: 10,
+            padding: "9px 12px", borderRadius: "var(--r-md)", fontSize: 13, fontWeight: 500,
+            cursor: "pointer", border: "1px solid var(--c-border)",
+            background: "var(--c-surface2)", color: "var(--c-text)",
+            transition: "background 150ms ease",
+          }}
+        >
+          <Sparkle size={15} weight={hasUnread ? "fill" : "regular"} color="var(--c-pink)" />
+          <span style={{ flex: 1, textAlign: "left" }}>Uutta Gainlyssä</span>
+          {hasUnread && (
+            <span style={{
+              fontSize: 10, fontWeight: 700, letterSpacing: "0.04em",
+              color: "var(--c-pink-fg, #fff)", background: "var(--c-pink)",
+              padding: "1px 7px", borderRadius: "var(--r-pill)",
+            }}>
+              Uutta
+            </span>
+          )}
+          <CaretRight size={13} color="var(--c-text-muted)" />
+        </button>
+      </div>
 
       {D}
 
@@ -397,6 +432,7 @@ function SettingsPanel({ me, coach, closing, onAnimationEnd }: {
 
       <ChangePasswordDialog open={pwOpen} onOpenChange={setPwOpen} />
       <DeleteAccountDialog open={delOpen} onOpenChange={setDelOpen} />
+      <WhatsNewDialog role="client" open={whatsNewOpen} onOpenChange={setWhatsNewOpen} />
     </div>
   );
 }
@@ -505,6 +541,7 @@ export function ClientShell({
   }, [coach?.coBrandLabel]);
 
   const color = avatarColor(me?.full_name ?? "?");
+  const { hasUnread: changelogUnread, markRead: markChangelogRead } = useChangelog("client");
 
   return (
     <div
@@ -585,12 +622,27 @@ export function ClientShell({
             />
           </button>
 
+          {changelogUnread && !settingsOpen && (
+            <span
+              aria-hidden
+              style={{
+                position: "absolute", top: -2, right: -2,
+                width: 10, height: 10, borderRadius: "50%",
+                background: "var(--c-pink)",
+                border: "2px solid var(--c-bg)",
+                pointerEvents: "none",
+              }}
+            />
+          )}
+
           {settingsOpen && (
             <SettingsPanel
               me={me}
               coach={coach}
               closing={settingsClosing}
               onAnimationEnd={handlePanelAnimationEnd}
+              hasUnread={changelogUnread}
+              markRead={markChangelogRead}
             />
           )}
         </div>
