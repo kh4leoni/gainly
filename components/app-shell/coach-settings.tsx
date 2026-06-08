@@ -2,9 +2,11 @@
 
 import { useRef, useState, useEffect, useTransition } from "react";
 import { useTheme } from "next-themes";
-import { Sun, Moon, SignOut, PencilSimple, CaretDown } from "@phosphor-icons/react";
+import { Sun, Moon, SignOut, PencilSimple, CaretDown, Sparkle, CaretRight } from "@phosphor-icons/react";
 import { updateCoachName, updateCoachEmail, updateCoachPhone } from "@/app/coach/actions";
 import { PushMessagesToggle } from "@/components/settings/push-toggle";
+import { WhatsNewDialog } from "@/components/changelog/whats-new-dialog";
+import { useChangelog } from "@/hooks/use-changelog";
 
 type Me = { id: string; full_name: string | null; email?: string | null; phone?: string | null } | null;
 
@@ -181,13 +183,16 @@ function EditableField({
   );
 }
 
-function CoachSettingsPanel({ me, closing, onAnimationEnd }: {
+function CoachSettingsPanel({ me, closing, onAnimationEnd, hasUnread, markRead }: {
   me: Me;
   closing: boolean;
   onAnimationEnd: () => void;
+  hasUnread: boolean;
+  markRead: () => void;
 }) {
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const [whatsNewOpen, setWhatsNewOpen] = useState(false);
   useEffect(() => setMounted(true), []);
   const isDark = !mounted || resolvedTheme === "dark";
   const D = <div style={{ height: 1, background: "hsl(var(--border))" }} />;
@@ -236,7 +241,39 @@ function CoachSettingsPanel({ me, closing, onAnimationEnd }: {
 
       {D}
 
+      {/* Uutta Gainlyssä */}
+      <div style={{ padding: "8px 12px" }}>
+        <button
+          type="button"
+          onClick={() => { setWhatsNewOpen(true); markRead(); }}
+          style={{
+            width: "100%", display: "flex", alignItems: "center", gap: 10,
+            padding: "9px 12px", borderRadius: 10, fontSize: 13, fontWeight: 500,
+            cursor: "pointer", border: "1px solid hsl(var(--border))",
+            background: "hsl(var(--muted))", color: "hsl(var(--foreground))",
+            transition: "background 150ms ease",
+          }}
+        >
+          <Sparkle size={15} weight={hasUnread ? "fill" : "regular"} color="hsl(var(--primary))" />
+          <span style={{ flex: 1, textAlign: "left" }}>Uutta Gainlyssä</span>
+          {hasUnread && (
+            <span style={{
+              fontSize: 10, fontWeight: 700, letterSpacing: "0.04em",
+              color: "hsl(var(--primary-foreground))", background: "hsl(var(--primary))",
+              padding: "1px 7px", borderRadius: 999,
+            }}>
+              Uutta
+            </span>
+          )}
+          <CaretRight size={13} color="hsl(var(--muted-foreground))" />
+        </button>
+      </div>
+
+      {D}
+
       <CoachCollapsibleSection title="Ilmoitukset" />
+
+      <WhatsNewDialog role="coach" open={whatsNewOpen} onOpenChange={setWhatsNewOpen} />
 
       {D}
 
@@ -285,6 +322,7 @@ export function CoachSettingsButton({ me }: { me: Me }) {
   const [open, setOpen] = useState(false);
   const [closing, setClosing] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const { hasUnread, markRead } = useChangelog("coach");
 
   function openPanel() { setOpen(true); setClosing(false); }
   function closePanel() { setClosing(true); }
@@ -342,8 +380,20 @@ export function CoachSettingsButton({ me }: { me: Me }) {
         />
       </button>
 
+      {hasUnread && !open && (
+        <span
+          aria-hidden
+          style={{
+            position: "absolute", top: -1, right: -1,
+            width: 10, height: 10, borderRadius: "50%",
+            background: "hsl(var(--primary))",
+            border: "2px solid hsl(var(--background))",
+          }}
+        />
+      )}
+
       {open && (
-        <CoachSettingsPanel me={me} closing={closing} onAnimationEnd={handleAnimEnd} />
+        <CoachSettingsPanel me={me} closing={closing} onAnimationEnd={handleAnimEnd} hasUnread={hasUnread} markRead={markRead} />
       )}
     </div>
   );

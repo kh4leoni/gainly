@@ -3,9 +3,10 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { CaretLineLeft, List } from "@phosphor-icons/react";
 import { NavLink } from "./nav-link";
 import { CoachSettingsButton } from "./coach-settings";
 import { SyncBar } from "@/components/offline/sync-bar";
@@ -13,6 +14,9 @@ import { usePendingNav } from "@/lib/nav-context";
 import { CoachSkeleton } from "./coach-skeleton";
 import { createClient } from "@/lib/supabase/client";
 import { getUnreadCount } from "@/lib/queries/messages";
+import { cn } from "@/lib/utils";
+
+const NAV_COLLAPSE_KEY = "gainly:coach-nav-collapsed";
 
 type NavItem = { href: string; icon: ReactNode; label: string; badge?: number };
 type Me = { id: string; full_name: string | null; email?: string | null } | null;
@@ -39,6 +43,31 @@ export function AppShell({
   const pathname = usePathname();
   const { pendingHref } = usePendingNav();
   const coachPending = pendingHref?.startsWith("/coach/") ? pendingHref : null;
+
+  // Desktop sidebar collapse — gives the main area more width. Persisted in
+  // localStorage. `mounted` gates the width transition so a collapsed reload
+  // doesn't animate the rail shut on first paint.
+  const [navCollapsed, setNavCollapsed] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+    try {
+      setNavCollapsed(localStorage.getItem(NAV_COLLAPSE_KEY) === "1");
+    } catch {
+      // localStorage unavailable — keep default (expanded).
+    }
+  }, []);
+  function toggleNav() {
+    setNavCollapsed((v) => {
+      const next = !v;
+      try {
+        localStorage.setItem(NAV_COLLAPSE_KEY, next ? "1" : "0");
+      } catch {
+        // ignore write failures
+      }
+      return next;
+    });
+  }
 
   const msgHref = nav.find(n => n.href.endsWith("/messages"))?.href ?? "";
   const serverBadge = nav.find(n => n.href === msgHref)?.badge ?? 0;
@@ -70,13 +99,28 @@ export function AppShell({
 
   return (
     <div className="min-h-dvh md:flex">
-      {/* Sidebar (md+) */}
-      <aside className="hidden md:flex md:w-60 md:flex-col md:border-r md:bg-muted/20">
+      {/* Sidebar (md+) — collapsible to give the main area more width */}
+      <aside
+        className={cn(
+          "hidden md:flex md:flex-col md:overflow-hidden md:bg-muted/20",
+          mounted && "md:transition-[width] md:duration-200 md:ease-out",
+          navCollapsed ? "md:w-0 md:border-r-0" : "md:w-60 md:border-r"
+        )}
+      >
         <div style={{ height: "calc(env(safe-area-inset-top, 0px) + 8px)" }} />
-        <div className="flex h-20 items-center border-b px-4">
+        <div className="flex h-20 items-center justify-between gap-2 border-b px-4">
           <Link href="/" prefetch>
             <Image src={logoSrc} alt={logoAlt} width={160} height={52} className="logo-adaptive" style={{ objectFit: "contain" }} />
           </Link>
+          <button
+            type="button"
+            onClick={toggleNav}
+            title="Piilota valikko"
+            aria-label="Piilota valikko"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <CaretLineLeft size={18} />
+          </button>
         </div>
         <nav className="flex flex-col gap-1 p-2">
           {navWithBadge.map((n) => (
@@ -101,6 +145,22 @@ export function AppShell({
         </header>
         {/* Desktop top header */}
         <header className="hidden h-14 shrink-0 items-center justify-between border-b px-4 md:flex md:px-6">
+          {navCollapsed && (
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={toggleNav}
+                title="Näytä valikko"
+                aria-label="Näytä valikko"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              >
+                <List size={18} />
+              </button>
+              <Link href="/" prefetch>
+                <Image src={logoSrc} alt={logoAlt} width={120} height={38} className="logo-adaptive" style={{ objectFit: "contain" }} />
+              </Link>
+            </div>
+          )}
           <div className="ml-auto flex items-center gap-2">
             {rightSlot}
             <CoachSettingsButton me={me ?? null} />
