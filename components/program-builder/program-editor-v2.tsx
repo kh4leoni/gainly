@@ -58,6 +58,7 @@ import {
   ChevronsUp,
   Copy,
   GripVertical,
+  History,
   Pencil,
   Plus,
   Search,
@@ -76,9 +77,11 @@ import {
 type Block = ProgramFull["program_blocks"][number];
 type Week = Block["program_weeks"][number];
 type Day = Week["program_days"][number];
-// reps and rpe are free-text so a coach can prescribe ranges ("10-12", "6-7").
-// Clients still log a single value; ranges are target hints only.
-type SetConfig = { reps: string | null; weight: number | null; rpe: string | null };
+// reps, weight and rpe are free-text so a coach can prescribe ranges
+// ("10-12", "160-170", "6-7"). Clients still log a single value; ranges are
+// target hints only. Legacy rows may carry a numeric weight — render/parse
+// paths tolerate that via String()/rangeBounds.
+type SetConfig = { reps: string | null; weight: string | null; rpe: string | null };
 type ExPatch = {
   id: string;
   sets?: number | null;
@@ -136,7 +139,7 @@ function configsFromExercise(pe: ProgramExerciseRow): SetConfig[] {
   const rpes = pe.target_rpes ?? [];
   return Array.from({ length: count }, (_, i) => ({
     reps: pe.reps ?? null,
-    weight: pe.intensity ?? null,
+    weight: pe.intensity != null ? String(pe.intensity) : null,
     rpe: rpeToStr(rpes[i] ?? pe.target_rpe ?? null),
   }));
 }
@@ -167,6 +170,13 @@ function normalizeRange(v: string): string | null {
   return t || null;
 }
 
+// Highest numeric value in a range like "160-170" (→170) or single "160" (→160).
+// Used where a comparable scalar is needed (progression bars/delta). Empty → 0.
+function weightTop(w: string | number | null): number {
+  const b = rangeBounds(w);
+  return b.length ? Math.max(...b) : 0;
+}
+
 // Summary range: collapses when all values are equal. Used in the Exercises
 // column / neighbor cards where vertical space is tight.
 function repsLabel(cfgs: SetConfig[]): string {
@@ -179,11 +189,11 @@ function repsLabel(cfgs: SetConfig[]): string {
 }
 
 function weightLabel(cfgs: SetConfig[]): string {
-  const ws = cfgs.map((s) => s.weight).filter((w): w is number => typeof w === "number" && w > 0);
-  if (ws.length === 0) return "oma p.";
-  const min = Math.min(...ws);
-  const max = Math.max(...ws);
-  return min === max ? `${min}kg` : `${min}-${max}kg`;
+  const bounds = cfgs.flatMap((s) => rangeBounds(s.weight)).filter((w) => w > 0);
+  if (bounds.length === 0) return "oma p.";
+  const min = Math.min(...bounds);
+  const max = Math.max(...bounds);
+  return min === max ? `${fmtNum(min)}kg` : `${fmtNum(min)}-${fmtNum(max)}kg`;
 }
 
 function rpeLabel(cfgs: SetConfig[]): string {
@@ -200,7 +210,8 @@ function rpeLabel(cfgs: SetConfig[]): string {
 //   uniform reps + has weights → "4×8 · 100 @7, 100 @7, 105 @8 kg"
 //   uniform reps + bodyweight → "4×8 · @7, @7, @8 (oma p.)"
 //   varying reps + has weights → "5×100 @7, 5×100 @7, 8×80 @7 kg"
-type SetDatum = { reps: string | null; weight: number | null; rpe: string | null };
+// weight may be a planned range string ("160-170") or a logged number.
+type SetDatum = { reps: string | null; weight: string | number | null; rpe: string | null };
 
 // Per-set inline summary: each set rendered as "reps/weight/rpe", sets
 // separated by ", ". "kg" unit appended once at the end when any weights
@@ -208,11 +219,16 @@ type SetDatum = { reps: string | null; weight: number | null; rpe: string | null
 //   "5/100/7, 5/100/7, 5/105/8, 5/105/8 kg"
 function buildSetsLine(items: SetDatum[]): string {
   if (items.length === 0) return "—";
-  const anyWeight = items.some((s) => typeof s.weight === "number" && s.weight > 0);
+  const wStr = (w: string | number | null) => (w == null ? "" : String(w).trim());
+  const hasW = (w: string | number | null) => {
+    const t = wStr(w);
+    return t !== "" && rangeBounds(t).some((n) => n > 0);
+  };
+  const anyWeight = items.some((s) => hasW(s.weight));
   const tokens = items.map((s) => {
     const repsStr = s.reps != null ? String(s.reps) : "";
     const reps = repsStr.trim() !== "" ? repsStr : "—";
-    const w = typeof s.weight === "number" && s.weight > 0 ? fmtNum(s.weight) : "—";
+    const w = hasW(s.weight) ? wStr(s.weight) : "—";
     const rpeStr = s.rpe != null ? String(s.rpe) : "";
     const rpe = rpeStr.trim() !== "" ? rpeStr : "—";
     return `${reps}×${w}@${rpe}`;
@@ -279,6 +295,61 @@ function logsByPe(completion: ProgramCompletion | undefined, dayId: string): Map
     arr.sort((a, b) => (a.set_number ?? 0) - (b.set_number ?? 0));
   }
   return map;
+}
+
+// One performed session of a given exercise within a block.
+type HistorySession = {
+  key: string;
+  weekNumber: number;
+  weekName: string | null;
+  dayName: string;
+  date: string | null;
+  status: string;
+  logs: CompletedSet[];
+};
+
+// Collect every performed instance of `ex` across the whole block, newest first.
+// Matches by exercise_id (falls back to name) so copied weeks — which carry new
+// program_exercise ids — still resolve to the same exercise's logged sets.
+function exerciseBlockHistory(
+  block: Block,
+  ex: ProgramExerciseRow,
+  completion: ProgramCompletion | undefined
+): HistorySession[] {
+  if (!completion) return [];
+  const sessions: HistorySession[] = [];
+  for (const w of block.program_weeks) {
+    for (const d of w.program_days) {
+      const pe = d.program_exercises.find((p) =>
+        ex.exercise_id ? p.exercise_id === ex.exercise_id : p.exercises?.name === ex.exercises?.name
+      );
+      if (!pe) continue;
+      const logs = logsByPe(completion, d.id).get(pe.id) ?? [];
+      if (logs.length === 0) continue;
+      const sw = completion.byDayId[d.id];
+      sessions.push({
+        key: `${w.id}:${d.id}`,
+        weekNumber: w.week_number,
+        weekName: w.name,
+        dayName: dayDisplayName(d, `Treeni ${d.day_number}`),
+        date: sw?.scheduled_date ?? sw?.completed_at ?? null,
+        status: sw?.status ?? "",
+        logs,
+      });
+    }
+  }
+  sessions.sort((a, b) => {
+    if (a.date && b.date) return a.date < b.date ? 1 : a.date > b.date ? -1 : 0;
+    return b.weekNumber - a.weekNumber;
+  });
+  return sessions;
+}
+
+function fmtSessionDate(iso: string | null): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return null;
+  return d.toLocaleDateString("fi-FI", { day: "numeric", month: "numeric", year: "numeric" });
 }
 
 // ── ProgramEditorV2 ───────────────────────────────────────────────────────────
@@ -1882,6 +1953,37 @@ function PhaseOverview({
     return Array.from(set).sort((a, b) => a - b);
   }, [weeks]);
 
+  // Measure available width so the grid can scale to fit instead of clipping.
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+  const [wrapW, setWrapW] = useState(0);
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    setWrapW(el.clientWidth);
+    const ro = new ResizeObserver((entries) => {
+      setWrapW(entries[0]?.contentRect.width ?? el.clientWidth);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  // Fit-to-width: when all weeks fit at a readable min column width, fill the
+  // row (zoom 1). When they don't, keep columns at the min and zoom the whole
+  // grid down proportionally so everything stays visible — nothing is hidden.
+  const { cols, zoom } = useMemo(() => {
+    const N = weeks.length;
+    const LABEL = 64, ADD = 72, GAP = 5, PADX = 18, MINCOL = 120, MINZOOM = 0.5;
+    if (wrapW <= 0 || N === 0) {
+      return { cols: `${LABEL}px repeat(${N}, minmax(0, 1fr)) ${ADD}px`, zoom: 1 };
+    }
+    const fixed = LABEL + ADD + GAP * (N + 1) + PADX * 2;
+    if ((wrapW - fixed) / N >= MINCOL) {
+      return { cols: `${LABEL}px repeat(${N}, minmax(0, 1fr)) ${ADD}px`, zoom: 1 };
+    }
+    const natural = fixed + MINCOL * N;
+    return { cols: `${LABEL}px repeat(${N}, ${MINCOL}px) ${ADD}px`, zoom: Math.max(MINZOOM, wrapW / natural) };
+  }, [weeks.length, wrapW]);
+
   if (weeks.length === 0) {
     return (
       <div
@@ -1904,6 +2006,7 @@ function PhaseOverview({
 
   return (
     <div
+      ref={wrapRef}
       style={{
         borderBottom: "1px solid var(--line)",
         background: "var(--bg-1)",
@@ -1943,13 +2046,15 @@ function PhaseOverview({
         </div>
       </div>
 
+      <div style={{ overflowX: "auto" }}>
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: `28px repeat(${weeks.length}, minmax(0, 1fr)) 72px`,
+          gridTemplateColumns: cols,
           gridTemplateRows: `26px repeat(${dayNumbers.length || 1}, minmax(76px, auto))`,
           gap: 5,
           padding: "10px 18px 14px",
+          zoom,
         }}
       >
         {/* corner */}
@@ -2063,6 +2168,7 @@ function PhaseOverview({
             onPick={onPick}
           />
         ))}
+      </div>
       </div>
     </div>
   );
@@ -3073,6 +3179,207 @@ function ColumnShell({
 
 // ── Exercise detail ───────────────────────────────────────────────────────────
 
+// Scale-to-fit wrapper. Lays its children out at a fixed `natural` width when
+// the container is narrower than that, then zooms the whole thing down to fit —
+// so nothing is hidden/clipped on small windows (e.g. macOS Safari split view).
+// Above `natural` it behaves normally (width:100%, no zoom). `zoom` (not
+// transform) keeps text crisp and click targets aligned.
+function FitScale({
+  natural,
+  minZoom = 0.55,
+  children,
+  style,
+}: {
+  natural: number;
+  minZoom?: number;
+  children: ReactNode;
+  style?: CSSProperties;
+}) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const [w, setW] = useState(0);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    setW(el.clientWidth);
+    const ro = new ResizeObserver((e) => setW(e[0]?.contentRect.width ?? el.clientWidth));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const needs = w > 0 && w < natural;
+  const zoom = needs ? Math.max(minZoom, w / natural) : 1;
+  return (
+    <div ref={ref} style={{ width: "100%", overflowX: needs && zoom <= minZoom ? "auto" : "visible" }}>
+      <div style={{ width: needs ? natural : "100%", zoom, ...style }}>{children}</div>
+    </div>
+  );
+}
+
+function HistorySessionBlock({ session, accent }: { session: HistorySession; accent: string }) {
+  const date = fmtSessionDate(session.date);
+  return (
+    <div style={{ border: "1px solid var(--line)", borderRadius: 10, overflow: "hidden" }}>
+      <div
+        style={{
+          padding: "8px 12px",
+          background: "var(--bg-2)",
+          borderBottom: "1px solid var(--line)",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "baseline",
+          gap: 8,
+        }}
+      >
+        <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--fg-1)" }}>
+          VK {session.weekNumber}
+          {session.weekName?.trim() ? ` · ${session.weekName.trim()}` : ""} · {session.dayName}
+        </span>
+        <span style={{ fontSize: 11, color: "var(--fg-3)", fontFamily: "ui-monospace, monospace" }}>
+          {date ?? "—"}
+        </span>
+      </div>
+      <div style={{ padding: "6px 12px 10px" }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "32px 1fr 1fr 52px",
+            gap: 4,
+            fontSize: 10,
+            color: "var(--fg-3)",
+            textTransform: "uppercase",
+            letterSpacing: "0.04em",
+            padding: "4px 0",
+            borderBottom: "1px solid var(--line)",
+          }}
+        >
+          <span>Sarja</span>
+          <span style={{ textAlign: "center" }}>Toistot</span>
+          <span style={{ textAlign: "center" }}>Kuorma</span>
+          <span style={{ textAlign: "center" }}>RPE</span>
+        </div>
+        {session.logs.map((l, i) => (
+          <div
+            key={i}
+            style={{
+              display: "grid",
+              gridTemplateColumns: "32px 1fr 1fr 52px",
+              gap: 4,
+              alignItems: "center",
+              fontSize: 12.5,
+              fontFamily: "ui-monospace, monospace",
+              padding: "5px 0",
+              borderBottom: i < session.logs.length - 1 ? "1px solid var(--line)" : "none",
+            }}
+          >
+            <span style={{ color: "var(--fg-3)" }}>{l.set_number ?? i + 1}</span>
+            <span style={{ textAlign: "center", color: "var(--fg-0)", fontWeight: 600 }}>{l.reps ?? "—"}</span>
+            <span style={{ textAlign: "center", color: "var(--fg-0)", fontWeight: 600 }}>
+              {l.weight != null ? `${fmtNum(l.weight)} kg` : "—"}
+            </span>
+            <span style={{ textAlign: "center", color: accent, fontWeight: 600 }}>
+              {l.rpe != null ? `@${rpeToStr(l.rpe)}` : "—"}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ExerciseHistoryModal({
+  exName,
+  blockName,
+  sessions,
+  accent,
+  onClose,
+}: {
+  exName: string;
+  blockName: string;
+  sessions: HistorySession[];
+  accent: string;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 100,
+        background: "rgba(0,0,0,0.5)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 20,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: "var(--bg-0)",
+          border: "1px solid var(--line)",
+          borderRadius: 14,
+          width: "min(560px, 100%)",
+          maxHeight: "85vh",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+          boxShadow: "0 20px 60px rgba(0,0,0,0.45)",
+        }}
+      >
+        <div
+          style={{
+            padding: "16px 20px",
+            borderBottom: "1px solid var(--line)",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            gap: 12,
+          }}
+        >
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 16, fontWeight: 600, color: "var(--fg-0)" }}>{exName} — historia</div>
+            <div style={{ fontSize: 11.5, color: "var(--fg-3)", marginTop: 2 }}>
+              Käynnissä oleva jakso: {blockName}
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            title="Sulje"
+            style={{ background: "none", border: "none", color: "var(--fg-2)", cursor: "pointer", padding: 4, flexShrink: 0 }}
+          >
+            <X size={18} />
+          </button>
+        </div>
+        <div
+          style={{
+            overflowY: "auto",
+            padding: "14px 20px 20px",
+            display: "flex",
+            flexDirection: "column",
+            gap: 12,
+          }}
+        >
+          {sessions.length === 0 ? (
+            <div style={{ color: "var(--fg-3)", fontSize: 13, textAlign: "center", padding: "30px 0" }}>
+              Ei suoritettuja sarjoja tällä jaksolla.
+            </div>
+          ) : (
+            sessions.map((s) => <HistorySessionBlock key={s.key} session={s} accent={accent} />)
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ExerciseDetail({
   programId,
   ex,
@@ -3119,6 +3426,13 @@ function ExerciseDetail({
   const c = dayColor(day.day_number);
   const cfgs = configsFromExercise(ex);
 
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const historySessions = useMemo(
+    () => exerciseBlockHistory(block, ex, completion),
+    [block, ex, completion]
+  );
+  const blockName = block.name?.trim() || `Jakso ${block.block_number}`;
+
   const weekIdx = block.program_weeks.findIndex((w) => w.id === week.id);
   const prevWeek: Week | null = weekIdx > 0 ? block.program_weeks[weekIdx - 1] ?? null : null;
   const nextWeek: Week | null =
@@ -3148,7 +3462,9 @@ function ExerciseDetail({
   const avgRpe = rpeMids.length ? (rpeMids.reduce((a, b) => a + b, 0) / rpeMids.length).toFixed(1) : "—";
 
   return (
-    <div style={{ padding: "20px 26px 30px", display: "flex", flexDirection: "column", gap: 18 }}>
+    <>
+    <div style={{ padding: "20px 26px 30px" }}>
+      <FitScale natural={600} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
       <div style={{ display: "flex", gap: 8, fontSize: 11, color: "var(--fg-3)" }}>
         <span>
           Vk {week.week_number} · {week.name?.trim() || `Viikko ${week.week_number}`}
@@ -3212,6 +3528,17 @@ function ExerciseDetail({
             Seur. <ChevronsRight size={12} />
           </Mv2Button>
           <div style={{ width: 1, height: 22, background: "var(--line)", alignSelf: "center" }} />
+          <Mv2Button
+            kind="ghost"
+            size="sm"
+            onClick={() => setHistoryOpen(true)}
+            title="Näytä tämän liikkeen koko historia tällä jaksolla"
+          >
+            <History size={12} /> Historia
+            {historySessions.length > 0 && (
+              <span style={{ color: "var(--fg-3)", fontWeight: 600 }}>{historySessions.length}</span>
+            )}
+          </Mv2Button>
           <Mv2Button kind="ghost" size="sm" onClick={onOpenPicker}>
             Korvaa
           </Mv2Button>
@@ -3342,7 +3669,19 @@ function ExerciseDetail({
           </div>
         </div>
       </div>
+      </FitScale>
     </div>
+
+      {historyOpen && (
+        <ExerciseHistoryModal
+          exName={ex.exercises?.name ?? "Liike"}
+          blockName={blockName}
+          sessions={historySessions}
+          accent={c.fg}
+          onClose={() => setHistoryOpen(false)}
+        />
+      )}
+    </>
   );
 }
 
@@ -3688,9 +4027,10 @@ function SortableSetRow({
         <CellInput
           key={`w-${idx}-${s.weight ?? ""}`}
           defaultValue={s.weight ?? ""}
-          type="number"
+          inputMode="numeric"
+          placeholder="esim. 160-170"
           rightAdorn="kg"
-          onCommit={(v) => onChange({ weight: v ? Number(v) : null })}
+          onCommit={(v) => onChange({ weight: normalizeRange(v) })}
         />
       </td>
       <td style={{ padding: "6px 10px" }}>
@@ -3844,7 +4184,15 @@ function NeighborWeekCard({
   }
 
   const cfgs = ex ? configsFromExercise(ex) : [];
-  const summary = ex ? `${repsLabel(cfgs)} ${rpeLabel(cfgs)}` : null;
+  // Past sessions: prefer what the client actually performed over the prescription,
+  // so a "done" neighbour week shows logged weights/reps/RPE — not just the plan.
+  const peLogs = ex && day ? logsByPe(completion, day.id).get(ex.id) ?? [] : [];
+  const hasLogs = peLogs.length > 0;
+  const rows: Array<{ reps: string | number | null; weight: string | number | null; rpe: string | number | null }> =
+    hasLogs
+      ? peLogs.map((l) => ({ reps: l.reps, weight: l.weight, rpe: l.rpe }))
+      : cfgs.map((s) => ({ reps: s.reps, weight: s.weight, rpe: s.rpe }));
+  const summary = !ex ? null : hasLogs ? "Toteutunut" : `${repsLabel(cfgs)} ${rpeLabel(cfgs)}`;
 
   return (
     <div
@@ -3910,11 +4258,11 @@ function NeighborWeekCard({
               {summary}
             </span>
             <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 9.5, color: "var(--fg-3)" }}>
-              {cfgs.length} sarjaa
+              {rows.length} sarjaa
             </span>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-            {cfgs.map((s, i) => (
+            {rows.map((s, i) => (
               <div
                 key={i}
                 style={{
@@ -3993,7 +4341,7 @@ function ProgressionBars({
       ex.exercise_id ? pe.exercise_id === ex.exercise_id : pe.exercises?.name === ex.exercises?.name
     );
     const cfgs = e ? configsFromExercise(e) : [];
-    const top = cfgs.reduce((m, s) => Math.max(m, s.weight ?? 0), 0);
+    const top = cfgs.reduce((m, s) => Math.max(m, weightTop(s.weight)), 0);
     return { num: w.week_number, w: top };
   });
   const max = Math.max(...data.map((d) => d.w), 1);
@@ -4072,7 +4420,7 @@ function ProgressionDelta({
       ex.exercise_id ? pe.exercise_id === ex.exercise_id : pe.exercises?.name === ex.exercises?.name
     );
     const cfgs = e ? configsFromExercise(e) : [];
-    const top = cfgs.reduce((m, s) => Math.max(m, s.weight ?? 0), 0);
+    const top = cfgs.reduce((m, s) => Math.max(m, weightTop(s.weight)), 0);
     tops.push(top);
   }
   const nonZero = tops.filter((n) => n > 0);

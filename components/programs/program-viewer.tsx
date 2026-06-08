@@ -7,10 +7,6 @@ import { createClient } from "@/lib/supabase/client";
 import { getProgramFull, type ProgramFull, type ProgramExerciseRow } from "@/lib/queries/programs";
 import { ChevronRight, Pencil, Dumbbell } from "lucide-react";
 
-function fmtNum(n: number): string {
-  return Number.isInteger(n) ? String(n) : n.toFixed(1);
-}
-
 function setsLine(pe: ProgramExerciseRow): string {
   const cfgs = pe.set_configs && pe.set_configs.length > 0
     ? pe.set_configs
@@ -18,7 +14,7 @@ function setsLine(pe: ProgramExerciseRow): string {
   if (cfgs.length === 0) return "—";
   const items = cfgs.map((c) => {
     const reps = c.reps ?? "?";
-    const w = c.weight != null ? `${fmtNum(c.weight)}kg` : null;
+    const w = c.weight != null && String(c.weight).trim() !== "" ? `${c.weight}kg` : null;
     const rpe = c.rpe ? `@${c.rpe}` : null;
     return [reps, w, rpe].filter(Boolean).join(" ");
   });

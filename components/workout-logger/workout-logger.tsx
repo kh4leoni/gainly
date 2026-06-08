@@ -487,13 +487,17 @@ type RowState = {
   initialReps: string;
 };
 
-type SetConfig = { reps: string | null; weight: number | null; rpe: string | null };
+// weight may be a prescribed range string ("160-170") or a legacy number.
+type SetConfig = { reps: string | null; weight: string | number | null; rpe: string | null };
 
 function resolveInitialRows(pe: any): RowState[] {
   const cfgs: SetConfig[] | null = pe.set_configs ?? null;
   if (cfgs && cfgs.length > 0) {
     return cfgs.map((c) => {
-      const weight = c.weight != null ? String(c.weight) : (pe.intensity != null ? String(pe.intensity) : "");
+      // A prescribed range can't prefill the single loggable field (Number("160-170")
+      // is NaN) — leave it blank so the athlete enters their actual weight.
+      const rawWeight = c.weight != null ? String(c.weight) : (pe.intensity != null ? String(pe.intensity) : "");
+      const weight = isRange(rawWeight) ? "" : rawWeight;
       const targetReps = c.reps ?? pe.reps ?? "";
       const reps = isRange(targetReps) ? "" : targetReps;
       return {
@@ -864,7 +868,11 @@ function LiftingExerciseBlock({ programExercise, workoutLogId, clientId }: { pro
               const idx = firstOpenIdx >= 0 ? firstOpenIdx : rows.length - 1;
               const rawW = rows[idx]?.weight;
               const parsed = rawW && rawW.trim() !== "" ? parseFloat(rawW) : NaN;
-              const w = Number.isFinite(parsed) ? parsed : (headerCfgs[idx]?.weight ?? null);
+              // Fall back to the prescribed weight; a range ("160-170") coerces to its
+              // lower bound so the plate loader still has a numeric starting point.
+              const cfgW = headerCfgs[idx]?.weight;
+              const cfgNum = cfgW != null ? parseFloat(String(cfgW)) : NaN;
+              const w = Number.isFinite(parsed) ? parsed : Number.isFinite(cfgNum) ? cfgNum : null;
               return (
                 <PlateLoaderDialog
                   exerciseName={programExercise.exercises?.name ?? "Harjoitus"}
@@ -980,7 +988,7 @@ function LiftingExerciseBlock({ programExercise, workoutLogId, clientId }: { pro
       {/* ── Table ── */}
       <div style={{ paddingBottom: 4 }}>
         <div style={{
-          display: "grid", gridTemplateColumns: "16px minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr) clamp(34px, 9vw, 44px)",
+          display: "grid", gridTemplateColumns: "16px minmax(0, 1.4fr) minmax(0, 0.9fr) minmax(0, 1.4fr) clamp(34px, 9vw, 44px)",
           gap: 2, padding: "0 clamp(4px, 1.5vw, 8px) 6px",
           borderBottom: "1px solid var(--c-border)",
         }}>
@@ -1058,7 +1066,7 @@ function StepperCell({
         disabled={!active || disabled}
         aria-label={kind === "plus" ? "Lisää" : "Vähennä"}
         style={{
-          width: "clamp(26px, 7vw, 32px)", height: "clamp(26px, 7vw, 32px)",
+          width: "clamp(24px, 6.5vw, 30px)", height: "clamp(24px, 6.5vw, 30px)",
           borderRadius: "50%", flexShrink: 0,
           background: (!active || disabled) ? "transparent" : "var(--c-surface3)",
           border: `1px solid ${(!active || disabled) ? "transparent" : "var(--c-border)"}`,
@@ -1107,7 +1115,10 @@ function StepperCell({
           onBlur={(e) => { e.target.style.borderColor = disabled ? "transparent" : "var(--c-border)"; }}
         />
       ) : (
-        <div style={{ ...centerStyle, minWidth: 0 }}>{display}</div>
+        // Static value (e.g. RPE "6.5"): never clip. Real iOS Safari renders
+        // digits slightly wider than Chrome's device emulation, so overflow:hidden
+        // here hid the value entirely on iPhone. Let it show, single line.
+        <div style={{ ...centerStyle, overflow: "visible", whiteSpace: "nowrap" }}>{display}</div>
       )}
       {btn(canInc, onInc, "plus")}
     </div>
@@ -1150,7 +1161,7 @@ function SetTableRow({
 
   return (
     <div style={{
-      display: "grid", gridTemplateColumns: "16px minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr) clamp(40px, 11vw, 50px)",
+      display: "grid", gridTemplateColumns: "16px minmax(0, 1.4fr) minmax(0, 0.9fr) minmax(0, 1.4fr) clamp(34px, 9vw, 44px)",
       gap: 2, padding: "8px clamp(4px, 1.5vw, 8px)",
       borderBottom: "1px solid var(--c-border)",
       background: row.isPr ? "color-mix(in srgb, var(--c-warning) 5%, transparent)" : "transparent",
