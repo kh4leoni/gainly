@@ -9,6 +9,7 @@ import { usePrToast } from "@/hooks/use-pr-toast";
 import { ExerciseInfoDialog } from "@/components/client/exercise-info-dialog";
 import { usePendingNav } from "@/lib/nav-context";
 import { EmptyState } from "@/components/ui/empty-state";
+import { SurfaceCard, surfaceCardStyle } from "@/components/ui/surface-card";
 import { Moon } from "@phosphor-icons/react";
 import { Eyebrow, SectionLabel, Subtitle } from "@/components/ui/typography";
 
@@ -292,12 +293,10 @@ export function ClientDashboardView({
           {wcTotal > 0 && (
             <Link
               href="/client/history"
+              className="card-grow"
               style={{
+                ...surfaceCardStyle({ radius: "xl" }),
                 display: "block",
-                background: "var(--c-surface)",
-                border: "1px solid var(--c-border)",
-                borderRadius: "var(--r-xl)",
-                padding: 16,
                 textDecoration: "none",
                 color: "inherit",
               }}
@@ -326,12 +325,7 @@ export function ClientDashboardView({
           )}
 
           {volume > 0 && (
-            <div style={{
-              background: "var(--c-surface)",
-              border: "1px solid var(--c-border)",
-              borderRadius: "var(--r-xl)",
-              padding: 16,
-            }}>
+            <SurfaceCard radius="xl">
               <Eyebrow style={{ letterSpacing: "1px", marginBottom: 8 }}>
                 Viikon volyymi
               </Eyebrow>
@@ -343,7 +337,7 @@ export function ClientDashboardView({
               <div style={{ fontSize: 12, color: "var(--c-text-muted)", marginTop: 6, lineHeight: 1.4 }}>
                 {getWeightRef(volume).split("!")[0]!.trim() + "!"}
               </div>
-            </div>
+            </SurfaceCard>
           )}
         </div>
       )}
@@ -352,12 +346,10 @@ export function ClientDashboardView({
       {(latestPRs.data?.length ?? 0) > 0 && (
         <Link
           href="/client/progress"
+          className="card-grow"
           style={{
+            ...surfaceCardStyle({ radius: "xl", padding: 20 }),
             display: "block",
-            background: "var(--c-surface)",
-            border: "1px solid var(--c-border)",
-            borderRadius: "var(--r-xl)",
-            padding: 20,
             marginBottom: 16,
             textDecoration: "none",
             color: "inherit",
@@ -462,6 +454,7 @@ export function ClientDashboardView({
           <Link
             href={`/client/workout/${workout.id}`}
             onClick={() => setPendingHref(`/client/workout/${workout.id}`)}
+            className="card-grow"
             style={{
               display: "block",
               width: "100%",
@@ -481,13 +474,7 @@ export function ClientDashboardView({
           </Link>
         </div>
       ) : (
-        <div style={{
-          background: "var(--c-surface)",
-          border: "1px solid var(--c-border)",
-          borderRadius: "var(--r-2xl)",
-          marginBottom: 16,
-          ...enterStyle(60),
-        }}>
+        <SurfaceCard radius="2xl" padding={0} style={{ marginBottom: 16, ...enterStyle(60) }}>
           <EmptyState
             icon={Moon}
             title="Ei tulevia treenejä"
@@ -512,23 +499,16 @@ export function ClientDashboardView({
               </Link>
             }
           />
-        </div>
+        </SurfaceCard>
       )}
       </section>
 
       {/* Week description */}
       {workout?.program_days?.program_weeks?.description && (
-        <div style={{
-          background: "var(--c-surface)",
-          border: "1px solid var(--c-border)",
-          borderRadius: "var(--r-lg)",
-          padding: "14px 16px",
-          marginBottom: 16,
-          ...enterStyle(270),
-        }}>
+        <SurfaceCard style={{ padding: "14px 16px", marginBottom: 16, ...enterStyle(270) }}>
           <Eyebrow style={{ marginBottom: 6 }}>Viikkojen kuvaus</Eyebrow>
           <Subtitle>{workout.program_days.program_weeks.description}</Subtitle>
-        </div>
+        </SurfaceCard>
       )}
 
       {/* Motivational quotes — only rendered here when the BW slot used
