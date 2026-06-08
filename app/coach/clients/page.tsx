@@ -2,6 +2,7 @@ import type React from "react";
 import Link from "next/link";
 import { createClient, getCachedUser } from "@/lib/supabase/server";
 import { InviteClientButton } from "@/components/coach/invite-client-button";
+import { SentInvitesButton } from "@/components/coach/sent-invites-button";
 import { Calendar, CheckCircle2, UserRound } from "lucide-react";
 import { avatarColor } from "@/lib/utils";
 
@@ -18,6 +19,13 @@ export default async function ClientsPage() {
     .eq("coach_id", user.id);
 
   const rows = (data ?? []).filter((r: any) => r.profiles);
+
+  const { data: invites } = await supabase
+    .from("invitations")
+    .select("id, email, invited_name, created_at")
+    .eq("coach_id", user.id)
+    .eq("status", "pending")
+    .order("created_at", { ascending: false });
 
   const clientIds = rows.map((r: any) => r.client_id as string);
 
@@ -70,7 +78,10 @@ export default async function ClientsPage() {
     <div className="p-4 md:p-6">
       <div className="flex items-center justify-between">
         <h1 className="card-enter text-2xl font-semibold">Asiakkaat</h1>
-        <div className="card-enter card-enter-1"><InviteClientButton coachId={user.id} /></div>
+        <div className="card-enter card-enter-1 flex items-center gap-2">
+          <SentInvitesButton invites={invites ?? []} />
+          <InviteClientButton coachId={user.id} />
+        </div>
       </div>
 
       {rows.length === 0 ? (

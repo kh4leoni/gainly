@@ -34,6 +34,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      audit_log: {
+        Row: {
+          actor_id: string | null
+          event: string
+          id: string
+          metadata: Json
+          occurred_at: string
+          target_id: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          event: string
+          id?: string
+          metadata?: Json
+          occurred_at?: string
+          target_id?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          event?: string
+          id?: string
+          metadata?: Json
+          occurred_at?: string
+          target_id?: string | null
+        }
+        Relationships: []
+      }
       bodyweights: {
         Row: {
           client_id: string
@@ -114,6 +141,42 @@ export type Database = {
             columns: ["set_log_id"]
             isOneToOne: false
             referencedRelation: "set_logs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_exercise_notes: {
+        Row: {
+          client_id: string
+          exercise_id: string
+          notes: string
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          exercise_id: string
+          notes?: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          exercise_id?: string
+          notes?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_exercise_notes_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_exercise_notes_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
             referencedColumns: ["id"]
           },
         ]
@@ -654,6 +717,24 @@ export type Database = {
           },
         ]
       }
+      rate_limits: {
+        Row: {
+          count: number
+          key: string
+          window_start: string
+        }
+        Insert: {
+          count?: number
+          key: string
+          window_start: string
+        }
+        Update: {
+          count?: number
+          key?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
       scheduled_workouts: {
         Row: {
           client_id: string
@@ -933,6 +1014,14 @@ export type Database = {
         }
         Returns: undefined
       }
+      audit_write: {
+        Args: {
+          _event: string
+          _target?: string
+          _metadata?: Json
+        }
+        Returns: undefined
+      }
       can_access_program: {
         Args: {
           _program: string
@@ -1033,6 +1122,18 @@ export type Database = {
           p_reps: number
         }
         Returns: undefined
+      }
+      rl_gc: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      rl_hit: {
+        Args: {
+          _key: string
+          _max: number
+          _window_seconds: number
+        }
+        Returns: boolean
       }
       rts_intensity: {
         Args: {

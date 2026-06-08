@@ -1,5 +1,6 @@
 import Dexie, { type Table } from "dexie";
 import type {
+  LocalClientExerciseNote,
   LocalScheduledWorkout,
   LocalSetLog,
   LocalWorkoutLog,
@@ -9,6 +10,7 @@ class GainlyDB extends Dexie {
   scheduled_workouts!: Table<LocalScheduledWorkout, string>;
   workout_logs!: Table<LocalWorkoutLog, string>;
   set_logs!: Table<LocalSetLog, string>;
+  client_exercise_notes!: Table<LocalClientExerciseNote, string>;
 
   constructor() {
     super("gainly-offline");
@@ -23,6 +25,14 @@ class GainlyDB extends Dexie {
       set_logs: "id, workout_log_id, exercise_id, synced, updated_at, deleted",
     }).upgrade(async (tx) => {
       await tx.table("set_logs").toCollection().modify((s) => { s.deleted = 0; });
+    });
+    this.version(3).stores({
+      scheduled_workouts: "id, client_id, synced, updated_at",
+      workout_logs: "id, client_id, scheduled_workout_id, synced, updated_at",
+      set_logs: "id, workout_log_id, exercise_id, synced, updated_at, deleted",
+      // Persistent per-(client, exercise) note. id is the synthetic
+      // `${client_id}:${exercise_id}` key so upserts stay idempotent.
+      client_exercise_notes: "id, client_id, exercise_id, synced, updated_at, deleted",
     });
   }
 }

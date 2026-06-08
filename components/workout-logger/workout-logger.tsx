@@ -16,13 +16,16 @@ import {
   deleteSet,
   ensureWorkoutLog,
   logSet,
+  saveExerciseNote,
 } from "@/lib/offline/writes";
 import { getDB } from "@/lib/offline/db";
 import {
+  hydrateExerciseNote,
   hydrateSetLogs,
   hydrateWorkoutLog,
   mergeById,
   useDeletedSetIds,
+  useLocalExerciseNote,
   useLocalScheduledWorkout,
   useLocalSetLogs,
   useLocalSetLogsAndDeleted,
@@ -79,6 +82,9 @@ export function WorkoutLogger({ scheduledWorkoutId }: { scheduledWorkoutId: stri
 
   const [workoutLogId, setWorkoutLogId] = useState<string | null>(null);
   const [dayNote, setDayNote] = useState("");
+  const [savedDayNote, setSavedDayNote] = useState("");
+  const [dayNoteSaving, setDayNoteSaving] = useState(false);
+  const [dayNoteSaved, setDayNoteSaved] = useState(false);
   const localWorkoutLog = useLocalWorkoutLog(scheduledWorkoutId);
   const localScheduledWorkout = useLocalScheduledWorkout(scheduledWorkoutId);
 
@@ -117,8 +123,9 @@ export function WorkoutLogger({ scheduledWorkoutId }: { scheduledWorkoutId: stri
       });
       if (cancelled) return;
       setWorkoutLogId(local.id);
-      if (serverNotes) setDayNote(serverNotes);
-      else if (local.notes) setDayNote(local.notes);
+      const seeded = serverNotes ?? local.notes ?? "";
+      setDayNote(seeded);
+      setSavedDayNote(seeded);
     })();
     return () => { cancelled = true; };
   }, [workout, scheduledWorkoutId, supabase]);
@@ -127,10 +134,20 @@ export function WorkoutLogger({ scheduledWorkoutId }: { scheduledWorkoutId: stri
     if (localWorkoutLog && !workoutLogId) setWorkoutLogId(localWorkoutLog.id);
   }, [localWorkoutLog, workoutLogId]);
 
-  async function saveDayNote(text: string) {
-    if (!workoutLogId) return;
-    const notes = text.trim() || null;
-    await supabase.from("workout_logs").update({ notes }).eq("id", workoutLogId);
+  const dayNoteDirty = dayNote.trim() !== savedDayNote.trim();
+
+  async function saveDayNote() {
+    if (!workoutLogId || !dayNoteDirty) return;
+    setDayNoteSaving(true);
+    try {
+      const trimmed = dayNote.trim();
+      await supabase.from("workout_logs").update({ notes: trimmed || null }).eq("id", workoutLogId);
+      setSavedDayNote(trimmed);
+      setDayNoteSaved(true);
+      setTimeout(() => setDayNoteSaved(false), 1500);
+    } finally {
+      setDayNoteSaving(false);
+    }
   }
 
   const complete = useMutation({
@@ -411,7 +428,6 @@ export function WorkoutLogger({ scheduledWorkoutId }: { scheduledWorkoutId: stri
         <textarea
           value={dayNote}
           onChange={(e) => setDayNote(e.target.value)}
-          onBlur={(e) => saveDayNote(e.target.value)}
           placeholder="Muistiinpanoja treenistä…"
           rows={3}
           style={{
@@ -422,6 +438,26 @@ export function WorkoutLogger({ scheduledWorkoutId }: { scheduledWorkoutId: stri
             fontFamily: "inherit", outline: "none", boxSizing: "border-box",
           }}
         />
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 10, marginTop: 8 }}>
+          {dayNoteSaved && (
+            <span style={{ fontSize: 12, color: "var(--c-success)", fontWeight: 600 }}>Tallennettu ✓</span>
+          )}
+          <button
+            type="button"
+            onClick={saveDayNote}
+            disabled={!dayNoteDirty || dayNoteSaving}
+            style={{
+              padding: "8px 16px", borderRadius: "var(--r-md)", border: "none",
+              background: dayNoteDirty ? "var(--c-pink)" : "var(--c-surface3)",
+              color: dayNoteDirty ? "#fff" : "var(--c-text-subtle)",
+              fontSize: 13, fontWeight: 700, fontFamily: "inherit",
+              cursor: !dayNoteDirty || dayNoteSaving ? "default" : "pointer",
+              transition: "all 0.15s",
+            }}
+          >
+            {dayNoteSaving ? "Tallennetaan…" : "Tallenna"}
+          </button>
+        </div>
       </div>
 
       {/* Complete button — hidden once completed */}
@@ -550,54 +586,62 @@ function LiftingExerciseBlock({ programExercise, workoutLogId, clientId }: { pro
   const qc = useQueryClient();
 
   const targetSets: number = (programExercise.set_configs?.length) ?? programExercise.sets ?? 3;
+  const exerciseId: string | null = programExercise.exercise_id ?? null;
 
   const [rows, setRows] = useState<RowState[]>(() => resolveInitialRows(programExercise));
 
   // ── Exercise note ──
+  // Persistent per-exercise note keyed by (client, exercise) — survives across
+  // workouts so the athlete sees their own reminder every time this movement
+  // comes up. Local-first (Dexie) so it works offline and syncs later.
   const [noteOpen, setNoteOpen] = useState(false);
   const [noteText, setNoteText] = useState("");
+  const [noteSaving, setNoteSaving] = useState(false);
+  const [noteSaved, setNoteSaved] = useState(false);
 
-  const { data: existingNote } = useQuery({
-    queryKey: ["exercise_note", workoutLogId, programExercise.id],
-    enabled: !!workoutLogId,
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("workout_exercise_notes")
-        .select("notes")
-        .eq("workout_log_id", workoutLogId!)
-        .eq("program_exercise_id", programExercise.id)
-        .maybeSingle();
-      return data?.notes ?? null;
-    },
-  });
+  const localNote = useLocalExerciseNote(clientId, exerciseId);
 
+  // Seed the server note into Dexie once so it's there when offline.
   useEffect(() => {
-    if (existingNote != null) { setNoteText(existingNote); setNoteOpen(true); }
-  }, [existingNote]);
+    if (!clientId || !exerciseId) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("client_exercise_notes")
+        .select("client_id, exercise_id, notes, updated_at")
+        .eq("client_id", clientId)
+        .eq("exercise_id", exerciseId)
+        .maybeSingle();
+      if (cancelled || !data) return;
+      await hydrateExerciseNote(data);
+    })();
+    return () => { cancelled = true; };
+  }, [clientId, exerciseId, supabase]);
 
-  const saveNote = useMutation({
-    mutationFn: async (text: string) => {
-      if (!workoutLogId) return;
-      const trimmed = text.trim();
-      if (!trimmed) {
-        await supabase
-          .from("workout_exercise_notes")
-          .delete()
-          .eq("workout_log_id", workoutLogId)
-          .eq("program_exercise_id", programExercise.id);
-      } else {
-        await supabase
-          .from("workout_exercise_notes")
-          .upsert(
-            { workout_log_id: workoutLogId, program_exercise_id: programExercise.id, notes: trimmed },
-            { onConflict: "workout_log_id,program_exercise_id" },
-          );
-      }
-    },
-  });
+  // Seed the textarea from the stored note the first time it resolves.
+  const noteSeededRef = useRef(false);
+  useEffect(() => {
+    if (noteSeededRef.current || localNote === undefined) return;
+    noteSeededRef.current = true;
+    if (localNote?.notes) { setNoteText(localNote.notes); setNoteOpen(true); }
+  }, [localNote]);
+
+  const savedNote = localNote?.notes ?? "";
+  const noteDirty = noteText.trim() !== savedNote;
+
+  async function handleSaveNote() {
+    if (!clientId || !exerciseId || !noteDirty) return;
+    setNoteSaving(true);
+    try {
+      await saveExerciseNote(clientId, exerciseId, noteText);
+      setNoteSaved(true);
+      setTimeout(() => setNoteSaved(false), 1500);
+    } finally {
+      setNoteSaving(false);
+    }
+  }
 
   // ── Edellinen suoritus -hint: viime kerran painot per toistomäärä ──
-  const exerciseId: string | null = programExercise.exercise_id ?? null;
   const { data: lastByReps } = useQuery({
     queryKey: ["last-by-reps", clientId, exerciseId],
     queryFn: () => getLastSetsByReps(supabase, clientId, exerciseId!),
@@ -838,6 +882,26 @@ function LiftingExerciseBlock({ programExercise, workoutLogId, clientId }: { pro
           <div style={{ fontWeight: 700, fontSize: 15, color: "var(--c-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {programExercise.exercises?.name ?? "Harjoitus"}
           </div>
+          {/* Coach's per-exercise note — the extra instruction for THIS prescription
+              (e.g. "eka sarja x-tekniikalla"). Surfaced right under the name so it's
+              read before the sets, not buried below the table. */}
+          {programExercise.notes && (
+            <div style={{
+              marginTop: 6,
+              background: "color-mix(in srgb, var(--c-pink) 8%, transparent)",
+              border: "1px solid color-mix(in srgb, var(--c-pink) 25%, transparent)",
+              borderRadius: "var(--r-md)",
+              padding: "8px 10px",
+              fontSize: 13, lineHeight: 1.45, color: "var(--c-text)",
+              whiteSpace: "pre-wrap",
+              display: "flex", gap: 8,
+            }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--c-pink)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 2 }}>
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+              </svg>
+              <span>{programExercise.notes}</span>
+            </div>
+          )}
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
             {(
               <ExerciseInfoDialog
@@ -1011,13 +1075,6 @@ function LiftingExerciseBlock({ programExercise, workoutLogId, clientId }: { pro
         ))}
       </div>
 
-      {/* Coach notes */}
-      {programExercise.notes && (
-        <div style={{ padding: "8px 14px 10px", fontSize: 12, color: "var(--c-text-muted)", fontStyle: "italic", borderTop: "1px solid var(--c-border)" }}>
-          {programExercise.notes}
-        </div>
-      )}
-
       {/* Client note */}
       {noteOpen && (
         <div style={{ borderTop: "1px solid var(--c-border)", padding: "10px 12px" }}>
@@ -1025,7 +1082,6 @@ function LiftingExerciseBlock({ programExercise, workoutLogId, clientId }: { pro
             autoFocus={!noteText}
             value={noteText}
             onChange={(e) => setNoteText(e.target.value)}
-            onBlur={(e) => saveNote.mutate(e.target.value)}
             placeholder="Muistiinpano tähän liikkeeseen…"
             rows={2}
             style={{
@@ -1035,6 +1091,26 @@ function LiftingExerciseBlock({ programExercise, workoutLogId, clientId }: { pro
               fontFamily: "inherit", outline: "none", boxSizing: "border-box",
             }}
           />
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 10, marginTop: 8 }}>
+            {noteSaved && (
+              <span style={{ fontSize: 12, color: "var(--c-success)", fontWeight: 600 }}>Tallennettu ✓</span>
+            )}
+            <button
+              type="button"
+              onClick={handleSaveNote}
+              disabled={!noteDirty || noteSaving}
+              style={{
+                padding: "7px 14px", borderRadius: "var(--r-md)", border: "none",
+                background: noteDirty ? "var(--c-pink)" : "var(--c-surface3)",
+                color: noteDirty ? "#fff" : "var(--c-text-subtle)",
+                fontSize: 13, fontWeight: 700, fontFamily: "inherit",
+                cursor: !noteDirty || noteSaving ? "default" : "pointer",
+                transition: "all 0.15s",
+              }}
+            >
+              {noteSaving ? "Tallennetaan…" : "Tallenna"}
+            </button>
+          </div>
         </div>
       )}
     </div>
