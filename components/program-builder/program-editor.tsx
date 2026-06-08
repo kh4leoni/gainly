@@ -217,10 +217,11 @@ function ExerciseRow({ pe, exercises, onUpdate, onAssign, onDelete, dragHandlePr
 
   const [configs, setConfigs] = useState<SetConfig[]>(() => {
     if (pe.set_configs && pe.set_configs.length > 0) {
-      // Deprecated v1 editor uses a numeric RPE stepper. If a range string
-      // ("6-7") was set in v2, degrade gracefully to its lower bound here.
+      // Deprecated v1 editor uses numeric weight/RPE steppers. If a range string
+      // ("160-170" / "6-7") was set in v2, degrade gracefully to its lower bound.
       return pe.set_configs.map((c) => ({
-        ...c,
+        reps: c.reps,
+        weight: c.weight == null ? null : parseFloat(String(c.weight).split("-")[0] ?? "") || null,
         rpe: c.rpe == null ? null : parseFloat(String(c.rpe).split("-")[0] ?? "") || null,
       }));
     }
