@@ -6,12 +6,14 @@ import { createClient } from "@/lib/supabase/client";
 import { MeasurementChart } from "@/components/client/measurement-chart";
 import { MeasurementSection, type MeasurementEntry } from "@/components/client/measurement-section";
 import { logBodyweight, logWaist, deleteBodyweight, deleteWaist } from "@/app/client/actions";
-import { getRecentPRs, getCardioRecords, type CardioRecord } from "@/lib/queries/workouts";
+import { getRecentPRs, getCardioRecords, getOneRmCurve, type CardioRecord } from "@/lib/queries/workouts";
+import { OneRmTrend } from "@/components/client/one-rm-chart";
 import { derivedRepMax, roundKg } from "@/lib/calc/one-rm";
 import { KilpailutyokaluCard } from "@/components/client/kilpailutyokalu-card";
 import { matchBigThree, BIG_THREE } from "@/lib/powerlifting";
 import type { BigThreeKey } from "@/lib/powerlifting";
 import { EmptyState } from "@/components/ui/empty-state";
+import { SurfaceCard, surfaceCardStyle } from "@/components/ui/surface-card";
 import { WifiSlash, Trophy } from "@phosphor-icons/react";
 import { Eyebrow, SectionLabel, Subtitle } from "@/components/ui/typography";
 
@@ -84,6 +86,13 @@ export function ProgressView({
     queryFn: () => getCardioRecords(supabase, clientId),
     staleTime: 60_000,
     enabled: online,
+  });
+
+  const oneRmCurve = useQuery({
+    queryKey: ["one-rm-curve", clientId, selId],
+    queryFn: () => getOneRmCurve(supabase, clientId, selId),
+    staleTime: 60_000,
+    enabled: online && !!selId,
   });
 
   // Initial scroll position (default = "ennätykset" at scrollLeft 0)
@@ -265,7 +274,7 @@ export function ProgressView({
                   )}
                 </div>
                 {selId && (
-                  <div style={{ background: "var(--c-surface)", border: "1px solid var(--c-border)", borderRadius: "var(--r-lg)", padding: "14px 16px", marginBottom: 22 }}>
+                  <SurfaceCard style={{ padding: "14px 16px", marginBottom: 22 }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                       <div style={{ fontSize: 14, fontWeight: 700 }}>{selExName}</div>
                       {selectedTop1RM != null && (
@@ -274,6 +283,12 @@ export function ProgressView({
                         </div>
                       )}
                     </div>
+                    {(oneRmCurve.data?.length ?? 0) >= 2 && (
+                      <div style={{ marginBottom: 16 }}>
+                        <Eyebrow style={{ marginBottom: 6 }}>Arvioitu 1RM · kehitys</Eyebrow>
+                        <OneRmTrend data={oneRmCurve.data ?? []} />
+                      </div>
+                    )}
                     <div style={{ display: "grid", gridTemplateColumns: "40px 1fr 1fr", gap: 8, fontSize: 11, color: "var(--c-text-subtle)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.6px", padding: "0 4px 6px", borderBottom: "1px solid var(--c-border)" }}>
                       <span>Reps</span><span>Ennätys</span><span>Arvio @RPE 10</span>
                     </div>
@@ -297,7 +312,7 @@ export function ProgressView({
                         </div>
                       );
                     })}
-                  </div>
+                  </SurfaceCard>
                 )}
                 <SectionLabel style={{ marginBottom: 10 }}>
                   Parhaat liikkeet (e1RM)
@@ -321,11 +336,13 @@ export function ProgressView({
                       key={exId}
                       onClick={() => setSelId(exId)}
                       style={{
+                        ...surfaceCardStyle({ padding: "14px 16px" }),
                         display: "flex", alignItems: "center", justifyContent: "space-between",
-                        padding: "14px 16px",
-                        background: selId === exId ? "var(--c-pink-dim)" : "var(--c-surface)",
-                        border: `1px solid ${selId === exId ? "color-mix(in srgb, var(--c-pink) 30%, transparent)" : "var(--c-border)"}`,
-                        borderRadius: "var(--r-lg)", cursor: "pointer", transition: "all 0.15s",
+                        ...(selId === exId && {
+                          background: "var(--c-pink-dim)",
+                          border: "1px solid color-mix(in srgb, var(--c-pink) 30%, transparent)",
+                        }),
+                        cursor: "pointer", transition: "all 0.15s",
                         fontFamily: "inherit", color: "var(--c-text)", textAlign: "left",
                       }}
                     >
@@ -359,7 +376,7 @@ export function ProgressView({
         <div style={paneStyle}>
           <div style={paneInner}>
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-              <div style={{ background: "var(--c-surface)", border: "1px solid var(--c-border)", borderRadius: "var(--r-lg)", padding: "16px 16px 12px" }}>
+              <SurfaceCard style={{ padding: "16px 16px 12px" }}>
                 <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 14 }}>
                   <div style={{ fontSize: 14, fontWeight: 700 }}>Paino</div>
                   {latestValue(bwHistory) !== null && (
@@ -384,9 +401,9 @@ export function ProgressView({
                   onSave={logBodyweight}
                   onDelete={deleteBodyweight}
                 />
-              </div>
+              </SurfaceCard>
 
-              <div style={{ background: "var(--c-surface)", border: "1px solid var(--c-border)", borderRadius: "var(--r-lg)", padding: "16px 16px 12px" }}>
+              <SurfaceCard style={{ padding: "16px 16px 12px" }}>
                 <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 14 }}>
                   <div style={{ fontSize: 14, fontWeight: 700 }}>Vyötärö</div>
                   {latestValue(waistHistory) !== null && (
@@ -411,7 +428,7 @@ export function ProgressView({
                   onSave={logWaist}
                   onDelete={deleteWaist}
                 />
-              </div>
+              </SurfaceCard>
             </div>
           </div>
         </div>
@@ -424,7 +441,7 @@ export function ProgressView({
                 <SectionLabel style={{ marginBottom: 10 }}>
                   Arvioitu yhteistulos
                 </SectionLabel>
-                <div style={{ background: "var(--c-surface)", border: "1px solid var(--c-border)", borderRadius: "var(--r-lg)", padding: "16px" }}>
+                <SurfaceCard style={{ padding: "16px" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
                     <div style={{ fontSize: 13, color: "var(--c-text-muted)" }}>Yhteensä (e1RM)</div>
                     <div style={{ fontSize: 24, fontWeight: 800, color: "var(--c-pink)" }}>
@@ -450,7 +467,7 @@ export function ProgressView({
                       Kirjaa kyykky, penkki ja maastaveto saadaksesi yhteistuloksen
                     </div>
                   )}
-                </div>
+                </SurfaceCard>
               </div>
 
               <KilpailutyokaluCard bigThreeE1rm={bigThreeE1rm} />
@@ -506,15 +523,12 @@ function CardioPRRow({ pr }: { pr: CardioRecord }) {
   const primary = isCooper ? formatKm(pr.distance_m) : formatDur(pr.duration_s);
   const secondary = isCooper ? formatDur(pr.duration_s) : formatKm(pr.distance_m);
   return (
-    <div
+    <SurfaceCard
       style={{
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
         padding: "14px 16px",
-        background: "var(--c-surface)",
-        border: "1px solid var(--c-border)",
-        borderRadius: "var(--r-lg)",
       }}
     >
       <div style={{ minWidth: 0 }}>
@@ -527,6 +541,6 @@ function CardioPRRow({ pr }: { pr: CardioRecord }) {
         <div style={{ fontWeight: 700, color: "var(--c-pink)", fontSize: 15 }}>{primary}</div>
         <div style={{ fontSize: 11, color: "var(--c-text-muted)", marginTop: 2 }}>{secondary}</div>
       </div>
-    </div>
+    </SurfaceCard>
   );
 }
