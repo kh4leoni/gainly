@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/client";
 import { getDB } from "./db";
 import type {
+  LocalClientExerciseNote,
   LocalScheduledWorkout,
   LocalSetLog,
   LocalWorkoutLog,
@@ -67,19 +68,25 @@ async function runSync(): Promise<void> {
   const db = getDB();
   const supabase = createClient();
 
-  const [pendingScheduled, pendingLogs, pendingSetsAll] = await Promise.all([
+  const [pendingScheduled, pendingLogs, pendingSetsAll, pendingNotes] = await Promise.all([
     db.scheduled_workouts.where("synced").equals(0).toArray(),
     db.workout_logs.where("synced").equals(0).toArray(),
     db.set_logs.where("synced").equals(0).toArray(),
+    db.client_exercise_notes.where("synced").equals(0).toArray(),
   ]);
 
   const pendingSets = pendingSetsAll.filter((s) => s.deleted !== 1);
   const tombstones = pendingSetsAll.filter((s) => s.deleted === 1);
 
-  if (!pendingScheduled.length && !pendingLogs.length && !pendingSets.length && !tombstones.length) {
+  if (!pendingScheduled.length && !pendingLogs.length && !pendingSets.length && !tombstones.length && !pendingNotes.length) {
     console.debug("[sync] nothing pending");
     return;
   }
+
+  // Notes are independent of the workout_log grouping below — sync them
+  // directly (RLS scopes the table to the caller). Run first so a flaky
+  // workout sync doesn't strand a pending note.
+  if (pendingNotes.length) await syncNotes(supabase, pendingNotes);
   console.debug("[sync] pending — sw:", pendingScheduled.length, "wl:", pendingLogs.length, "sets:", pendingSets.length, "tombstones:", tombstones.length);
 
   const groups = new Map<string, {
@@ -187,6 +194,37 @@ async function syncGroup(
         updated_at: new Date().toISOString() });
     }
   });
+}
+
+async function syncNotes(
+  supabase: ReturnType<typeof createClient>,
+  notes: LocalClientExerciseNote[],
+): Promise<void> {
+  const db = getDB();
+  for (const n of notes) {
+    if (n.deleted === 1) {
+      const { error } = await supabase
+        .from("client_exercise_notes")
+        .delete()
+        .eq("client_id", n.client_id)
+        .eq("exercise_id", n.exercise_id);
+      if (error) { console.warn("[sync] note delete error", error.message); continue; }
+      // Only purge if not re-edited since we read it.
+      const cur = await db.client_exercise_notes.get(n.id);
+      if (cur && cur.updated_at === n.updated_at) await db.client_exercise_notes.delete(n.id);
+    } else {
+      const { error } = await supabase
+        .from("client_exercise_notes")
+        .upsert(
+          { client_id: n.client_id, exercise_id: n.exercise_id, notes: n.notes, updated_at: n.updated_at },
+          { onConflict: "client_id,exercise_id" },
+        );
+      if (error) { console.warn("[sync] note upsert error", error.message); continue; }
+      const cur = await db.client_exercise_notes.get(n.id);
+      // Don't clobber a newer local edit made while this upsert was in-flight.
+      if (cur && cur.updated_at === n.updated_at) await db.client_exercise_notes.put({ ...cur, synced: 1 });
+    }
+  }
 }
 
 function toScheduledPayload(r: LocalScheduledWorkout) {

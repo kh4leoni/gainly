@@ -5,6 +5,40 @@ import { newUuid } from "./uuid";
 import { triggerSync } from "./sync";
 import type { LocalSetLog, LocalScheduledWorkout, LocalWorkoutLog } from "./types";
 
+export function exerciseNoteId(clientId: string, exerciseId: string): string {
+  return `${clientId}:${exerciseId}`;
+}
+
+// Persistent per-exercise note. Empty text clears it (tombstone → server
+// DELETE on sync); non-empty upserts. Local-first like every other write.
+export async function saveExerciseNote(
+  clientId: string,
+  exerciseId: string,
+  notes: string,
+): Promise<void> {
+  const db = getDB();
+  const id = exerciseNoteId(clientId, exerciseId);
+  const trimmed = notes.trim();
+  const now = new Date().toISOString();
+
+  if (!trimmed) {
+    const existing = await db.client_exercise_notes.get(id);
+    if (!existing) return; // nothing saved yet → nothing to clear
+    await db.client_exercise_notes.put({ ...existing, notes: "", deleted: 1, synced: 0, updated_at: now });
+  } else {
+    await db.client_exercise_notes.put({
+      id,
+      client_id: clientId,
+      exercise_id: exerciseId,
+      notes: trimmed,
+      updated_at: now,
+      synced: 0,
+      deleted: 0,
+    });
+  }
+  void triggerSync();
+}
+
 export type LogSetInput = {
   workout_log_id: string;
   exercise_id: string;

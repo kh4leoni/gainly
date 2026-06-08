@@ -48,3 +48,14 @@ export async function inviteClient(coachId: string, email: string, name?: string
 
   return { type: "invited" as const };
 }
+
+export async function revokeInvitation(id: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  // RLS ("coach deletes own invitations") scopes this to the caller's
+  // own rows, so no service client and no extra coach_id filter needed.
+  const { error } = await supabase.from("invitations").delete().eq("id", id);
+  if (error) throw error;
+}

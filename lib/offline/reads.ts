@@ -2,7 +2,7 @@
 
 import { useLiveQuery } from "dexie-react-hooks";
 import { getDB } from "./db";
-import type { LocalScheduledWorkout, LocalSetLog, LocalWorkoutLog } from "./types";
+import type { LocalClientExerciseNote, LocalScheduledWorkout, LocalSetLog, LocalWorkoutLog } from "./types";
 
 export function mergeById<T extends { id: string; updated_at: string | null }>(
   remote: readonly T[],
@@ -108,13 +108,49 @@ export function useLocalCompletedNotInServer(
 export function useUnsyncedCount(): number {
   return useLiveQuery(async () => {
     const db = getDB();
-    const [a, b, c] = await Promise.all([
+    const [a, b, c, d] = await Promise.all([
       db.scheduled_workouts.where("synced").equals(0).count(),
       db.workout_logs.where("synced").equals(0).count(),
       db.set_logs.where("synced").equals(0).count(),
+      db.client_exercise_notes.where("synced").equals(0).count(),
     ]);
-    return a + b + c;
+    return a + b + c + d;
   }, []) ?? 0;
+}
+
+// undefined = still loading; null = loaded but no note; row = present.
+export function useLocalExerciseNote(
+  clientId: string | null | undefined,
+  exerciseId: string | null | undefined,
+): LocalClientExerciseNote | null | undefined {
+  return useLiveQuery(async () => {
+    if (!clientId || !exerciseId) return null;
+    const row = await getDB().client_exercise_notes.get(`${clientId}:${exerciseId}`);
+    if (!row || row.deleted === 1) return null;
+    return row;
+  }, [clientId, exerciseId]);
+}
+
+type ExerciseNoteHydrate = {
+  client_id: string; exercise_id: string; notes: string; updated_at?: string | null;
+};
+
+export async function hydrateExerciseNote(row: ExerciseNoteHydrate): Promise<void> {
+  if (typeof window === "undefined") return;
+  const db = getDB();
+  const id = `${row.client_id}:${row.exercise_id}`;
+  const ts = row.updated_at ?? new Date().toISOString();
+  const existing = await db.client_exercise_notes.get(id);
+  // A pending local edit (synced:0) always wins over the server seed when it's
+  // at least as fresh — including a pending clear.
+  if (existing && existing.synced === 0) {
+    const lAt = existing.updated_at ? Date.parse(existing.updated_at) : 0;
+    if (lAt >= Date.parse(ts)) return;
+  }
+  await db.client_exercise_notes.put({
+    id, client_id: row.client_id, exercise_id: row.exercise_id,
+    notes: row.notes, updated_at: ts, synced: 1, deleted: 0,
+  });
 }
 
 type SetLogHydrate = {
