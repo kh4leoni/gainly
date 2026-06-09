@@ -54,6 +54,7 @@ export type UpcomingWorkout = {
   client_id: string;
   status: string;
   client_name: string | null;
+  day_name: string | null;
 };
 
 export type ComplianceStat = {
@@ -131,7 +132,7 @@ export async function getCoachFullDashboard(
       .limit(6),
     supabase
       .from("scheduled_workouts")
-      .select("id, client_id, status, profiles:client_id(full_name), program_days(program_weeks(is_active))")
+      .select("id, client_id, status, profiles:client_id(full_name), program_days(name, program_weeks(is_active))")
       .in("client_id", clientIds),
     supabase.rpc("coach_dashboard"),
     supabase
@@ -210,7 +211,7 @@ export async function getCoachFullDashboard(
   type RawScheduled = {
     id: string; client_id: string; status: string;
     profiles: { full_name: string | null } | null;
-    program_days: { program_weeks: { is_active: boolean } | null } | null;
+    program_days: { name: string | null; program_weeks: { is_active: boolean } | null } | null;
   };
   const scheduled = (scheduledRaw ?? []) as unknown as RawScheduled[];
 
@@ -222,6 +223,7 @@ export async function getCoachFullDashboard(
       client_id: r.client_id,
       status: r.status,
       client_name: r.profiles?.full_name ?? null,
+      day_name: r.program_days?.name ?? null,
     }));
 
   const compMap = new Map<string, { name: string; completed: number; total: number }>();

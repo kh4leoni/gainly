@@ -115,9 +115,8 @@ function MuscleGroupPicker({
             className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium transition-all"
             style={{
               backgroundColor: active ? t.color : "transparent",
-              color: active ? "#fff" : t.color,
-              border: `1.5px solid ${t.color}`,
-              opacity: active ? 1 : 0.65,
+              color: active ? "#fff" : `color-mix(in srgb, ${t.color} 70%, hsl(var(--foreground)))`,
+              border: `1.5px solid ${active ? t.color : `color-mix(in srgb, ${t.color} 60%, transparent)`}`,
             }}
           >
             {t.label}
@@ -323,7 +322,7 @@ export function ExerciseLibrary() {
   return (
     <div className="p-4 md:p-6">
       <div className="flex items-center justify-between">
-        <h1 className="card-enter text-2xl font-semibold">Liikkeet</h1>
+        <h1 className="card-enter font-display text-2xl font-semibold">Liikkeet</h1>
         <Button className="btn-spring" onClick={() => setCreateOpen(true)}>
           <Plus className="h-4 w-4" /> Lisää liike
         </Button>
@@ -351,7 +350,7 @@ export function ExerciseLibrary() {
                     className="rounded-full px-2.5 py-0.5 text-[11px] font-medium outline-none"
                     style={{
                       border: `1.5px solid ${color}`,
-                      color,
+                      color: `color-mix(in srgb, ${color} 70%, hsl(var(--foreground)))`,
                       width: `${Math.max(label.length + 2, 6)}ch`,
                     }}
                     onBlur={(e) => { saveLabel(tag, e.target.value); setEditingTag(null); }}
@@ -367,13 +366,9 @@ export function ExerciseLibrary() {
                     className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-medium"
                     style={{
                       backgroundColor: active ? color : "transparent",
-                      color: active ? "#fff" : color,
-                      border: `1.5px solid ${color}`,
-                      opacity: active ? 1 : 0.7,
-                      transition: "transform 200ms cubic-bezier(0.34,1.56,0.64,1), opacity 150ms ease",
+                      color: active ? "#fff" : `color-mix(in srgb, ${color} 70%, hsl(var(--foreground)))`,
+                      border: `1.5px solid ${active ? color : `color-mix(in srgb, ${color} 60%, transparent)`}`,
                     }}
-                    onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.1)")}
-                    onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
                   >
                     {label}
                     <Pencil

@@ -4,7 +4,7 @@ import { createClient, getCachedUser } from "@/lib/supabase/server";
 import { InviteClientButton } from "@/components/coach/invite-client-button";
 import { SentInvitesButton } from "@/components/coach/sent-invites-button";
 import { Calendar, CheckCircle2, UserRound } from "lucide-react";
-import { avatarColor } from "@/lib/utils";
+import { avatarColor, nameInitials } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -77,7 +77,7 @@ export default async function ClientsPage() {
   return (
     <div className="p-4 md:p-6">
       <div className="flex items-center justify-between">
-        <h1 className="card-enter text-2xl font-semibold">Asiakkaat</h1>
+        <h1 className="card-enter font-display text-2xl font-semibold">Asiakkaat</h1>
         <div className="card-enter card-enter-1 flex items-center gap-2">
           <SentInvitesButton invites={invites ?? []} />
           <InviteClientButton coachId={user.id} />
@@ -88,6 +88,8 @@ export default async function ClientsPage() {
         <div className="card-enter card-enter-2 mt-16 flex flex-col items-center gap-3 text-center text-muted-foreground">
           <UserRound className="h-12 w-12 opacity-20" />
           <p className="text-sm">Ei vielä linkitettyjä asiakkaita.</p>
+          <p className="max-w-xs text-xs">Kutsu ensimmäinen asiakkaasi sähköpostilla — hän saa linkin, jolla tili yhdistyy sinuun.</p>
+          <div className="mt-1"><InviteClientButton coachId={user.id} /></div>
         </div>
       ) : (
         <div className="card-enter card-enter-2 mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -97,13 +99,13 @@ export default async function ClientsPage() {
             const lastWorkout = lastByClient.get(r.client_id);
             const pendingEntry = pendingByClient.get(r.client_id);
             const pendingCount = pendingEntry?.count ?? 0;
-            const pendingStyle: React.CSSProperties =
-              pendingCount >= 4
-                ? { background: "radial-gradient(circle at 35% 35%, #34d399, #059669)", boxShadow: "0 0 8px 3px rgba(16,185,129,0.45)" }
-                : pendingCount >= 2
-                ? { background: "radial-gradient(circle at 35% 35%, #fcd34d, #d97706)", boxShadow: "0 0 8px 3px rgba(251,191,36,0.45)" }
-                : { background: "radial-gradient(circle at 35% 35%, #fb7185, #e11d48)", boxShadow: "0 0 8px 3px rgba(244,63,94,0.45)" };
-            const initials = name.split(" ").map((p: string) => p[0]).join("").slice(0, 2).toUpperCase();
+            const pendingTone =
+              pendingCount >= 4 ? "var(--coach-ok)" : pendingCount >= 2 ? "var(--coach-gold)" : "var(--coach-danger)";
+            const pendingStyle: React.CSSProperties = {
+              background: `radial-gradient(circle at 35% 35%, color-mix(in srgb, ${pendingTone} 55%, white), ${pendingTone})`,
+              boxShadow: `0 0 8px 3px color-mix(in srgb, ${pendingTone} 45%, transparent)`,
+            };
+            const initials = nameInitials(name);
             const gradient = avatarColor(name);
             const isActive = r.status === "active";
             const latestBw = bwByClient.get(r.client_id) ?? null;
@@ -113,21 +115,19 @@ export default async function ClientsPage() {
                 key={r.client_id}
                 href={`/coach/clients/${r.client_id}`}
                 prefetch
-                className="group relative overflow-hidden rounded-2xl border bg-card p-5 transition-all duration-280 hover:scale-[1.04] hover:shadow-md active:scale-[0.99]"
-                style={{ transition: "transform 280ms cubic-bezier(0.34,1.56,0.64,1), box-shadow 200ms ease" }}
+                className="card-grow group relative overflow-hidden rounded-2xl border bg-card p-5 active:translate-y-0"
               >
                 {/* pink gradient hover overlay */}
                 <span
-                  className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100"
+                  className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 transition-opacity duration-200 group-hover:opacity-100"
                   style={{
-                    background: "linear-gradient(135deg, rgba(236,72,153,0.10) 0%, rgba(251,207,232,0.05) 100%)",
-                    transition: "opacity 280ms cubic-bezier(0.34,1.56,0.64,1)",
+                    background: "linear-gradient(135deg, color-mix(in srgb, hsl(var(--primary)) 10%, transparent) 0%, color-mix(in srgb, hsl(var(--primary)) 4%, transparent) 100%)",
                   }}
                 />
 
                 <div className="relative flex items-start gap-4">
                   {/* Avatar */}
-                  <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${gradient} text-sm font-bold text-white shadow-sm`}>
+                  <div aria-hidden className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${gradient} text-sm font-bold text-white shadow-sm`}>
                     {initials}
                   </div>
 
@@ -137,7 +137,7 @@ export default async function ClientsPage() {
                       <p className="truncate font-semibold">{name}</p>
                       <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${
                         isActive
-                          ? "active-tag bg-emerald-500/15 text-emerald-500"
+                          ? "bg-[color-mix(in_srgb,var(--coach-ok)_15%,transparent)] text-coach-ok"
                           : "bg-muted text-muted-foreground"
                       }`}>
                         {isActive ? "Aktiivinen" : r.status === "pending" ? "Odottaa" : r.status}
@@ -156,16 +156,10 @@ export default async function ClientsPage() {
                   </div>
                 </div>
 
-                {/* Pending workouts indicator */}
-                <div className="absolute bottom-4 right-4 flex items-center gap-2">
-                  <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Tila</span>
-                  <span className="h-3.5 w-3.5 rounded-full" style={pendingStyle} />
-                </div>
-
                 {/* Workout summary */}
                 <div className="relative mt-4 space-y-1.5 border-t pt-3">
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
+                    <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-coach-ok" />
                     {lastWorkout ? (
                       <span>
                         Viimeksi{" "}
@@ -183,7 +177,7 @@ export default async function ClientsPage() {
                     )}
                   </div>
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Calendar className="h-3.5 w-3.5 shrink-0 text-sky-500" />
+                    <Calendar className="h-3.5 w-3.5 shrink-0 text-coach-info" />
                     {pendingEntry?.next ? (
                       <span>
                         Seuraava{" "}
@@ -194,6 +188,15 @@ export default async function ClientsPage() {
                     ) : (
                       <span className="italic">Ei tulevia treenejä</span>
                     )}
+                  </div>
+                  {/* Remaining programmed workouts — red = needs new programming */}
+                  <div className="flex items-center gap-2 text-xs">
+                    <span aria-hidden className="ml-0.5 h-2.5 w-2.5 shrink-0 rounded-full" style={pendingStyle} />
+                    <span style={{ color: pendingTone }}>
+                      {pendingCount === 0
+                        ? "Ei ohjelmoituja treenejä"
+                        : `${pendingCount} treeniä jäljellä aktiivisella viikolla`}
+                    </span>
                   </div>
                 </div>
               </Link>

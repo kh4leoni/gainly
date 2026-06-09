@@ -2,8 +2,9 @@
 
 import { useRef, useState, useEffect, useTransition } from "react";
 import { useTheme } from "next-themes";
-import { Sun, Moon, SignOut, PencilSimple, CaretDown, Sparkle, CaretRight } from "@phosphor-icons/react";
+import { Sun, Moon, LogOut, Pencil, ChevronDown, Sparkles, ChevronRight } from "lucide-react";
 import { updateCoachName, updateCoachEmail, updateCoachPhone } from "@/app/coach/actions";
+import { avatarHex, nameInitials } from "@/lib/utils";
 import { PushMessagesToggle } from "@/components/settings/push-toggle";
 import { WhatsNewDialog } from "@/components/changelog/whats-new-dialog";
 import { useChangelog } from "@/hooks/use-changelog";
@@ -48,19 +49,6 @@ function CoachCollapsibleSection({ title }: { title: string }) {
       )}
     </div>
   );
-}
-
-function initials(name: string | null) {
-  if (!name) return "?";
-  const p = name.trim().split(" ");
-  return `${p[0]?.[0] ?? ""}${p[1]?.[0] ?? ""}`.toUpperCase();
-}
-
-function avatarColor(seed: string) {
-  const palette = ["#ec4899","#f97316","#8b5cf6","#14b8a6","#6366f1","#f43f5e"];
-  let h = 0;
-  for (let i = 0; i < seed.length; i++) h = ((h * 31) + seed.charCodeAt(i)) >>> 0;
-  return palette[h % palette.length] ?? "#ec4899";
 }
 
 const fieldInputStyle: React.CSSProperties = {
@@ -171,7 +159,7 @@ function EditableField({
               }}
               title={`Muokkaa: ${label}`}
             >
-              <PencilSimple size={13} />
+              <Pencil size={13} />
             </button>
           </>
         )}
@@ -254,7 +242,7 @@ function CoachSettingsPanel({ me, closing, onAnimationEnd, hasUnread, markRead }
             transition: "background 150ms ease",
           }}
         >
-          <Sparkle size={15} weight={hasUnread ? "fill" : "regular"} color="hsl(var(--primary))" />
+          <Sparkles size={15} color="hsl(var(--primary))" fill={hasUnread ? "hsl(var(--primary))" : "none"} />
           <span style={{ flex: 1, textAlign: "left" }}>Uutta Gainlyssä</span>
           {hasUnread && (
             <span style={{
@@ -265,7 +253,7 @@ function CoachSettingsPanel({ me, closing, onAnimationEnd, hasUnread, markRead }
               Uutta
             </span>
           )}
-          <CaretRight size={13} color="hsl(var(--muted-foreground))" />
+          <ChevronRight size={13} color="hsl(var(--muted-foreground))" />
         </button>
       </div>
 
@@ -283,17 +271,18 @@ function CoachSettingsPanel({ me, closing, onAnimationEnd, hasUnread, markRead }
           Teema
         </p>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <Sun size={14} color={!isDark ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))"} weight={!isDark ? "fill" : "regular"} />
+          <Sun size={14} color={!isDark ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))"} fill={!isDark ? "hsl(var(--primary))" : "none"} />
           <button
             role="switch"
             aria-checked={isDark}
+            aria-label="Tumma teema"
             onClick={() => setTheme(isDark ? "light" : "dark")}
             className="ios-toggle"
             data-on={isDark ? "1" : "0"}
           >
             <span className="ios-toggle-thumb" />
           </button>
-          <Moon size={14} color={isDark ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))"} weight={isDark ? "fill" : "regular"} />
+          <Moon size={14} color={isDark ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))"} fill={isDark ? "hsl(var(--primary))" : "none"} />
         </div>
       </div>
 
@@ -310,7 +299,7 @@ function CoachSettingsPanel({ me, closing, onAnimationEnd, hasUnread, markRead }
             background: "hsl(var(--muted))", color: "hsl(var(--muted-foreground))",
           }}
         >
-          <SignOut size={15} />
+          <LogOut size={15} />
           Kirjaudu ulos
         </button>
       </form>
@@ -338,7 +327,7 @@ export function CoachSettingsButton({ me }: { me: Me }) {
     return () => document.removeEventListener("mousedown", handle);
   }, [open, closing]);
 
-  const color = avatarColor(me?.full_name ?? "?");
+  const color = avatarHex(me?.full_name);
   const firstName = me?.full_name?.split(" ")[0] ?? "";
 
   return (
@@ -365,16 +354,16 @@ export function CoachSettingsButton({ me }: { me: Me }) {
           display: "flex", alignItems: "center", justifyContent: "center",
           fontSize: 10, fontWeight: 700, color: "#fff", flexShrink: 0,
         }}>
-          {initials(me?.full_name ?? null)}
+          {nameInitials(me?.full_name)}
         </div>
         {firstName && (
           <span style={{ fontSize: 13, fontWeight: 600, color: "hsl(var(--foreground))", maxWidth: 100, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {firstName}
           </span>
         )}
-        <CaretDown
+        <ChevronDown
           size={12}
-          weight="bold"
+          strokeWidth={2.5}
           color="hsl(var(--muted-foreground))"
           style={{ transition: "transform 200ms ease", transform: open ? "rotate(180deg)" : "rotate(0deg)", flexShrink: 0 }}
         />

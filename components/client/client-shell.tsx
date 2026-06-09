@@ -10,6 +10,7 @@ import { DeleteAccountDialog } from "@/components/client/delete-account-dialog";
 import { PushMessagesToggle } from "@/components/settings/push-toggle";
 import { WhatsNewDialog } from "@/components/changelog/whats-new-dialog";
 import { useChangelog } from "@/hooks/use-changelog";
+import { avatarHex, nameInitials } from "@/lib/utils";
 
 const ROUTE_TITLE: Record<string, string> = {
   "/client/dashboard": "Koti",
@@ -66,19 +67,6 @@ const NAV = [
 ] as const;
 
 type Me = { id: string; full_name: string | null; email?: string | null } | null;
-
-function initials(name: string | null) {
-  if (!name) return "?";
-  const p = name.trim().split(" ");
-  return `${p[0]?.[0] ?? ""}${p[1]?.[0] ?? ""}`.toUpperCase();
-}
-
-function avatarColor(seed: string) {
-  const palette = ["#ec4899","#f97316","#8b5cf6","#14b8a6","#6366f1","#f43f5e"];
-  let h = 0;
-  for (let i = 0; i < seed.length; i++) h = ((h * 31) + seed.charCodeAt(i)) >>> 0;
-  return palette[h % palette.length] ?? "#ec4899";
-}
 
 const NAV_PATHS = NAV.map((n) => n.href);
 function navIndex(path: string) {
@@ -137,7 +125,7 @@ function OmatTiedotSection({ me }: { me: Me }) {
   const [animKey, setAnimKey] = useState(0);
   const [isPending, startTransition] = useTransition();
   const btnRef = useRef<HTMLButtonElement>(null);
-  const color = avatarColor(displayName || "?");
+  const color = avatarHex(displayName);
   const email = me?.email ?? null;
 
   function save() {
@@ -166,7 +154,7 @@ function OmatTiedotSection({ me }: { me: Me }) {
         display: "flex", alignItems: "center", justifyContent: "center",
         fontSize: 13, fontWeight: 700, color: "#fff", boxShadow: `0 0 10px ${color}55`,
       }}>
-        {initials(displayName || null)}
+        {nameInitials(displayName)}
       </div>
 
       {editing ? (
@@ -540,7 +528,7 @@ export function ClientShell({
     return () => { root.classList.remove("gainly-cobrand"); };
   }, [coach?.coBrandLabel]);
 
-  const color = avatarColor(me?.full_name ?? "?");
+  const color = avatarHex(me?.full_name);
   const { hasUnread: changelogUnread, markRead: markChangelogRead } = useChangelog("client");
 
   return (
@@ -604,7 +592,7 @@ export function ClientShell({
               display: "flex", alignItems: "center", justifyContent: "center",
               fontSize: 10, fontWeight: 700, color: "#fff", flexShrink: 0,
             }}>
-              {initials(me?.full_name ?? null)}
+              {nameInitials(me?.full_name)}
             </div>
             <span style={{ fontSize: 12, color: "var(--c-text)", fontWeight: 600, maxWidth: 80, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {me?.full_name?.split(" ")[0] ?? ""}

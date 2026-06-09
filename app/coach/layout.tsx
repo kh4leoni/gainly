@@ -1,4 +1,4 @@
-import { SquaresFour, Users, Barbell, BookOpen, Chat } from "@phosphor-icons/react/dist/ssr";
+import { LayoutDashboard, Users, Dumbbell, BookOpen, MessageCircle } from "lucide-react";
 import { AppShell } from "@/components/app-shell/shell";
 import { getMeCached } from "@/lib/queries/profile.server";
 import { createClient } from "@/lib/supabase/server";
@@ -12,11 +12,11 @@ export default async function CoachLayout({ children }: { children: React.ReactN
   const unread = me ? await getUnreadCount(supabase, me.id) : 0;
 
   const nav = [
-    { href: "/coach/dashboard", icon: <SquaresFour size={20} weight="fill" />, label: "Dashboard"   },
-    { href: "/coach/clients",   icon: <Users       size={20} weight="fill" />, label: "Asiakkaat"   },
-    { href: "/coach/programs",  icon: <BookOpen    size={20} weight="fill" />, label: "Ohjelmat"    },
-    { href: "/coach/exercises", icon: <Barbell     size={20} weight="fill" />, label: "Liikepankki" },
-    { href: "/coach/messages",  icon: <Chat        size={20} weight="fill" />, label: "Viestit", badge: unread },
+    { href: "/coach/dashboard", icon: <LayoutDashboard size={20} />, label: "Etusivu"     },
+    { href: "/coach/clients",   icon: <Users           size={20} />, label: "Asiakkaat"   },
+    { href: "/coach/programs",  icon: <BookOpen        size={20} />, label: "Ohjelmat"    },
+    { href: "/coach/exercises", icon: <Dumbbell        size={20} />, label: "Liikepankki" },
+    { href: "/coach/messages",  icon: <MessageCircle   size={20} />, label: "Viestit", badge: unread },
   ];
 
   return (

@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CaretLineLeft, List } from "@phosphor-icons/react";
+import { PanelLeftClose, Menu } from "lucide-react";
 import { NavLink } from "./nav-link";
 import { CoachSettingsButton } from "./coach-settings";
 import { SyncBar } from "@/components/offline/sync-bar";
@@ -119,7 +119,7 @@ export function AppShell({
             aria-label="Piilota valikko"
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           >
-            <CaretLineLeft size={18} />
+            <PanelLeftClose size={18} />
           </button>
         </div>
         <nav className="flex flex-col gap-1 p-2">
@@ -154,7 +154,7 @@ export function AppShell({
                 aria-label="Näytä valikko"
                 className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               >
-                <List size={18} />
+                <Menu size={18} />
               </button>
               <Link href="/" prefetch>
                 <Image src={logoSrc} alt={logoAlt} width={120} height={38} className="logo-adaptive" style={{ objectFit: "contain" }} />
