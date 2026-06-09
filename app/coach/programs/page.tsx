@@ -19,7 +19,7 @@ export default async function ProgramsPage() {
   return (
     <div className="p-4 md:p-6">
       <div className="flex items-center justify-between">
-        <h1 className="card-enter text-2xl font-semibold">Ohjelmat</h1>
+        <h1 className="card-enter font-display text-2xl font-semibold">Ohjelmat</h1>
         <div className="card-enter card-enter-1"><NewProgramButton /></div>
       </div>
       <div className="card-enter card-enter-2 mt-4 mb-6 rounded-lg border bg-muted/40 p-4">

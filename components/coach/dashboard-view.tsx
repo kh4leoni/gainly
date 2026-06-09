@@ -1,53 +1,34 @@
 "use client";
 
 import Link from "next/link";
-import { useRef } from "react";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { getCoachFullDashboard } from "@/lib/queries/coach";
 import { getMe } from "@/lib/queries/profile";
 import { Users, Trophy, Dumbbell, MessageCircle } from "lucide-react";
+import { avatarHex, nameInitials } from "@/lib/utils";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
-
-const AVATAR_PALETTE = [
-  "#ec4899", "#f97316", "#eab308", "#22c55e",
-  "#6366f1", "#8b5cf6", "#14b8a6", "#f43f5e",
-  "#06b6d4", "#a855f7",
-];
-
-function avatarColor(seed: string): string {
-  let h = 0;
-  for (let i = 0; i < seed.length; i++) h = ((h * 31) + seed.charCodeAt(i)) >>> 0;
-  return AVATAR_PALETTE[h % AVATAR_PALETTE.length] ?? "#ec4899";
-}
-
-function initials(name: string | null): string {
-  if (!name) return "?";
-  const parts = name.trim().split(" ");
-  if (parts.length >= 2) return `${parts[0]?.[0] ?? ""}${parts[1]?.[0] ?? ""}`.toUpperCase();
-  return name.slice(0, 2).toUpperCase();
-}
 
 const FI_DAYS_FULL = ["sunnuntai", "maanantai", "tiistai", "keskiviikko", "torstai", "perjantai", "lauantai"];
 
 
 function lastWorkoutStatus(lastWorkout: string | null): { text: string; color: string } {
-  if (!lastWorkout) return { text: "Ei treenannut", color: "#ef4444" };
+  if (!lastWorkout) return { text: "Ei treenannut", color: "var(--coach-danger)" };
   const then = new Date(lastWorkout);
   const today = new Date(); today.setHours(0, 0, 0, 0); then.setHours(0, 0, 0, 0);
   const days = Math.round((today.getTime() - then.getTime()) / 86400000);
-  if (days === 0) return { text: "Tänään ✓", color: "#22c55e" };
-  if (days === 1) return { text: "Eilen", color: "#84cc16" };
-  if (days <= 3) return { text: `${days}pv sitten`, color: "#eab308" };
-  if (days <= 6) return { text: `${days}pv sitten`, color: "#f97316" };
-  return { text: `${days}pv sitten`, color: "#ef4444" };
+  if (days === 0) return { text: "Tänään ✓", color: "var(--coach-ok)" };
+  if (days === 1) return { text: "Eilen", color: "var(--coach-lime)" };
+  if (days <= 3) return { text: `${days}pv sitten`, color: "var(--coach-warn)" };
+  if (days <= 6) return { text: `${days}pv sitten`, color: "var(--coach-hot)" };
+  return { text: `${days}pv sitten`, color: "var(--coach-danger)" };
 }
 
 function barColor(pct: number): string {
-  if (pct >= 80) return "#ec4899";
-  if (pct >= 60) return "#f59e0b";
-  return "#ef4444";
+  if (pct >= 80) return "hsl(var(--primary))";
+  if (pct >= 60) return "var(--coach-gold)";
+  return "var(--coach-danger)";
 }
 
 function formatWeight(w: number | null): string {
@@ -67,13 +48,14 @@ function relativeDate(dateStr: string): string {
 // ─── sub-components ──────────────────────────────────────────────────────────
 
 function ClientAvatar({ name, size = 36 }: { name: string | null; size?: number }) {
-  const color = avatarColor(name ?? "?");
+  const color = avatarHex(name);
   return (
     <div
+      aria-hidden
       className="shrink-0 flex items-center justify-center rounded-full font-bold text-white"
       style={{ width: size, height: size, backgroundColor: color, fontSize: Math.round(size * 0.36) }}
     >
-      {initials(name)}
+      {nameInitials(name)}
     </div>
   );
 }
@@ -97,27 +79,16 @@ function StatCard({
 }) {
   const card = (
     <div
-      className={`stat-card card-grow relative overflow-hidden rounded-2xl border bg-card p-5${className ? ` ${className}` : ""}`}
-      style={{ cursor: href ? "pointer" : undefined }}
-      onMouseEnter={(e) => {
-        if (href) {
-          e.currentTarget.style.background = `linear-gradient(135deg, ${dotColor}22 0%, ${dotColor}0a 100%)`;
-          e.currentTarget.style.borderColor = `${dotColor}55`;
-        }
-      }}
-      onMouseLeave={(e) => {
-        if (href) {
-          e.currentTarget.style.background = "";
-          e.currentTarget.style.borderColor = "";
-        }
-      }}
+      className={`stat-card card-grow${href ? " stat-card-link" : ""} relative overflow-hidden rounded-2xl border bg-card p-5${className ? ` ${className}` : ""}`}
+      style={href ? ({ "--dot": dotColor } as React.CSSProperties) : undefined}
     >
       <span
+        aria-hidden
         className="stat-dot absolute right-3 top-3 h-2.5 w-2.5 rounded-full"
         style={{ backgroundColor: dotColor }}
       />
       <div className="mb-3 stat-icon" style={{ color: dotColor }}>{icon}</div>
-      <div className="text-3xl font-bold leading-none" style={{ color: dotColor }}>
+      <div className="font-display text-3xl font-bold leading-none" style={{ color: dotColor }}>
         {value}
       </div>
       <div className="mt-1.5 text-sm font-medium">{label}</div>
@@ -153,8 +124,7 @@ function SectionCard({
       <div className="flex items-center gap-2 border-b px-5 py-3.5">
         <span className="text-sm font-semibold">{title}</span>
         {badge && (
-          <span className="rounded-full px-2 py-0.5 text-xs font-medium"
-            style={{ background: "rgba(236,72,153,0.15)", color: "#ec4899" }}>
+          <span className="rounded-full bg-primary/15 px-2 py-0.5 text-xs font-medium text-primary">
             {badge}
           </span>
         )}
@@ -183,55 +153,6 @@ export function CoachDashboardView() {
       coachId ? getCoachFullDashboard(supabase, coachId) : Promise.resolve(null),
   });
 
-  const barRefs = useRef<Map<string, HTMLDivElement>>(new Map());
-  const pctRefs = useRef<Map<string, HTMLSpanElement>>(new Map());
-  const rafRefs = useRef<Map<string, number>>(new Map());
-
-  const ANIM_MS = 950;
-  const easeOut = (t: number) => 1 - Math.pow(1 - t, 2.5);
-
-  const animateBar = (clientId: string, pct: number) => {
-    const bar = barRefs.current.get(clientId);
-    if (bar) {
-      bar.style.transition = "none";
-      bar.style.width = "0%";
-      bar.offsetWidth; // force reflow
-      bar.style.transition = `width ${ANIM_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`;
-      bar.style.width = `${pct}%`;
-    }
-
-    const pctEl = pctRefs.current.get(clientId);
-    if (pctEl) {
-      const prev = rafRefs.current.get(clientId);
-      if (prev) cancelAnimationFrame(prev);
-      const start = performance.now();
-      const tick = (now: number) => {
-        const elapsed = Math.min(now - start, ANIM_MS);
-        pctEl.textContent = `${Math.round(easeOut(elapsed / ANIM_MS) * pct)}%`;
-        if (elapsed < ANIM_MS) {
-          rafRefs.current.set(clientId, requestAnimationFrame(tick));
-        } else {
-          pctEl.textContent = `${pct}%`;
-          rafRefs.current.delete(clientId);
-        }
-      };
-      rafRefs.current.set(clientId, requestAnimationFrame(tick));
-    }
-  };
-
-  const resetBar = (clientId: string, pct: number) => {
-    const bar = barRefs.current.get(clientId);
-    if (bar) {
-      bar.style.transition = "none";
-      bar.style.width = `${pct}%`;
-    }
-    const prev = rafRefs.current.get(clientId);
-    if (prev) cancelAnimationFrame(prev);
-    rafRefs.current.delete(clientId);
-    const pctEl = pctRefs.current.get(clientId);
-    if (pctEl) pctEl.textContent = `${pct}%`;
-  };
-
   if (!data) return null;
 
   const now = new Date();
@@ -242,7 +163,7 @@ export function CoachDashboardView() {
   return (
     <div className="p-4 md:p-6">
       {/* Header */}
-      <h1 className="card-enter text-2xl font-bold">Dashboard</h1>
+      <h1 className="card-enter font-display text-2xl font-bold">Etusivu</h1>
       <p className="card-enter card-enter-1 mt-0.5 text-sm text-muted-foreground">
         {dayName} {dateLabel} — Hei {firstName}.
       </p>
@@ -254,7 +175,7 @@ export function CoachDashboardView() {
           value={data.activeCount}
           label="Aktiiviset asiakkaat"
           sub={`/ ${data.totalCount} yhteensä`}
-          dotColor="#ec4899"
+          dotColor="hsl(var(--primary))"
           className="card-enter card-enter-2"
         />
         <StatCard
@@ -262,7 +183,7 @@ export function CoachDashboardView() {
           value={data.prCount}
           label="Ennätyksiä rikottu"
           sub="tässä kuussa"
-          dotColor="#f59e0b"
+          dotColor="var(--coach-gold)"
           className="card-enter card-enter-3"
         />
         <StatCard
@@ -270,7 +191,7 @@ export function CoachDashboardView() {
           value={data.setCount}
           label="Sarjoja kirjattu"
           sub="viimeinen viikko"
-          dotColor="#14b8a6"
+          dotColor="var(--coach-teal)"
           className="card-enter card-enter-4"
         />
         <StatCard
@@ -278,7 +199,7 @@ export function CoachDashboardView() {
           value={data.unreadCount}
           label="Uusia viestejä"
           sub="lukemattomia"
-          dotColor="#8b5cf6"
+          dotColor="var(--coach-violet)"
           href="/coach/messages"
           className="card-enter card-enter-5"
         />
@@ -306,10 +227,10 @@ export function CoachDashboardView() {
                 {data.attentionClients.map((c) => {
                   const ws = lastWorkoutStatus(c.lastWorkout);
                   return (
-                    <li key={c.client_id}>
+                    <li key={c.client_id} className="flex items-center border-b last:border-0 transition-colors hover:bg-accent/40">
                       <Link
                         href={`/coach/clients/${c.client_id}`}
-                        className="flex items-center gap-3 border-b px-5 py-3.5 last:border-0 transition-colors hover:bg-accent/40"
+                        className="flex min-w-0 flex-1 items-center gap-3 py-3.5 pl-5"
                       >
                         <ClientAvatar name={c.full_name} />
                         <div className="min-w-0 flex-1">
@@ -320,6 +241,7 @@ export function CoachDashboardView() {
                         </div>
                         <div className="flex shrink-0 items-center gap-1.5">
                           <span
+                            aria-hidden
                             className="h-2 w-2 rounded-full"
                             style={{ backgroundColor: ws.color }}
                           />
@@ -327,6 +249,14 @@ export function CoachDashboardView() {
                             {ws.text}
                           </span>
                         </div>
+                      </Link>
+                      <Link
+                        href={`/coach/messages?with=${c.client_id}`}
+                        title={`Lähetä viesti: ${c.full_name ?? ""}`}
+                        aria-label={`Lähetä viesti: ${c.full_name ?? ""}`}
+                        className="mx-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                      >
+                        <MessageCircle size={15} />
                       </Link>
                     </li>
                   );
@@ -360,7 +290,7 @@ export function CoachDashboardView() {
                       </div>
                     </div>
                     <div className="shrink-0 text-right">
-                      <div className="text-sm font-bold" style={{ color: "#ec4899" }}>
+                      <div className="text-sm font-bold text-primary">
                         {pr.weight != null ? formatWeight(pr.weight) : "—"}
                       </div>
                       <div className="text-xs text-muted-foreground">UUSI ENNÄTYS</div>
@@ -385,11 +315,10 @@ export function CoachDashboardView() {
             ) : (
               <div className="divide-y">
                 {data.compliance.map((c) => (
-                  <div
+                  <Link
                     key={c.clientId}
-                    className="flex items-center gap-3 px-5 py-3.5"
-                    onMouseEnter={() => animateBar(c.clientId, c.pct)}
-                    onMouseLeave={() => resetBar(c.clientId, c.pct)}
+                    href={`/coach/clients/${c.clientId}`}
+                    className="flex items-center gap-3 px-5 py-3.5 transition-colors hover:bg-accent/40"
                   >
                     <ClientAvatar name={c.name} size={32} />
                     <div className="min-w-0 flex-1">
@@ -398,23 +327,15 @@ export function CoachDashboardView() {
                           {c.name.split(" ")[0] ?? c.name}
                         </span>
                         <span
-                          ref={(el) => {
-                            if (el) pctRefs.current.set(c.clientId, el);
-                            else pctRefs.current.delete(c.clientId);
-                          }}
                           className="shrink-0 text-sm font-bold"
                           style={{ color: barColor(c.pct) }}
                         >
                           {c.pct}%
                         </span>
                       </div>
-                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                      <div aria-hidden className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
                         <div
-                          ref={(el) => {
-                            if (el) barRefs.current.set(c.clientId, el);
-                            else barRefs.current.delete(c.clientId);
-                          }}
-                          className="h-full rounded-full"
+                          className="bar-fill h-full rounded-full"
                           style={{
                             width: `${c.pct}%`,
                             backgroundColor: barColor(c.pct),
@@ -422,7 +343,7 @@ export function CoachDashboardView() {
                         />
                       </div>
                     </div>
-                  </div>
+                  </Link>
                 ))}
               </div>
             )}
@@ -439,22 +360,29 @@ export function CoachDashboardView() {
             ) : (
               <ul>
                 {data.upcomingWorkouts.map((w) => {
-                  const dotC = avatarColor(w.client_name ?? w.client_id);
+                  const dotC = avatarHex(w.client_name ?? w.client_id);
                   return (
-                    <li
-                      key={w.id}
-                      className="flex items-center gap-3 border-b px-5 py-3.5 last:border-0"
-                    >
-                      <span
-                        className="h-2.5 w-2.5 shrink-0 rounded-full"
-                        style={{ backgroundColor: dotC }}
-                      />
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate text-sm font-medium">
-                          {w.client_name ?? "—"}
+                    <li key={w.id} className="border-b last:border-0">
+                      <Link
+                        href={`/coach/clients/${w.client_id}`}
+                        className="flex items-center gap-3 px-5 py-3.5 transition-colors hover:bg-accent/40"
+                      >
+                        <span
+                          aria-hidden
+                          className="h-2.5 w-2.5 shrink-0 rounded-full"
+                          style={{ backgroundColor: dotC }}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-sm font-medium">
+                            {w.client_name ?? "—"}
+                          </div>
+                          <div className="truncate text-xs text-muted-foreground">
+                            {w.day_name
+                              ? w.day_name.replace(/^Day(\d+)/, "Päivä $1")
+                              : "Odottaa"}
+                          </div>
                         </div>
-                        <div className="text-xs text-muted-foreground">Odottaa</div>
-                      </div>
+                      </Link>
                     </li>
                   );
                 })}

@@ -21,15 +21,11 @@ type PRRow = {
 
 function RecordCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div
-      className="group relative rounded-2xl border bg-card transition-all duration-280 hover:scale-[1.025] hover:shadow-md active:scale-[0.995]"
-      style={{ transition: "transform 280ms cubic-bezier(0.34,1.56,0.64,1), box-shadow 200ms ease" }}
-    >
+    <div className="card-grow group relative rounded-2xl border bg-card">
       <span
-        className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100"
+        className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 transition-opacity duration-200 group-hover:opacity-100"
         style={{
-          background: "linear-gradient(135deg, rgba(236,72,153,0.10) 0%, rgba(251,207,232,0.05) 100%)",
-          transition: "opacity 280ms cubic-bezier(0.34,1.56,0.64,1)",
+          background: "linear-gradient(135deg, color-mix(in srgb, hsl(var(--primary)) 10%, transparent) 0%, color-mix(in srgb, hsl(var(--primary)) 4%, transparent) 100%)",
         }}
       />
       <div className="relative">

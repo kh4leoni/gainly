@@ -2,7 +2,7 @@ import type React from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { avatarColor } from "@/lib/utils";
+import { avatarColor, nameInitials } from "@/lib/utils";
 import { OhjelmoiButton } from "@/components/program-builder/ohjelmoi-button";
 import { ClientTrainingView } from "@/components/client-detail/client-training-view";
 import { RecordsSection } from "@/components/client-detail/pr-sections";
@@ -98,7 +98,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
   }
 
   const name: string = profile.full_name ?? "Unnamed";
-  const initials = name.split(" ").map((p: string) => p[0]).join("").slice(0, 2).toUpperCase();
+  const initials = nameInitials(name);
   const gradient = avatarColor(name);
 
   const allScheduled = allScheduledRes.data ?? [];
@@ -143,17 +143,19 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
         <div className="flex items-center gap-3">
           <Link
             href="/coach/clients"
+            aria-label="Takaisin asiakaslistaan"
             className="icon-nudge-l flex h-8 w-8 items-center justify-center rounded-lg border text-muted-foreground transition-colors hover:bg-muted"
           >
             <ChevronLeft className="h-4 w-4" />
           </Link>
           <div
+            aria-hidden
             className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${gradient} text-sm font-bold text-white shadow-sm`}
           >
             {initials}
           </div>
           <div>
-            <h1 className="text-2xl font-bold leading-tight">{name}</h1>
+            <h1 className="font-display text-2xl font-bold leading-tight">{name}</h1>
             <p className="text-sm text-muted-foreground">
               Liittynyt {new Date(profile.created_at).toLocaleDateString("fi-FI")}
             </p>
@@ -162,7 +164,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
         <div className="flex shrink-0 gap-2">
           <Link
             href={`/coach/messages${threadRes.data ? `?thread=${threadRes.data.id}` : `?with=${profile.id}`}`}
-            className="icon-shake flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition-all hover:bg-accent"
+            className="flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition-colors hover:bg-accent"
           >
             <MessageSquare className="h-4 w-4" />
             Viesti
@@ -177,8 +179,8 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
 
       <div className="space-y-5 p-4 md:p-6">
         {/* Stat boxes */}
-        <div className="grid grid-cols-3 gap-3">
-          <div className="card-enter card-enter-1 rounded-2xl border bg-card p-4 hover:scale-[1.04] hover:shadow-md" style={{ transition: "transform 280ms cubic-bezier(0.34,1.56,0.64,1), box-shadow 200ms ease" }}>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <div className="card-enter card-enter-1 rounded-2xl border bg-card p-4">
             <div className="mb-3 flex items-center justify-between">
               <span className="text-xs text-muted-foreground">Noudatus</span>
               <Check className="h-4 w-4 text-muted-foreground" />
@@ -187,7 +189,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
               {adherencePct !== null ? `${adherencePct}%` : "—"}
             </p>
           </div>
-          <div className="card-enter card-enter-2 rounded-2xl border bg-card p-4 hover:scale-[1.04] hover:shadow-md" style={{ transition: "transform 280ms cubic-bezier(0.34,1.56,0.64,1), box-shadow 200ms ease" }}>
+          <div className="card-enter card-enter-2 rounded-2xl border bg-card p-4">
             <div className="mb-3 flex items-center justify-between">
               <span className="text-xs text-muted-foreground">Treeniputki</span>
               <Zap className="h-4 w-4 text-muted-foreground" />
@@ -196,12 +198,12 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
               {streak > 0 ? `${streak} pv` : "—"}
             </p>
           </div>
-          <div className="card-enter card-enter-3 rounded-2xl border bg-card p-4 hover:scale-[1.04] hover:shadow-md" style={{ transition: "transform 280ms cubic-bezier(0.34,1.56,0.64,1), box-shadow 200ms ease" }}>
+          <div className="card-enter card-enter-3 col-span-2 rounded-2xl border bg-card p-4 sm:col-span-1">
             <div className="mb-3 flex items-center justify-between">
               <span className="text-xs text-muted-foreground">Ohjelma</span>
               <LayoutGrid className="h-4 w-4 text-muted-foreground" />
             </div>
-            <p className="truncate text-base font-bold text-violet-400">
+            <p className="truncate text-base font-bold text-coach-violet">
               {programTitle ?? "—"}
             </p>
           </div>
@@ -218,7 +220,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
 
         {/* Measurement charts */}
         {(bwHistory.length > 0 || waistHistory.length > 0) && (
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         {/* Bodyweight card */}
         {bwHistory.length > 0 && (
           <div className="card-enter card-enter-5 rounded-2xl border bg-card overflow-hidden min-w-0">
@@ -231,7 +233,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
                 <span className="text-2xl font-bold text-primary">{latestBw!.weight_kg} kg</span>
                 {bwDelta !== null && (
                   <span className={`flex items-center gap-0.5 text-xs font-semibold ${
-                    bwDelta > 0 ? "text-emerald-500" : bwDelta < 0 ? "text-rose-400" : "text-muted-foreground"
+                    bwDelta > 0 ? "text-coach-ok" : bwDelta < 0 ? "text-coach-danger" : "text-muted-foreground"
                   }`}>
                     {bwDelta > 0
                       ? <TrendingUp className="h-3.5 w-3.5" />
@@ -279,7 +281,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
                 <span className="text-2xl font-bold text-primary">{latestWaist!.waist_cm} cm</span>
                 {waistDelta !== null && (
                   <span className={`flex items-center gap-0.5 text-xs font-semibold ${
-                    waistDelta > 0 ? "text-rose-400" : waistDelta < 0 ? "text-emerald-500" : "text-muted-foreground"
+                    waistDelta > 0 ? "text-coach-danger" : waistDelta < 0 ? "text-coach-ok" : "text-muted-foreground"
                   }`}>
                     {waistDelta > 0
                       ? <TrendingUp className="h-3.5 w-3.5" />

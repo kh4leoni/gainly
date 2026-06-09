@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Great_Vibes } from "next/font/google";
+import { Great_Vibes, Plus_Jakarta_Sans, Bricolage_Grotesque } from "next/font/google";
 import { headers } from "next/headers";
 import "./globals.css";
 import { Providers } from "./providers";
@@ -9,6 +9,16 @@ const greatVibes = Great_Vibes({
   subsets: ["latin"],
   weight: ["400"],
   variable: "--font-dancing",
+});
+
+const jakarta = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  variable: "--font-sans",
+});
+
+const bricolage = Bricolage_Grotesque({
+  subsets: ["latin"],
+  variable: "--font-display",
 });
 
 export const metadata: Metadata = {
@@ -48,7 +58,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // simply won't render → defaults to system theme until React hydrates.
   const nonce = (await headers()).get("x-nonce") ?? "";
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="fi" suppressHydrationWarning>
       <head>
         {nonce && (
           <script
@@ -59,7 +69,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           />
         )}
       </head>
-      <body className={`antialiased ${greatVibes.variable}`}>
+      <body className={`antialiased font-sans ${greatVibes.variable} ${jakarta.variable} ${bricolage.variable}`}>
         <Providers>
           {children}
           <Toaster />

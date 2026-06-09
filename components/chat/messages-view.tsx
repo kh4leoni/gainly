@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { getThreads, getMessages } from "@/lib/queries/messages";
 import { markThreadReadAction, markMessagesReadById } from "@/lib/actions/messages";
-import { uuid } from "@/lib/utils";
+import { uuid, avatarHex, nameInitials } from "@/lib/utils";
 
 type Message = { id: string; thread_id: string; sender_id: string; content: string; created_at: string; read_at: string | null };
 type Profile = { id: string; full_name: string | null; avatar_url: string | null } | null;
@@ -51,20 +51,6 @@ function shouldGroup(
   if (!isSameDay(prev.created_at, cur.created_at)) return false;
   const gap = new Date(cur.created_at).getTime() - new Date(prev.created_at).getTime();
   return gap < 5 * 60_000;
-}
-
-function avatarColor(name: string | null): string {
-  const palette = ["#ec4899", "#f97316", "#8b5cf6", "#14b8a6", "#6366f1", "#f43f5e", "#10b981", "#f59e0b"];
-  if (!name) return "#ec4899";
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = ((h * 31) + name.charCodeAt(i)) >>> 0;
-  return palette[h % palette.length] ?? "#ec4899";
-}
-
-function nameInitials(name: string | null): string {
-  if (!name) return "?";
-  const parts = name.trim().split(" ");
-  return `${parts[0]?.[0] ?? ""}${parts[1]?.[0] ?? ""}`.toUpperCase();
 }
 
 export function MessagesView({ userId, initialThreadId, layout = "client" }: { userId: string; initialThreadId: string | null; layout?: "coach" | "client" }) {
@@ -138,7 +124,7 @@ export function MessagesView({ userId, initialThreadId, layout = "client" }: { u
 
   // ─── Coach layout ───────────────────────────────────────────────────────────
   if (layout === "coach") {
-    const color = avatarColor(otherProfile?.full_name ?? null);
+    const color = avatarHex(otherProfile?.full_name ?? null);
 
     const showSidebar = !isMobile || mobileView === "list";
     const showChat = !isMobile || mobileView === "chat";
@@ -186,7 +172,7 @@ export function MessagesView({ userId, initialThreadId, layout = "client" }: { u
             {(threads.data ?? []).map((t: any) => {
               const other = (t.coach_id === userId ? t.client : t.coach) as Profile;
               const active = t.id === threadId;
-              const ac = avatarColor(other?.full_name ?? null);
+              const ac = avatarHex(other?.full_name ?? null);
               return (
                 <button
                   key={t.id}
@@ -445,7 +431,7 @@ function ChatPane({
   const atBottom = useRef(true);
   const isCoach = layout === "coach";
 
-  const otherColor = avatarColor(otherProfile?.full_name ?? null);
+  const otherColor = avatarHex(otherProfile?.full_name ?? null);
   const otherInitials = nameInitials(otherProfile?.full_name ?? null);
 
   // Track whether user is near the bottom so we don't hijack scroll when reading history.

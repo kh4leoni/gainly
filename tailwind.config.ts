@@ -15,6 +15,10 @@ const config: Config = {
       screens: { "2xl": "1400px" },
     },
     extend: {
+      fontFamily: {
+        sans: ["var(--font-sans)", "system-ui", "sans-serif"],
+        display: ["var(--font-display)", "var(--font-sans)", "system-ui", "sans-serif"],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -45,6 +49,18 @@ const config: Config = {
         card: {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
+        },
+        // Coach semantic palette — CSS vars switch value per light/dark (globals.css)
+        coach: {
+          ok: "var(--coach-ok)",
+          lime: "var(--coach-lime)",
+          warn: "var(--coach-warn)",
+          hot: "var(--coach-hot)",
+          danger: "var(--coach-danger)",
+          gold: "var(--coach-gold)",
+          teal: "var(--coach-teal)",
+          violet: "var(--coach-violet)",
+          info: "var(--coach-info)",
         },
       },
       borderRadius: {

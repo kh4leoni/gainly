@@ -114,7 +114,7 @@ html.light body:has(.client-app) { background: #f5f4f8; }
   --r-circle: 50%;
   color: var(--c-text);
   background: var(--c-bg);
-  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  font-family: var(--font-sans), system-ui, sans-serif;
   color-scheme: dark;
 }
 
@@ -289,21 +289,8 @@ html.gainly-cobrand .client-themed {
   70%       { transform: translateX(-2px); }
 }
 
-/* Active status tag — spring scale transition (smooth, no keyframe restart jank) */
-.active-tag {
-  display: inline-block;
-  will-change: transform;
-  transition: transform 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-.group:hover .active-tag {
-  transform: scale(1.22);
-}
-
-/* Coach nav: transform transition only on desktop, none on mobile */
+/* Coach nav */
 .nav-link-coach { transition: color 150ms ease; }
-@media (min-width: 768px) {
-  .nav-link-coach { transition: transform 280ms cubic-bezier(0.34, 1.56, 0.64, 1), color 150ms ease; }
-}
 
 /* Utility classes — element with this class animates its child SVG on hover */
 /* Nav / icon-bounce: transition-based so it never restarts mid-animation */
@@ -323,8 +310,11 @@ html.gainly-cobrand .client-themed {
 .icon-nudge-l:hover  > svg,
 .icon-nudge-l:hover  svg { animation: icon-nudge-l 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
 
-/* Coach stat cards — spin icon when card is hovered */
-.stat-card:hover .stat-icon svg { animation: icon-spin-once 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+/* Coach stat cards — clickable variant tints toward its accent (--dot) on hover */
+.stat-card-link:hover {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--dot) 13%, transparent) 0%, color-mix(in srgb, var(--dot) 4%, transparent) 100%);
+  border-color: color-mix(in srgb, var(--dot) 33%, transparent);
+}
 
 /* ── Settings panel accordion ───────────────────────────────────────────── */
 .settings-section-body {
@@ -375,34 +365,42 @@ html.gainly-cobrand .client-themed {
 
 /* ── Card entrance animation ─────────────────────────────────────────────── */
 @keyframes card-enter {
-  from { opacity: 0; translate: 0 14px; }
+  from { opacity: 0; translate: 0 8px; }
   to   { opacity: 1; translate: 0 0px; }
 }
-.card-enter   { animation: card-enter 0.45s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.card-enter   { animation: card-enter 0.32s cubic-bezier(0.22, 1, 0.36, 1) both; }
 
-/* Hover growth — uses transform so it never conflicts with the translate-based entrance animation */
+/* Hover lift — uses transform so it never conflicts with the translate-based entrance animation */
 .card-grow {
-  transition: transform 280ms cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 200ms ease, background 200ms ease, border-color 200ms ease;
+  transition: transform 200ms ease, box-shadow 200ms ease, background 200ms ease, border-color 200ms ease;
 }
 .card-grow:hover {
-  transform: scale(1.03);
-  box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.10);
 }
-.stat-dot {
-  transition: transform 280ms cubic-bezier(0.34, 1.56, 0.64, 1);
+.card-enter-1 { animation-delay:  25ms; }
+.card-enter-2 { animation-delay:  50ms; }
+.card-enter-3 { animation-delay:  75ms; }
+.card-enter-4 { animation-delay: 100ms; }
+.card-enter-5 { animation-delay: 125ms; }
+.card-enter-6 { animation-delay: 150ms; }
+.card-enter-7 { animation-delay: 175ms; }
+.card-enter-8 { animation-delay: 200ms; }
+.card-enter-9 { animation-delay: 225ms; }
+
+/* Compliance bar — fills once from 0 to its inline width on mount */
+@keyframes bar-fill { from { width: 0; } }
+.bar-fill { animation: bar-fill 800ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* ── Reduced motion — collapse all animation/transition to instant ───────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
-.card-grow:hover .stat-dot {
-  transform: scale(0.5);
-}
-.card-enter-1 { animation-delay:  50ms; }
-.card-enter-2 { animation-delay: 100ms; }
-.card-enter-3 { animation-delay: 150ms; }
-.card-enter-4 { animation-delay: 200ms; }
-.card-enter-5 { animation-delay: 260ms; }
-.card-enter-6 { animation-delay: 320ms; }
-.card-enter-7 { animation-delay: 380ms; }
-.card-enter-8 { animation-delay: 440ms; }
-.card-enter-9 { animation-delay: 500ms; }
 
 /* Lock the PWA shell — no document-level scroll or bounce on iOS */
 html:has(.client-app) {
@@ -447,6 +445,16 @@ body:has(.client-app) {
     --block: 330 60% 85%;
     --block-foreground: 330 100% 28%;
     --block-bg: 330 25% 94%;
+    /* Coach semantic palette — darker shades for contrast on light bg */
+    --coach-ok:     #16a34a;
+    --coach-lime:   #65a30d;
+    --coach-warn:   #ca8a04;
+    --coach-hot:    #ea580c;
+    --coach-danger: #dc2626;
+    --coach-gold:   #d97706;
+    --coach-teal:   #0d9488;
+    --coach-violet: #7c3aed;
+    --coach-info:   #0284c7;
   }
 
   .dark {
@@ -473,6 +481,16 @@ body:has(.client-app) {
     --block: 330 55% 55%;
     --block-foreground: 330 100% 90%;
     --block-bg: 330 20% 9%;
+    /* Coach semantic palette — brighter shades for dark bg */
+    --coach-ok:     #22c55e;
+    --coach-lime:   #84cc16;
+    --coach-warn:   #eab308;
+    --coach-hot:    #f97316;
+    --coach-danger: #ef4444;
+    --coach-gold:   #f59e0b;
+    --coach-teal:   #2dd4bf;
+    --coach-violet: #a78bfa;
+    --coach-info:   #38bdf8;
   }
 
   /* Shimmer skeleton vars — coach (Tailwind light/dark) */
@@ -480,6 +498,12 @@ body:has(.client-app) {
   .dark { --shimmer-base: #1e1e23; --shimmer-shine: #2c2c34; }
 
   * { @apply border-border; }
+  /* Visible keyboard focus everywhere — components with their own
+     focus-visible ring set outline-none and win over this. */
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
   input[type="number"]::-webkit-inner-spin-button,
   input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
   input[type="number"] { -moz-appearance: textfield; }
