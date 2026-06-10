@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, Dumbbell, BookOpen, MessageCircle } from "lucide-react";
+import { LayoutDashboard, Users, Dumbbell, BookOpen, MessageCircle, UtensilsCrossed } from "lucide-react";
 import { AppShell } from "@/components/app-shell/shell";
 import { getMeCached } from "@/lib/queries/profile.server";
 import { createClient } from "@/lib/supabase/server";
@@ -15,6 +15,7 @@ export default async function CoachLayout({ children }: { children: React.ReactN
     { href: "/coach/dashboard", icon: <LayoutDashboard size={20} />, label: "Etusivu"     },
     { href: "/coach/clients",   icon: <Users           size={20} />, label: "Asiakkaat"   },
     { href: "/coach/programs",  icon: <BookOpen        size={20} />, label: "Ohjelmat"    },
+    { href: "/coach/meal-plans", icon: <UtensilsCrossed size={20} />, label: "Ruokaohjelmat" },
     { href: "/coach/exercises", icon: <Dumbbell        size={20} />, label: "Liikepankki" },
     { href: "/coach/messages",  icon: <MessageCircle   size={20} />, label: "Viestit", badge: unread },
   ];

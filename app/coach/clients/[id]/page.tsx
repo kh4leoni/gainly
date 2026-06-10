@@ -1,10 +1,12 @@
 import type React from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCachedUser } from "@/lib/supabase/server";
 import { avatarColor, nameInitials } from "@/lib/utils";
 import { OhjelmoiButton } from "@/components/program-builder/ohjelmoi-button";
 import { ClientTrainingView } from "@/components/client-detail/client-training-view";
+import { ClientMealPlanCard } from "@/components/client-detail/meal-plan-card";
+import { getClientMealPlanId, listTemplateMealPlans } from "@/lib/queries/meals";
 import { RecordsSection } from "@/components/client-detail/pr-sections";
 import { MeasurementChart } from "@/components/client/measurement-chart";
 import { KilpailutyokaluCard } from "@/components/client/kilpailutyokalu-card";
@@ -19,7 +21,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
   const supabase = await createClient();
 
   // Single scheduled_workouts query replaces two (upcoming + adherence)
-  const [profileRes, allScheduledRes, threadRes, activeProgRes, pastWorkoutsRes, prExercisesRes, bwRes, waistRes] = await Promise.all([
+  const [profileRes, allScheduledRes, threadRes, activeProgRes, pastWorkoutsRes, prExercisesRes, bwRes, waistRes, mealPlanId, me] = await Promise.all([
     supabase.from("profiles").select("id, full_name, avatar_url, created_at").eq("id", id).single(),
     supabase
       .from("scheduled_workouts")
@@ -75,7 +77,11 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
       .eq("client_id", id)
       .order("logged_at", { ascending: false })
       .limit(30),
+    getClientMealPlanId(supabase, id),
+    getCachedUser(),
   ]);
+
+  const mealTemplates = me ? await listTemplateMealPlans(supabase, me.id) : [];
 
   if (profileRes.error || !profileRes.data) notFound();
   const profile = profileRes.data;
@@ -325,6 +331,8 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
           weekDescription={weekDescription}
           ohjelmoiHref={activeProg?.id ? `/coach/client-programs/${activeProg.id}/edit` : null}
         />
+
+        <ClientMealPlanCard clientId={profile.id} clientName={name} planId={mealPlanId} templates={mealTemplates} />
 
         <div className="card-enter card-enter-7">
           <RecordsSection clientId={id} exercises={exercises} />
