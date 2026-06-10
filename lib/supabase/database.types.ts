@@ -273,6 +273,45 @@ export type Database = {
           },
         ]
       }
+      foods: {
+        Row: {
+          carb_g: number | null
+          created_at: string
+          energy_kcal: number | null
+          fat_g: number | null
+          fiber_g: number | null
+          id: number
+          name_en: string | null
+          name_fi: string
+          protein_g: number | null
+          sugar_g: number | null
+        }
+        Insert: {
+          carb_g?: number | null
+          created_at?: string
+          energy_kcal?: number | null
+          fat_g?: number | null
+          fiber_g?: number | null
+          id: number
+          name_en?: string | null
+          name_fi: string
+          protein_g?: number | null
+          sugar_g?: number | null
+        }
+        Update: {
+          carb_g?: number | null
+          created_at?: string
+          energy_kcal?: number | null
+          fat_g?: number | null
+          fiber_g?: number | null
+          id?: number
+          name_en?: string | null
+          name_fi?: string
+          protein_g?: number | null
+          sugar_g?: number | null
+        }
+        Relationships: []
+      }
       invitations: {
         Row: {
           accepted_at: string | null
@@ -310,6 +349,154 @@ export type Database = {
             columns: ["coach_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meal_items: {
+        Row: {
+          amount_g: number
+          food_id: number | null
+          food_name: string
+          id: string
+          meal_id: string
+          order_idx: number
+        }
+        Insert: {
+          amount_g?: number
+          food_id?: number | null
+          food_name: string
+          id?: string
+          meal_id: string
+          order_idx?: number
+        }
+        Update: {
+          amount_g?: number
+          food_id?: number | null
+          food_name?: string
+          id?: string
+          meal_id?: string
+          order_idx?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meal_items_food_id_fkey"
+            columns: ["food_id"]
+            isOneToOne: false
+            referencedRelation: "foods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meal_items_meal_id_fkey"
+            columns: ["meal_id"]
+            isOneToOne: false
+            referencedRelation: "meals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meal_plan_days: {
+        Row: {
+          day_number: number
+          id: string
+          name: string | null
+          plan_id: string
+        }
+        Insert: {
+          day_number: number
+          id?: string
+          name?: string | null
+          plan_id: string
+        }
+        Update: {
+          day_number?: number
+          id?: string
+          name?: string | null
+          plan_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meal_plan_days_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "meal_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meal_plans: {
+        Row: {
+          client_id: string | null
+          coach_id: string
+          created_at: string
+          description: string | null
+          id: string
+          is_template: boolean | null
+          title: string
+        }
+        Insert: {
+          client_id?: string | null
+          coach_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_template?: boolean | null
+          title: string
+        }
+        Update: {
+          client_id?: string | null
+          coach_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_template?: boolean | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meal_plans_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meal_plans_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meals: {
+        Row: {
+          day_id: string
+          id: string
+          name: string | null
+          notes: string | null
+          order_idx: number
+        }
+        Insert: {
+          day_id: string
+          id?: string
+          name?: string | null
+          notes?: string | null
+          order_idx: number
+        }
+        Update: {
+          day_id?: string
+          id?: string
+          name?: string | null
+          notes?: string | null
+          order_idx?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meals_day_id_fkey"
+            columns: ["day_id"]
+            isOneToOne: false
+            referencedRelation: "meal_plan_days"
             referencedColumns: ["id"]
           },
         ]
@@ -1022,9 +1209,21 @@ export type Database = {
         }
         Returns: undefined
       }
+      can_access_meal_plan: {
+        Args: {
+          _plan: string
+        }
+        Returns: boolean
+      }
       can_access_program: {
         Args: {
           _program: string
+        }
+        Returns: boolean
+      }
+      can_modify_meal_plan: {
+        Args: {
+          _plan: string
         }
         Returns: boolean
       }
@@ -1055,6 +1254,13 @@ export type Database = {
           last_pr_at: string
         }[]
       }
+      copy_meal_plan: {
+        Args: {
+          _source: string
+          _client: string
+        }
+        Returns: string
+      }
       copy_program: {
         Args: {
           _source: string
@@ -1073,6 +1279,36 @@ export type Database = {
           _email: string
         }
         Returns: boolean
+      }
+      gtrgm_compress: {
+        Args: {
+          "": unknown
+        }
+        Returns: unknown
+      }
+      gtrgm_decompress: {
+        Args: {
+          "": unknown
+        }
+        Returns: unknown
+      }
+      gtrgm_in: {
+        Args: {
+          "": unknown
+        }
+        Returns: unknown
+      }
+      gtrgm_options: {
+        Args: {
+          "": unknown
+        }
+        Returns: undefined
+      }
+      gtrgm_out: {
+        Args: {
+          "": unknown
+        }
+        Returns: unknown
       }
       is_client_of: {
         Args: {
@@ -1158,6 +1394,22 @@ export type Database = {
             }
             Returns: number
           }
+      set_limit: {
+        Args: {
+          "": number
+        }
+        Returns: number
+      }
+      show_limit: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
+      show_trgm: {
+        Args: {
+          "": string
+        }
+        Returns: string[]
+      }
       upsert_workout_with_sets: {
         Args: {
           p_scheduled: Json

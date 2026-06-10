@@ -21,3 +21,6 @@ public/sw.js.map
 public/swe-worker-*.js
 
 .claude/
+# Fineli open data CSVs (re-downloadable; imported into DB via import-fineli.ts)
+supabase/scripts/fineli-data/
+supabase/scripts/fineli-tmp/
