@@ -359,7 +359,7 @@ export type Database = {
           food_id: number | null
           food_name: string
           id: string
-          meal_id: string
+          meal_option_id: string
           order_idx: number
         }
         Insert: {
@@ -367,7 +367,7 @@ export type Database = {
           food_id?: number | null
           food_name: string
           id?: string
-          meal_id: string
+          meal_option_id: string
           order_idx?: number
         }
         Update: {
@@ -375,7 +375,7 @@ export type Database = {
           food_id?: number | null
           food_name?: string
           id?: string
-          meal_id?: string
+          meal_option_id?: string
           order_idx?: number
         }
         Relationships: [
@@ -387,7 +387,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "meal_items_meal_id_fkey"
+            foreignKeyName: "meal_items_meal_option_id_fkey"
+            columns: ["meal_option_id"]
+            isOneToOne: false
+            referencedRelation: "meal_options"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meal_options: {
+        Row: {
+          id: string
+          meal_id: string
+          name: string | null
+          order_idx: number
+        }
+        Insert: {
+          id?: string
+          meal_id: string
+          name?: string | null
+          order_idx?: number
+        }
+        Update: {
+          id?: string
+          meal_id?: string
+          name?: string | null
+          order_idx?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meal_options_meal_id_fkey"
             columns: ["meal_id"]
             isOneToOne: false
             referencedRelation: "meals"

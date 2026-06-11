@@ -89,12 +89,19 @@ export type MealItemRow = {
   } | null;
 };
 
+export type MealOption = {
+  id: string;
+  order_idx: number;
+  name: string | null;
+  meal_items: MealItemRow[];
+};
+
 export type MealRow = {
   id: string;
   order_idx: number;
   name: string | null;
   notes: string | null;
-  meal_items: MealItemRow[];
+  meal_options: MealOption[];
 };
 
 export type MealPlanDay = {
@@ -123,9 +130,12 @@ export async function getMealPlanFull(supabase: DB, planId: string): Promise<Mea
         id, day_number, name,
         meals (
           id, order_idx, name, notes,
-          meal_items (
-            id, order_idx, food_id, food_name, amount_g,
-            foods ( energy_kcal, protein_g, fat_g, carb_g )
+          meal_options (
+            id, order_idx, name,
+            meal_items (
+              id, order_idx, food_id, food_name, amount_g,
+              foods ( energy_kcal, protein_g, fat_g, carb_g )
+            )
           )
         )
       )
@@ -140,7 +150,10 @@ export async function getMealPlanFull(supabase: DB, planId: string): Promise<Mea
   for (const day of raw.meal_plan_days) {
     day.meals.sort((a, b) => a.order_idx - b.order_idx);
     for (const meal of day.meals) {
-      meal.meal_items.sort((a, b) => a.order_idx - b.order_idx);
+      meal.meal_options.sort((a, b) => a.order_idx - b.order_idx);
+      for (const opt of meal.meal_options) {
+        opt.meal_items.sort((a, b) => a.order_idx - b.order_idx);
+      }
     }
   }
   return raw;
@@ -198,10 +211,18 @@ export function sumMacros(list: Macros[]): Macros {
   );
 }
 
-export function mealMacros(meal: MealRow): Macros {
-  return sumMacros(meal.meal_items.map(itemMacros));
+export function optionMacros(option: MealOption): Macros {
+  return sumMacros(option.meal_items.map(itemMacros));
 }
 
-export function dayMacros(day: MealPlanDay): Macros {
-  return sumMacros(day.meals.map(mealMacros));
+// Macros of the meal under a given option (defaults to the first option,
+// which is what the client sees before choosing).
+export function mealMacros(meal: MealRow, optionIdx = 0): Macros {
+  const opt = meal.meal_options[optionIdx] ?? meal.meal_options[0];
+  return opt ? optionMacros(opt) : { ...ZERO };
+}
+
+// `selections` maps meal.id → chosen option index. Missing → first option.
+export function dayMacros(day: MealPlanDay, selections?: Record<string, number>): Macros {
+  return sumMacros(day.meals.map((m) => mealMacros(m, selections?.[m.id] ?? 0)));
 }

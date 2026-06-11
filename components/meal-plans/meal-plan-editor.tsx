@@ -4,8 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import {
-  type MealPlanFull, type MealPlanDay, type MealRow, type Food,
-  itemMacros, mealMacros, dayMacros, type Macros,
+  type MealPlanFull, type MealPlanDay, type MealRow, type MealOption, type Food,
+  itemMacros, optionMacros, dayMacros, type Macros,
 } from "@/lib/queries/meals";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,30 +13,9 @@ import { cn } from "@/lib/utils";
 import { FoodSearchDialog } from "./food-search";
 import { AssignMealPlanDialog } from "./assign-meal-plan-dialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { Plus, Trash2, ChevronLeft, Check, AlertCircle, Loader2, Users } from "lucide-react";
+import { Plus, Trash2, ChevronLeft, Check, AlertCircle, Loader2, Users, Copy } from "lucide-react";
 
 const fmt = (n: number) => Math.round(n).toString();
-
-function SaveStatus({ status }: { status: "idle" | "saving" | "saved" | "error" }) {
-  if (status === "idle") return null;
-  if (status === "saving")
-    return (
-      <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-        <Loader2 className="h-3.5 w-3.5 animate-spin" /> Tallennetaan…
-      </span>
-    );
-  if (status === "saved")
-    return (
-      <span className="inline-flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400">
-        <Check className="h-3.5 w-3.5" /> Tallennettu
-      </span>
-    );
-  return (
-    <span className="inline-flex items-center gap-1.5 text-xs text-destructive">
-      <AlertCircle className="h-3.5 w-3.5" /> Tallennus epäonnistui
-    </span>
-  );
-}
 
 // Macro palette — shared with the client view so coach and client read alike.
 const MACRO = {
@@ -74,17 +53,42 @@ function KcalBadge({ kcal, accent }: { kcal: number; accent?: boolean }) {
   );
 }
 
+function SaveStatus({ status }: { status: "idle" | "saving" | "saved" | "error" }) {
+  if (status === "idle") return null;
+  if (status === "saving")
+    return (
+      <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+        <Loader2 className="h-3.5 w-3.5 animate-spin" /> Tallennetaan…
+      </span>
+    );
+  if (status === "saved")
+    return (
+      <span className="inline-flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400">
+        <Check className="h-3.5 w-3.5" /> Tallennettu
+      </span>
+    );
+  return (
+    <span className="inline-flex items-center gap-1.5 text-xs text-destructive">
+      <AlertCircle className="h-3.5 w-3.5" /> Tallennus epäonnistui
+    </span>
+  );
+}
+
+type DelTarget =
+  | { kind: "day"; dayId: string }
+  | { kind: "meal"; dayId: string; mealId: string }
+  | { kind: "option"; dayId: string; mealId: string; optionId: string };
+
 export function MealPlanEditor({ initial }: { initial: MealPlanFull }) {
   const router = useRouter();
   const supabase = createClient();
   const [plan, setPlan] = useState<MealPlanFull>(initial);
-  const [pickFor, setPickFor] = useState<string | null>(null); // meal id awaiting a food
-  const [confirmDel, setConfirmDel] = useState<null | { kind: "day" | "meal"; id: string }>(null);
+  const [pickFor, setPickFor] = useState<{ dayId: string; mealId: string; optionId: string } | null>(null);
+  const [confirmDel, setConfirmDel] = useState<DelTarget | null>(null);
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [assignOpen, setAssignOpen] = useState(false);
 
-  // Every edit auto-saves on blur/click. This wraps each write so the header
-  // can show "Tallennetaan… / Tallennettu ✓ / virhe" — no manual save needed.
+  // Every edit auto-saves; this wraps writes so the header can show status.
   async function persist<T extends { error: unknown }>(op: PromiseLike<T>): Promise<T> {
     setStatus("saving");
     const res = await op;
@@ -97,7 +101,7 @@ export function MealPlanEditor({ initial }: { initial: MealPlanFull }) {
     return res;
   }
 
-  // ---- plan-level ----
+  // ---- plan ----
   async function saveTitle(title: string) {
     setPlan((p) => ({ ...p, title }));
     await persist(supabase.from("meal_plans").update({ title }).eq("id", plan.id));
@@ -107,21 +111,13 @@ export function MealPlanEditor({ initial }: { initial: MealPlanFull }) {
   async function addDay() {
     const day_number = Math.max(0, ...plan.meal_plan_days.map((d) => d.day_number)) + 1;
     const { data } = await persist(
-      supabase
-        .from("meal_plan_days")
-        .insert({ plan_id: plan.id, day_number, name: `Päivä ${day_number}` })
-        .select("id, day_number, name")
-        .single()
+      supabase.from("meal_plan_days").insert({ plan_id: plan.id, day_number, name: `Päivä ${day_number}` })
+        .select("id, day_number, name").single()
     );
-    if (data) {
-      setPlan((p) => ({ ...p, meal_plan_days: [...p.meal_plan_days, { ...data, meals: [] }] }));
-    }
+    if (data) setPlan((p) => ({ ...p, meal_plan_days: [...p.meal_plan_days, { ...data, meals: [] }] }));
   }
   async function renameDay(dayId: string, name: string) {
-    setPlan((p) => ({
-      ...p,
-      meal_plan_days: p.meal_plan_days.map((d) => (d.id === dayId ? { ...d, name } : d)),
-    }));
+    setPlan((p) => mapDay(p, dayId, (d) => ({ ...d, name })));
     await persist(supabase.from("meal_plan_days").update({ name }).eq("id", dayId));
   }
   async function deleteDay(dayId: string) {
@@ -129,19 +125,20 @@ export function MealPlanEditor({ initial }: { initial: MealPlanFull }) {
     await persist(supabase.from("meal_plan_days").delete().eq("id", dayId));
   }
 
-  // ---- meals ----
+  // ---- meals (always created with one default option) ----
   async function addMeal(day: MealPlanDay) {
     const order_idx = Math.max(0, ...day.meals.map((m) => m.order_idx)) + 1;
-    const { data } = await persist(
-      supabase
-        .from("meals")
-        .insert({ day_id: day.id, order_idx, name: "Ateria" })
-        .select("id, order_idx, name, notes")
-        .single()
+    const { data: meal } = await persist(
+      supabase.from("meals").insert({ day_id: day.id, order_idx, name: "Ateria" })
+        .select("id, order_idx, name, notes").single()
     );
-    if (data) {
-      setPlan((p) => mapDay(p, day.id, (d) => ({ ...d, meals: [...d.meals, { ...data, meal_items: [] }] })));
-    }
+    if (!meal) return;
+    const { data: opt } = await persist(
+      supabase.from("meal_options").insert({ meal_id: meal.id, order_idx: 0, name: null })
+        .select("id, order_idx, name").single()
+    );
+    const meal_options: MealOption[] = opt ? [{ ...opt, meal_items: [] }] : [];
+    setPlan((p) => mapDay(p, day.id, (d) => ({ ...d, meals: [...d.meals, { ...meal, meal_options }] })));
   }
   async function renameMeal(dayId: string, mealId: string, name: string) {
     setPlan((p) => mapMeal(p, dayId, mealId, (m) => ({ ...m, name })));
@@ -152,42 +149,61 @@ export function MealPlanEditor({ initial }: { initial: MealPlanFull }) {
     await persist(supabase.from("meals").delete().eq("id", mealId));
   }
 
-  // ---- items ----
-  async function addItem(dayId: string, mealId: string, food: Food) {
-    const meal = plan.meal_plan_days.find((d) => d.id === dayId)?.meals.find((m) => m.id === mealId);
-    const order_idx = Math.max(0, ...(meal?.meal_items.map((i) => i.order_idx) ?? [])) + 1;
+  // ---- options ----
+  async function addOption(dayId: string, meal: MealRow) {
+    const order_idx = Math.max(-1, ...meal.meal_options.map((o) => o.order_idx)) + 1;
     const { data } = await persist(
-      supabase
-        .from("meal_items")
-        .insert({ meal_id: mealId, food_id: food.id, food_name: food.name_fi, amount_g: 100, order_idx })
-        .select("id, order_idx, food_id, food_name, amount_g")
-        .single()
+      supabase.from("meal_options").insert({ meal_id: meal.id, order_idx, name: null })
+        .select("id, order_idx, name").single()
+    );
+    if (data) {
+      setPlan((p) => mapMeal(p, dayId, meal.id, (m) => ({ ...m, meal_options: [...m.meal_options, { ...data, meal_items: [] }] })));
+    }
+  }
+  async function renameOption(dayId: string, mealId: string, optionId: string, name: string) {
+    setPlan((p) => mapOption(p, dayId, mealId, optionId, (o) => ({ ...o, name: name || null })));
+    await persist(supabase.from("meal_options").update({ name: name || null }).eq("id", optionId));
+  }
+  async function deleteOption(dayId: string, mealId: string, optionId: string) {
+    setPlan((p) => mapMeal(p, dayId, mealId, (m) => ({ ...m, meal_options: m.meal_options.filter((o) => o.id !== optionId) })));
+    await persist(supabase.from("meal_options").delete().eq("id", optionId));
+  }
+
+  // ---- items ----
+  async function addItem(dayId: string, mealId: string, optionId: string, food: Food) {
+    const opt = plan.meal_plan_days.find((d) => d.id === dayId)?.meals
+      .find((m) => m.id === mealId)?.meal_options.find((o) => o.id === optionId);
+    const order_idx = Math.max(0, ...(opt?.meal_items.map((i) => i.order_idx) ?? [])) + 1;
+    const { data } = await persist(
+      supabase.from("meal_items")
+        .insert({ meal_option_id: optionId, food_id: food.id, food_name: food.name_fi, amount_g: 100, order_idx })
+        .select("id, order_idx, food_id, food_name, amount_g").single()
     );
     if (data) {
       const row = {
         ...data,
-        foods: {
-          energy_kcal: food.energy_kcal, protein_g: food.protein_g,
-          fat_g: food.fat_g, carb_g: food.carb_g,
-        },
+        foods: { energy_kcal: food.energy_kcal, protein_g: food.protein_g, fat_g: food.fat_g, carb_g: food.carb_g },
       };
-      setPlan((p) => mapMeal(p, dayId, mealId, (m) => ({ ...m, meal_items: [...m.meal_items, row] })));
+      setPlan((p) => mapOption(p, dayId, mealId, optionId, (o) => ({ ...o, meal_items: [...o.meal_items, row] })));
     }
   }
-  async function updateAmount(dayId: string, mealId: string, itemId: string, amount_g: number) {
-    setPlan((p) =>
-      mapMeal(p, dayId, mealId, (m) => ({
-        ...m,
-        meal_items: m.meal_items.map((i) => (i.id === itemId ? { ...i, amount_g } : i)),
-      }))
-    );
+  async function updateAmount(dayId: string, mealId: string, optionId: string, itemId: string, amount_g: number) {
+    setPlan((p) => mapOption(p, dayId, mealId, optionId, (o) => ({
+      ...o, meal_items: o.meal_items.map((i) => (i.id === itemId ? { ...i, amount_g } : i)),
+    })));
     await persist(supabase.from("meal_items").update({ amount_g }).eq("id", itemId));
   }
-  async function deleteItem(dayId: string, mealId: string, itemId: string) {
-    setPlan((p) =>
-      mapMeal(p, dayId, mealId, (m) => ({ ...m, meal_items: m.meal_items.filter((i) => i.id !== itemId) }))
-    );
+  async function deleteItem(dayId: string, mealId: string, optionId: string, itemId: string) {
+    setPlan((p) => mapOption(p, dayId, mealId, optionId, (o) => ({
+      ...o, meal_items: o.meal_items.filter((i) => i.id !== itemId),
+    })));
     await persist(supabase.from("meal_items").delete().eq("id", itemId));
+  }
+
+  function delTitle() {
+    if (confirmDel?.kind === "day") return "Poistetaanko päivä?";
+    if (confirmDel?.kind === "meal") return "Poistetaanko ateria?";
+    return "Poistetaanko vaihtoehto?";
   }
 
   return (
@@ -226,54 +242,41 @@ export function MealPlanEditor({ initial }: { initial: MealPlanFull }) {
                 placeholder="Päivä"
               />
               <KcalBadge kcal={dayMacros(day).kcal} accent />
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => setConfirmDel({ kind: "day", id: day.id })}
-                aria-label="Poista päivä"
-              >
+              <Button variant="ghost" size="icon" className="h-8 w-8"
+                onClick={() => setConfirmDel({ kind: "day", dayId: day.id })} aria-label="Poista päivä">
                 <Trash2 className="h-4 w-4 text-muted-foreground" />
               </Button>
             </div>
-            <div className="mt-1.5">
-              <MacroChips m={dayMacros(day)} />
-            </div>
+            <div className="mt-1.5"><MacroChips m={dayMacros(day)} /></div>
 
             <div className="mt-4 space-y-2.5">
               {day.meals.map((meal) => (
                 <MealCard
                   key={meal.id}
                   meal={meal}
-                  onRename={(name) => renameMeal(day.id, meal.id, name)}
-                  onDelete={() => setConfirmDel({ kind: "meal", id: meal.id })}
-                  onAddFood={() => setPickFor(meal.id)}
-                  onAmount={(itemId, amt) => updateAmount(day.id, meal.id, itemId, amt)}
-                  onDeleteItem={(itemId) => deleteItem(day.id, meal.id, itemId)}
+                  onRenameMeal={(name) => renameMeal(day.id, meal.id, name)}
+                  onDeleteMeal={() => setConfirmDel({ kind: "meal", dayId: day.id, mealId: meal.id })}
+                  onAddOption={() => addOption(day.id, meal)}
+                  onRenameOption={(optionId, name) => renameOption(day.id, meal.id, optionId, name)}
+                  onDeleteOption={(optionId) => setConfirmDel({ kind: "option", dayId: day.id, mealId: meal.id, optionId })}
+                  onAddFood={(optionId) => setPickFor({ dayId: day.id, mealId: meal.id, optionId })}
+                  onAmount={(optionId, itemId, amt) => updateAmount(day.id, meal.id, optionId, itemId, amt)}
+                  onDeleteItem={(optionId, itemId) => deleteItem(day.id, meal.id, optionId, itemId)}
                 />
               ))}
-              {day.meals.length === 0 && (
-                <p className="py-2 text-sm text-muted-foreground">Ei vielä aterioita.</p>
-              )}
+              {day.meals.length === 0 && <p className="py-2 text-sm text-muted-foreground">Ei vielä aterioita.</p>}
             </div>
 
-            <Button
-              variant="ghost"
-              size="sm"
+            <Button variant="ghost" size="sm"
               className="mt-2 w-full border border-dashed text-muted-foreground hover:text-foreground"
-              onClick={() => addMeal(day)}
-            >
+              onClick={() => addMeal(day)}>
               <Plus className="h-4 w-4" /> Lisää ateria
             </Button>
           </section>
         ))}
       </div>
 
-      <Button
-        variant="outline"
-        className="mt-6 w-full border-dashed"
-        onClick={addDay}
-      >
+      <Button variant="outline" className="mt-6 w-full border-dashed" onClick={addDay}>
         <Plus className="h-4 w-4" /> Lisää päivä
       </Button>
 
@@ -283,10 +286,7 @@ export function MealPlanEditor({ initial }: { initial: MealPlanFull }) {
         open={pickFor !== null}
         onOpenChange={(v) => !v && setPickFor(null)}
         onPick={(food) => {
-          const mealId = pickFor;
-          if (!mealId) return;
-          const dayId = plan.meal_plan_days.find((d) => d.meals.some((m) => m.id === mealId))?.id;
-          if (dayId) addItem(dayId, mealId, food);
+          if (pickFor) addItem(pickFor.dayId, pickFor.mealId, pickFor.optionId, food);
           setPickFor(null);
         }}
       />
@@ -294,60 +294,116 @@ export function MealPlanEditor({ initial }: { initial: MealPlanFull }) {
       <ConfirmDialog
         open={confirmDel !== null}
         onOpenChange={(v) => !v && setConfirmDel(null)}
-        title={confirmDel?.kind === "day" ? "Poistetaanko päivä?" : "Poistetaanko ateria?"}
+        title={delTitle()}
         description="Tätä ei voi perua."
         confirmLabel="Poista"
         onConfirm={() => {
           if (!confirmDel) return;
-          if (confirmDel.kind === "day") deleteDay(confirmDel.id);
-          else {
-            const dayId = plan.meal_plan_days.find((d) => d.meals.some((m) => m.id === confirmDel.id))?.id;
-            if (dayId) deleteMeal(dayId, confirmDel.id);
-          }
+          if (confirmDel.kind === "day") deleteDay(confirmDel.dayId);
+          else if (confirmDel.kind === "meal") deleteMeal(confirmDel.dayId, confirmDel.mealId);
+          else deleteOption(confirmDel.dayId, confirmDel.mealId, confirmDel.optionId);
           setConfirmDel(null);
         }}
       />
 
       {plan.is_template && (
-        <AssignMealPlanDialog
-          open={assignOpen}
-          onOpenChange={setAssignOpen}
-          planId={plan.id}
-          planTitle={plan.title}
-        />
+        <AssignMealPlanDialog open={assignOpen} onOpenChange={setAssignOpen} planId={plan.id} planTitle={plan.title} />
       )}
     </div>
   );
 }
 
 function MealCard({
-  meal, onRename, onDelete, onAddFood, onAmount, onDeleteItem,
+  meal, onRenameMeal, onDeleteMeal, onAddOption, onRenameOption, onDeleteOption, onAddFood, onAmount, onDeleteItem,
 }: {
   meal: MealRow;
-  onRename: (name: string) => void;
-  onDelete: () => void;
-  onAddFood: () => void;
-  onAmount: (itemId: string, amount: number) => void;
-  onDeleteItem: (itemId: string) => void;
+  onRenameMeal: (name: string) => void;
+  onDeleteMeal: () => void;
+  onAddOption: () => void;
+  onRenameOption: (optionId: string, name: string) => void;
+  onDeleteOption: (optionId: string) => void;
+  onAddFood: (optionId: string) => void;
+  onAmount: (optionId: string, itemId: string, amount: number) => void;
+  onDeleteItem: (optionId: string, itemId: string) => void;
 }) {
+  const multi = meal.meal_options.length > 1;
+  const single = meal.meal_options[0];
+
   return (
     <div className="rounded-xl border bg-background/40 p-3">
       <div className="flex items-center gap-2">
         <Input
           defaultValue={meal.name ?? ""}
-          onBlur={(e) => e.target.value !== (meal.name ?? "") && onRename(e.target.value)}
+          onBlur={(e) => e.target.value !== (meal.name ?? "") && onRenameMeal(e.target.value)}
           className="h-8 flex-1 border-0 bg-transparent px-0 text-sm font-semibold shadow-none focus-visible:ring-0"
           placeholder="Ateria"
         />
-        <KcalBadge kcal={mealMacros(meal).kcal} />
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onDelete} aria-label="Poista ateria">
+        {!multi && single && <KcalBadge kcal={optionMacros(single).kcal} />}
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onDeleteMeal} aria-label="Poista ateria">
           <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
         </Button>
       </div>
 
-      {meal.meal_items.length > 0 && (
+      {/* Single option → items inline; multiple → sub-cards with names */}
+      {!multi ? (
+        single && (
+          <ItemList
+            option={single}
+            onAddFood={() => onAddFood(single.id)}
+            onAmount={(itemId, amt) => onAmount(single.id, itemId, amt)}
+            onDeleteItem={(itemId) => onDeleteItem(single.id, itemId)}
+          />
+        )
+      ) : (
+        <div className="mt-2 space-y-2">
+          {meal.meal_options.map((opt, i) => (
+            <div key={opt.id} className="rounded-lg border bg-card p-2.5">
+              <div className="flex items-center gap-2">
+                <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-primary/10 text-[11px] font-bold text-primary">
+                  {i + 1}
+                </span>
+                <Input
+                  defaultValue={opt.name ?? ""}
+                  onBlur={(e) => e.target.value !== (opt.name ?? "") && onRenameOption(opt.id, e.target.value)}
+                  className="h-7 flex-1 border-0 bg-transparent px-0 text-sm font-medium shadow-none focus-visible:ring-0"
+                  placeholder={`Vaihtoehto ${i + 1}`}
+                />
+                <KcalBadge kcal={optionMacros(opt).kcal} />
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onDeleteOption(opt.id)} aria-label="Poista vaihtoehto">
+                  <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
+                </Button>
+              </div>
+              <ItemList
+                option={opt}
+                onAddFood={() => onAddFood(opt.id)}
+                onAmount={(itemId, amt) => onAmount(opt.id, itemId, amt)}
+                onDeleteItem={(itemId) => onDeleteItem(opt.id, itemId)}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+
+      <Button variant="ghost" size="sm" className="mt-2 h-8 px-2 text-muted-foreground hover:text-foreground" onClick={onAddOption}>
+        <Copy className="h-3.5 w-3.5" /> Lisää vaihtoehto
+      </Button>
+    </div>
+  );
+}
+
+function ItemList({
+  option, onAddFood, onAmount, onDeleteItem,
+}: {
+  option: MealOption;
+  onAddFood: () => void;
+  onAmount: (itemId: string, amount: number) => void;
+  onDeleteItem: (itemId: string) => void;
+}) {
+  return (
+    <>
+      {option.meal_items.length > 0 && (
         <ul className="mt-2 divide-y divide-border/60">
-          {meal.meal_items.map((item) => {
+          {option.meal_items.map((item) => {
             const m = itemMacros(item);
             return (
               <li key={item.id} className="flex items-center gap-2 py-2">
@@ -366,10 +422,7 @@ function MealCard({
                   <span className="pointer-events-none absolute right-2 text-xs text-muted-foreground">g</span>
                 </div>
                 <span className="w-16 shrink-0 text-right text-xs font-medium tabular-nums text-muted-foreground">{fmt(m.kcal)} kcal</span>
-                <Button
-                  variant="ghost" size="icon" className="h-8 w-8"
-                  onClick={() => onDeleteItem(item.id)} aria-label="Poista ruoka-aine"
-                >
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onDeleteItem(item.id)} aria-label="Poista ruoka-aine">
                   <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
                 </Button>
               </li>
@@ -377,14 +430,13 @@ function MealCard({
           })}
         </ul>
       )}
-
       <div className="mt-2 flex items-center justify-between gap-2">
         <Button variant="ghost" size="sm" className="h-8 px-2 text-muted-foreground hover:text-foreground" onClick={onAddFood}>
           <Plus className="h-3.5 w-3.5" /> Ruoka-aine
         </Button>
-        {meal.meal_items.length > 0 && <MacroChips m={mealMacros(meal)} />}
+        {option.meal_items.length > 0 && <MacroChips m={optionMacros(option)} />}
       </div>
-    </div>
+    </>
   );
 }
 
@@ -392,11 +444,9 @@ function MealCard({
 function mapDay(p: MealPlanFull, dayId: string, fn: (d: MealPlanDay) => MealPlanDay): MealPlanFull {
   return { ...p, meal_plan_days: p.meal_plan_days.map((d) => (d.id === dayId ? fn(d) : d)) };
 }
-function mapMeal(
-  p: MealPlanFull, dayId: string, mealId: string, fn: (m: MealRow) => MealRow
-): MealPlanFull {
-  return mapDay(p, dayId, (d) => ({
-    ...d,
-    meals: d.meals.map((m) => (m.id === mealId ? fn(m) : m)),
-  }));
+function mapMeal(p: MealPlanFull, dayId: string, mealId: string, fn: (m: MealRow) => MealRow): MealPlanFull {
+  return mapDay(p, dayId, (d) => ({ ...d, meals: d.meals.map((m) => (m.id === mealId ? fn(m) : m)) }));
+}
+function mapOption(p: MealPlanFull, dayId: string, mealId: string, optionId: string, fn: (o: MealOption) => MealOption): MealPlanFull {
+  return mapMeal(p, dayId, mealId, (m) => ({ ...m, meal_options: m.meal_options.map((o) => (o.id === optionId ? fn(o) : o)) }));
 }
