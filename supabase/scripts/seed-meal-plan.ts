@@ -15,24 +15,43 @@ const ANON =
 
 const TITLE = "Esimerkkiruokavalio";
 
-// Each meal: name + [food search term, grams][]
-const PLAN: Array<{ day: string; meals: Array<{ name: string; items: Array<[string, number]> }> }> = [
+// term = Fineli search term, number = grams.
+type Item = [string, number];
+type Opt = { name?: string; items: Item[] };
+// A meal has one or more interchangeable options.
+const one = (items: Item[]): Opt[] => [{ items }];
+
+const PLAN: Array<{ day: string; meals: Array<{ name: string; options: Opt[] }> }> = [
   {
     day: "Arkipäivä",
     meals: [
-      { name: "Aamupala", items: [["kaurahiutale", 80], ["maito, rasvaton", 250], ["banaani", 120]] },
-      { name: "Lounas", items: [["broileri", 150], ["riisi, keitetty", 200], ["porkkana", 100]] },
-      { name: "Välipala", items: [["raejuusto", 200], ["omena", 130]] },
-      { name: "Päivällinen", items: [["lohi", 150], ["peruna", 250], ["parsakaali", 150]] },
+      {
+        name: "Aamupala",
+        // Three interchangeable options to demo the selector.
+        options: [
+          { name: "Kaurapuuro", items: [["kaurahiutale", 80], ["maito, rasvaton", 250], ["banaani", 120]] },
+          { name: "Munakas", items: [["kananmuna", 150], ["ruisleipä", 70], ["juusto", 30]] },
+          { name: "Smoothie", items: [["raejuusto", 200], ["banaani", 120], ["mustikka", 100]] },
+        ],
+      },
+      { name: "Lounas", options: one([["broileri", 150], ["riisi, keitetty", 200], ["porkkana", 100]]) },
+      { name: "Välipala", options: one([["raejuusto", 200], ["omena", 130]]) },
+      { name: "Päivällinen", options: one([["lohi", 150], ["peruna", 250], ["parsakaali", 150]]) },
     ],
   },
   {
     day: "Treenipäivä",
     meals: [
-      { name: "Aamupala", items: [["kananmuna", 120], ["ruisleipä", 70], ["juusto", 30]] },
-      { name: "Lounas", items: [["jauheliha, naudan", 150], ["pasta, keitetty", 220]] },
-      { name: "Palautusjuoma", items: [["heraproteiini", 35], ["banaani", 120]] },
-      { name: "Päivällinen", items: [["broileri", 180], ["bataatti", 250]] },
+      { name: "Aamupala", options: one([["kananmuna", 120], ["ruisleipä", 70], ["juusto", 30]]) },
+      {
+        name: "Lounas",
+        options: [
+          { name: "Liha", items: [["jauheliha, naudan", 150], ["pasta, keitetty", 220]] },
+          { name: "Kala", items: [["lohi", 160], ["riisi, keitetty", 220]] },
+        ],
+      },
+      { name: "Palautusjuoma", options: one([["heraproteiini", 35], ["banaani", 120]]) },
+      { name: "Päivällinen", options: one([["broileri", 180], ["bataatti", 250]]) },
     ],
   },
 ];
@@ -86,20 +105,29 @@ async function main() {
         .select()
         .single();
 
-      let oi = 0;
-      for (const [term, grams] of mealDef.items) {
-        const food = await pickFood(term);
-        if (!food) {
-          console.warn(`  ! no food for "${term}" — skipped`);
-          continue;
+      for (let oi = 0; oi < mealDef.options.length; oi++) {
+        const optDef = mealDef.options[oi]!;
+        const { data: option } = await s
+          .from("meal_options")
+          .insert({ meal_id: meal!.id, order_idx: oi, name: optDef.name ?? null })
+          .select()
+          .single();
+
+        let ii = 0;
+        for (const [term, grams] of optDef.items) {
+          const food = await pickFood(term);
+          if (!food) {
+            console.warn(`  ! no food for "${term}" — skipped`);
+            continue;
+          }
+          await s.from("meal_items").insert({
+            meal_option_id: option!.id,
+            food_id: food.id,
+            food_name: food.name_fi,
+            amount_g: grams,
+            order_idx: ++ii,
+          });
         }
-        await s.from("meal_items").insert({
-          meal_id: meal!.id,
-          food_id: food.id,
-          food_name: food.name_fi,
-          amount_g: grams,
-          order_idx: ++oi,
-        });
       }
     }
   }
