@@ -40,6 +40,18 @@ export function AppShell({
 }) {
   const logoSrc = coBrandLabel ? "/fs%20collab.png" : "/LOGO_gainly.png";
   const logoAlt = coBrandLabel ? `Gainly × ${coBrandLabel}` : "Gainly";
+
+  // Gainly pink accent is a co-brand feature: apply it only when this coach has
+  // a co-brand label (e.g. "Gainly × Fanni Savela"). Default stays neutral.
+  // Mirrors the client shell so coach-side surfaces (e.g. the program editor)
+  // follow the same rule instead of being pink for everyone.
+  useEffect(() => {
+    const root = document.documentElement;
+    if (coBrandLabel) root.classList.add("gainly-cobrand");
+    else root.classList.remove("gainly-cobrand");
+    return () => { root.classList.remove("gainly-cobrand"); };
+  }, [coBrandLabel]);
+
   const pathname = usePathname();
   const { pendingHref } = usePendingNav();
   const coachPending = pendingHref?.startsWith("/coach/") ? pendingHref : null;
