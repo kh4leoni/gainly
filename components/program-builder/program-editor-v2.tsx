@@ -68,8 +68,6 @@ import {
   MoreHorizontal,
   ArrowUpRight,
   ClipboardList,
-  Paperclip,
-  Video,
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -102,14 +100,17 @@ type ExPatch = {
 // Subcomponents reference them via `var(--bg-0)` etc., so nothing needs to
 // know about the active theme.
 
+// Day-1 colour is driven by CSS vars so it can follow the co-brand rule:
+// neutral blue by default, Gainly rose only under html.gainly-cobrand (see
+// Mv2Style). Days 2–4 are fixed identity hues (no pink involved).
 const COLORS = {
-  rose: { fg: "#FF7AA8", bg: "rgba(255,122,168,0.10)", line: "rgba(255,122,168,0.35)" },
+  day1: { fg: "var(--day1-fg)", bg: "var(--day1-bg)", line: "var(--day1-line)" },
   amber: { fg: "#F2B872", bg: "rgba(242,184,114,0.10)", line: "rgba(242,184,114,0.35)" },
   violet: { fg: "#B69CFF", bg: "rgba(182,156,255,0.10)", line: "rgba(182,156,255,0.35)" },
   cyan: { fg: "#7BD3E5", bg: "rgba(123,211,229,0.10)", line: "rgba(123,211,229,0.35)" },
 } as const;
 type ColorKey = keyof typeof COLORS;
-const COLOR_CYCLE: ColorKey[] = ["rose", "amber", "violet", "cyan"];
+const COLOR_CYCLE: ColorKey[] = ["day1", "amber", "violet", "cyan"];
 
 function dayColor(dayNumber: number): (typeof COLORS)[ColorKey] {
   const k = COLOR_CYCLE[(dayNumber - 1) % COLOR_CYCLE.length] ?? "rose";
@@ -383,7 +384,6 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
   // smaller Safari windows squeezed the set table so the RPE column got
   // clipped. Coach opts in via the "Lisäasetukset oikealla" toggle.
   const [showSummaryRail, setShowSummaryRail] = useState(false);
-  const [showProgression] = useState(true);
   const [showCompletion] = useState(true);
 
   // ── Selection state ──
@@ -1419,7 +1419,7 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
       {/* Drill-down — scrolls horizontally as a whole when the columns + editor
           can't fit, so the editor keeps a usable width instead of being squeezed
           into a narrow strip between the fixed session/exercise columns. */}
-      <div style={{ display: "flex", flex: 1, minHeight: 0, overflowX: "auto", overflowY: "hidden" }}>
+      <div style={{ display: "flex", flex: 1, minHeight: 0, overflowX: "auto", overflowY: "hidden", gap: 12, padding: 12 }}>
         {week && (
           <SessionsColumn
             week={week}
@@ -1470,7 +1470,6 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
               idx={Math.min(selExIdx, exercises.length - 1)}
               total={exercises.length}
               completion={completion}
-              showProgression={showProgression}
               exerciseBank={exerciseBank}
               pickerOpen={openPickerForPeId === exercise.id}
               onOpenPicker={() => setOpenPickerForPeId(exercise.id)}
@@ -3140,7 +3139,9 @@ function ColumnShell({
       style={{
         width,
         flex: "0 0 auto",
-        borderRight: "1px solid var(--line)",
+        border: "1px solid var(--line)",
+        borderRadius: 12,
+        overflow: "hidden",
         background: "var(--bg-1)",
         display: "flex",
         flexDirection: "column",
@@ -3149,7 +3150,7 @@ function ColumnShell({
     >
       <div style={{ padding: "13px 14px 11px", borderBottom: "1px solid var(--line)" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-          <div style={{ minWidth: 0 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
             {subtitle && (
               <div style={{ fontSize: 10, fontWeight: 700, color: "var(--fg-3)", letterSpacing: "0.05em", textTransform: "uppercase" }}>
                 {subtitle}
@@ -3370,7 +3371,6 @@ function ExerciseDetail({
   idx,
   total,
   completion,
-  showProgression,
   exerciseBank,
   pickerOpen,
   onOpenPicker,
@@ -3391,7 +3391,6 @@ function ExerciseDetail({
   idx: number;
   total: number;
   completion: ProgramCompletion | undefined;
-  showProgression: boolean;
   exerciseBank: Array<{ id: string; name: string }>;
   pickerOpen: boolean;
   onOpenPicker: () => void;
@@ -3578,39 +3577,15 @@ function ExerciseDetail({
       </div>
       )}
 
-      {/* Bottom row — progression panel hidden for non-lifting */}
-      <div style={{ display: "grid", gridTemplateColumns: (showProgression && ex.exercises?.kind !== "cardio" && ex.exercises?.kind !== "free") ? "1fr 1fr" : "1fr", gap: 14 }}>
-        {showProgression && ex.exercises?.kind !== "cardio" && ex.exercises?.kind !== "free" && (
-          <div
-            style={{
-              background: "var(--bg-1)",
-              border: "1px solid var(--line)",
-              borderRadius: 12,
-              padding: "14px 16px 12px",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "baseline",
-                marginBottom: 12,
-              }}
-            >
-              <div style={{ fontSize: 10, fontWeight: 700, color: "var(--fg-3)", letterSpacing: "0.05em", textTransform: "uppercase" }}>
-                Progressio · työsarjan kuorma
-              </div>
-              <ProgressionDelta block={block} day={day} ex={ex} accent={c.fg} />
-            </div>
-            <ProgressionBars block={block} day={day} ex={ex} currentWeek={week.week_number} accent={c.fg} />
-          </div>
-        )}
+      {/* Bottom row — coaching note for the client */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 14 }}>
         <div
           style={{
             background: "var(--bg-1)",
             border: "1px solid var(--line)",
             borderRadius: 12,
             padding: "14px 16px",
+            maxWidth: 620,
           }}
         >
           <div style={{ fontSize: 10, fontWeight: 700, color: "var(--fg-3)", letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: 10 }}>
@@ -3639,15 +3614,6 @@ function ExerciseDetail({
               outline: "none",
             }}
           />
-          <div style={{ marginTop: 10, display: "flex", gap: 6, flexWrap: "wrap" }}>
-            <Chip>
-              <Video size={11} /> Videolinkki
-            </Chip>
-            <Chip>
-              <Paperclip size={11} /> Liite
-            </Chip>
-            <Chip>+ Variaatio</Chip>
-          </div>
         </div>
       </div>
       </FitScale>
@@ -3764,27 +3730,6 @@ function ExercisePicker({
         )}
       </div>
     </div>
-  );
-}
-
-function Chip({ children }: { children: ReactNode }) {
-  return (
-    <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 4,
-        padding: "3px 9px",
-        borderRadius: 999,
-        background: "var(--bg-2)",
-        border: "1px solid var(--line)",
-        color: "var(--fg-2)",
-        fontSize: 11,
-        cursor: "pointer",
-      }}
-    >
-      {children}
-    </span>
   );
 }
 
@@ -3936,25 +3881,6 @@ function CurrentWeekTable({
           </SC>
         </DndContext>
       </table>
-      </div>
-      <div
-        style={{
-          padding: "8px 14px",
-          borderTop: "1px solid var(--line)",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          background: "var(--bg-2)",
-          color: "var(--fg-3)",
-          fontSize: 11,
-        }}
-      >
-        <span>
-          Tempo {ex.intensity_type ?? "—"} · Tauko {ex.rest_sec ? `${Math.floor(ex.rest_sec / 60)}:${String(ex.rest_sec % 60).padStart(2, "0")}` : "—"}
-        </span>
-        <Mv2Button kind="ghost" size="sm">
-          Muokkaa lisäkenttiä →
-        </Mv2Button>
       </div>
     </div>
   );
@@ -4309,124 +4235,6 @@ function NeighborWeekCard({
   );
 }
 
-// ── Progression bars ──────────────────────────────────────────────────────────
-
-function ProgressionBars({
-  block,
-  day,
-  ex,
-  currentWeek,
-  accent,
-}: {
-  block: Block;
-  day: Day;
-  ex: ProgramExerciseRow;
-  currentWeek: number;
-  accent: string;
-}) {
-  const data = block.program_weeks.map((w) => {
-    const d = w.program_days.find((dx) => dx.day_number === day.day_number);
-    const e = d?.program_exercises.find((pe) =>
-      ex.exercise_id ? pe.exercise_id === ex.exercise_id : pe.exercises?.name === ex.exercises?.name
-    );
-    const cfgs = e ? configsFromExercise(e) : [];
-    const top = cfgs.reduce((m, s) => Math.max(m, weightTop(s.weight)), 0);
-    return { num: w.week_number, w: top };
-  });
-  const max = Math.max(...data.map((d) => d.w), 1);
-  return (
-    <div style={{ display: "flex", alignItems: "flex-end", gap: 8, height: 100 }}>
-      {data.map((d) => {
-        const h = (d.w / max) * 100;
-        const cur = d.num === currentWeek;
-        const past = d.num < currentWeek;
-        return (
-          <div key={d.num} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-            <div
-              style={{
-                fontFamily: "ui-monospace, monospace",
-                fontSize: 10,
-                fontWeight: 600,
-                color: cur ? accent : past ? "var(--fg-1)" : "var(--fg-3)",
-              }}
-            >
-              {d.w || "—"}
-            </div>
-            <div
-              style={{
-                width: "100%",
-                height: 64,
-                background: "var(--row-hover)",
-                borderRadius: 3,
-                position: "relative",
-                display: "flex",
-                alignItems: "flex-end",
-                overflow: "hidden",
-              }}
-            >
-              <div
-                style={{
-                  width: "100%",
-                  height: h + "%",
-                  background: cur ? accent : past ? "var(--chip-bg-strong)" : "var(--chip-bg)",
-                  borderRadius: 2,
-                  transition: "height 0.3s",
-                }}
-              />
-            </div>
-            <div
-              style={{
-                fontFamily: "ui-monospace, monospace",
-                fontSize: 9,
-                color: cur ? accent : "var(--fg-3)",
-                fontWeight: cur ? 600 : 400,
-              }}
-            >
-              vk{d.num}
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function ProgressionDelta({
-  block,
-  day,
-  ex,
-  accent,
-}: {
-  block: Block;
-  day: Day;
-  ex: ProgramExerciseRow;
-  accent: string;
-}) {
-  const tops: number[] = [];
-  for (const w of block.program_weeks) {
-    const d = w.program_days.find((dx) => dx.day_number === day.day_number);
-    const e = d?.program_exercises.find((pe) =>
-      ex.exercise_id ? pe.exercise_id === ex.exercise_id : pe.exercises?.name === ex.exercises?.name
-    );
-    const cfgs = e ? configsFromExercise(e) : [];
-    const top = cfgs.reduce((m, s) => Math.max(m, weightTop(s.weight)), 0);
-    tops.push(top);
-  }
-  const nonZero = tops.filter((n) => n > 0);
-  if (nonZero.length < 2) {
-    return (
-      <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, color: "var(--fg-3)" }}>—</div>
-    );
-  }
-  const delta = nonZero[nonZero.length - 1]! - nonZero[0]!;
-  return (
-    <div style={{ display: "inline-flex", alignItems: "center", gap: 4, fontFamily: "ui-monospace, monospace", fontSize: 11, color: accent }}>
-      <TrendingUp size={11} />
-      {delta >= 0 ? `+${delta.toFixed(1)}` : delta.toFixed(1)} kg / {block.program_weeks.length} vk
-    </div>
-  );
-}
-
 // ── PDF export (print-to-PDF via clean popup window) ───────────────────────────
 
 function escapeHtml(s: string): string {
@@ -4724,20 +4532,26 @@ function Mv2Style() {
         --bg-2: #17171f;
         --bg-3: #1f1f29;
         --bg-4: #2a2a36;
-        --line: rgba(255,255,255,0.08);
-        --line-2: rgba(255,255,255,0.14);
+        --line: rgba(255,255,255,0.12);
+        --line-2: rgba(255,255,255,0.20);
         --fg-0: #fafafa;
-        --fg-1: #c8c8d0;
-        --fg-2: #8a8a96;
-        --fg-3: #5b5b66;
+        --fg-1: #d2d2da;
+        --fg-2: #9a9aa6;
+        --fg-3: #74747f;
         --pink: #ff3d8a;
         --pink-soft: rgba(255,61,138,0.14);
         --pink-line: rgba(255,61,138,0.4);
         --green: #2ecf8b;
-        --accent-fg: #ff3d8a;
-        --accent-soft: rgba(255,61,138,0.12);
-        --accent-line: rgba(255,61,138,0.4);
-        --accent-contrast: #1a0410;
+        /* Neutral accent by default. Gainly pink is applied only under
+           html.gainly-cobrand (see override below) — a co-brand feature. */
+        --accent-fg: #fafafa;
+        --accent-soft: rgba(255,255,255,0.10);
+        --accent-line: rgba(255,255,255,0.28);
+        --accent-contrast: #14121a;
+        /* Day-1 identity colour — neutral blue (no pink) unless co-branded. */
+        --day1-fg: #6ea8fe;
+        --day1-bg: rgba(110,168,254,0.12);
+        --day1-line: rgba(110,168,254,0.38);
         --row-hover: rgba(255,255,255,0.03);
         --row-hover-2: rgba(255,255,255,0.04);
         --row-hover-soft: rgba(255,255,255,0.015);
@@ -4753,12 +4567,15 @@ function Mv2Style() {
         --bg-2: #f0eef5;
         --bg-3: #e8e6ef;
         --bg-4: #d8d6e2;
-        --line: rgba(0,0,0,0.08);
-        --line-2: rgba(0,0,0,0.14);
-        --fg-0: #1a1820;
-        --fg-1: #3a3845;
-        --fg-2: #6a6878;
-        --fg-3: #9a98a8;
+        --line: rgba(0,0,0,0.14);
+        --line-2: rgba(0,0,0,0.22);
+        --fg-0: #14121a;
+        --fg-1: #34323f;
+        --fg-2: #565463;
+        --fg-3: #78768a;
+        --accent-fg: #14121a;
+        --accent-soft: rgba(0,0,0,0.06);
+        --accent-line: rgba(0,0,0,0.22);
         --accent-contrast: #ffffff;
         --row-hover: rgba(0,0,0,0.04);
         --row-hover-2: rgba(0,0,0,0.05);
@@ -4768,6 +4585,17 @@ function Mv2Style() {
         --chip-bg-mid: rgba(0,0,0,0.10);
         --danger-soft: rgba(220,38,38,0.10);
         --danger-fg: #c81b1b;
+      }
+      /* Co-brand (Gainly × coach): turn the neutral accent into Gainly pink.
+         Applies in both themes; placed last so it wins over the light override. */
+      html.gainly-cobrand .mv2 {
+        --accent-fg: #ff3d8a;
+        --accent-soft: rgba(255,61,138,0.12);
+        --accent-line: rgba(255,61,138,0.4);
+        --accent-contrast: #ffffff;
+        --day1-fg: #ff7aa8;
+        --day1-bg: rgba(255,122,168,0.10);
+        --day1-line: rgba(255,122,168,0.35);
       }
       .mv2 .mv2-row { transition: background 0.12s; }
       .mv2 .mv2-row:hover { background: var(--row-hover); }
