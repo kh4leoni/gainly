@@ -1052,7 +1052,7 @@ function LiftingExerciseBlock({ programExercise, workoutLogId, clientId }: { pro
       {/* ── Table ── */}
       <div style={{ paddingBottom: 4 }}>
         <div style={{
-          display: "grid", gridTemplateColumns: "16px minmax(0, 1.4fr) minmax(0, 0.9fr) minmax(0, 1.4fr) clamp(34px, 9vw, 44px)",
+          display: "grid", gridTemplateColumns: "16px minmax(0, 1.4fr) minmax(0, 1.2fr) minmax(0, 1.1fr) clamp(34px, 9vw, 44px)",
           gap: 2, padding: "0 clamp(4px, 1.5vw, 8px) 6px",
           borderBottom: "1px solid var(--c-border)",
         }}>
@@ -1237,7 +1237,7 @@ function SetTableRow({
 
   return (
     <div style={{
-      display: "grid", gridTemplateColumns: "16px minmax(0, 1.4fr) minmax(0, 0.9fr) minmax(0, 1.4fr) clamp(34px, 9vw, 44px)",
+      display: "grid", gridTemplateColumns: "16px minmax(0, 1.4fr) minmax(0, 1.2fr) minmax(0, 1.1fr) clamp(34px, 9vw, 44px)",
       gap: 2, padding: "8px clamp(4px, 1.5vw, 8px)",
       borderBottom: "1px solid var(--c-border)",
       background: row.isPr ? "color-mix(in srgb, var(--c-warning) 5%, transparent)" : "transparent",
