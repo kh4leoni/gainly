@@ -3,10 +3,9 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import type { ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { PanelLeftClose, Menu } from "lucide-react";
 import { NavLink } from "./nav-link";
 import { CoachSettingsButton } from "./coach-settings";
 import { SyncBar } from "@/components/offline/sync-bar";
@@ -15,8 +14,6 @@ import { CoachSkeleton } from "./coach-skeleton";
 import { createClient } from "@/lib/supabase/client";
 import { getUnreadCount } from "@/lib/queries/messages";
 import { cn } from "@/lib/utils";
-
-const NAV_COLLAPSE_KEY = "gainly:coach-nav-collapsed";
 
 type NavItem = { href: string; icon: ReactNode; label: string; badge?: number };
 type Me = { id: string; full_name: string | null; email?: string | null } | null;
@@ -56,31 +53,6 @@ export function AppShell({
   const { pendingHref } = usePendingNav();
   const coachPending = pendingHref?.startsWith("/coach/") ? pendingHref : null;
 
-  // Desktop sidebar collapse — gives the main area more width. Persisted in
-  // localStorage. `mounted` gates the width transition so a collapsed reload
-  // doesn't animate the rail shut on first paint.
-  const [navCollapsed, setNavCollapsed] = useState(false);
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => {
-    setMounted(true);
-    try {
-      setNavCollapsed(localStorage.getItem(NAV_COLLAPSE_KEY) === "1");
-    } catch {
-      // localStorage unavailable — keep default (expanded).
-    }
-  }, []);
-  function toggleNav() {
-    setNavCollapsed((v) => {
-      const next = !v;
-      try {
-        localStorage.setItem(NAV_COLLAPSE_KEY, next ? "1" : "0");
-      } catch {
-        // ignore write failures
-      }
-      return next;
-    });
-  }
-
   const msgHref = nav.find(n => n.href.endsWith("/messages"))?.href ?? "";
   const serverBadge = nav.find(n => n.href === msgHref)?.badge ?? 0;
   const onMessages = !!msgHref && (pendingHref?.startsWith(msgHref) || pathname.startsWith(msgHref));
@@ -111,38 +83,22 @@ export function AppShell({
 
   return (
     <div className="min-h-dvh md:flex">
-      {/* Sidebar (md+) — collapsible to give the main area more width */}
-      <aside
-        className={cn(
-          "hidden md:flex md:flex-col md:overflow-hidden md:bg-muted/20",
-          mounted && "md:transition-[width] md:duration-200 md:ease-out",
-          navCollapsed ? "md:w-0 md:border-r-0" : "md:w-60 md:border-r"
-        )}
-      >
-        <div style={{ height: "calc(env(safe-area-inset-top, 0px) + 8px)" }} />
-        <div className="flex h-20 items-center justify-between gap-2 border-b px-4">
-          <Link href="/" prefetch>
-            <Image src={logoSrc} alt={logoAlt} width={160} height={52} className="logo-adaptive" style={{ objectFit: "contain" }} />
-          </Link>
-          <button
-            type="button"
-            onClick={toggleNav}
-            title="Piilota valikko"
-            aria-label="Piilota valikko"
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-          >
-            <PanelLeftClose size={18} />
-          </button>
+      {/* Sidebar (md+) — narrow icon rail that expands on hover. The aside keeps
+          a fixed w-16 footprint in the layout; the panel inside overlays the
+          main area when expanded so content doesn't reflow under the cursor. */}
+      <aside className="relative hidden w-16 shrink-0 md:block">
+        <div className="group/sb absolute inset-y-0 left-0 z-40 flex w-16 flex-col overflow-hidden border-r bg-background transition-[width] duration-200 ease-out hover:w-60">
+          <div style={{ height: "calc(env(safe-area-inset-top, 0px) + 8px)" }} />
+          <nav className="flex flex-col gap-1 p-2 pt-3">
+            {navWithBadge.map((n) => (
+              <NavLink key={n.href} {...n} variant={variant} rail />
+            ))}
+          </nav>
         </div>
-        <nav className="flex flex-col gap-1 p-2">
-          {navWithBadge.map((n) => (
-            <NavLink key={n.href} {...n} variant={variant} />
-          ))}
-        </nav>
       </aside>
 
       {/* Main */}
-      <div className="flex h-dvh flex-1 flex-col">
+      <div className="relative flex h-dvh flex-1 flex-col">
         {/* Mobile top header */}
         <header className="flex shrink-0 flex-col border-b md:hidden" style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 8px)" }}>
           <div className="flex items-center justify-between px-4 pb-2">
@@ -155,31 +111,28 @@ export function AppShell({
             </div>
           </div>
         </header>
-        {/* Desktop top header */}
-        <header className="hidden h-14 shrink-0 items-center justify-between border-b px-4 md:flex md:px-6">
-          {navCollapsed && (
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={toggleNav}
-                title="Näytä valikko"
-                aria-label="Näytä valikko"
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              >
-                <Menu size={18} />
-              </button>
-              <Link href="/" prefetch>
-                <Image src={logoSrc} alt={logoAlt} width={120} height={38} className="logo-adaptive" style={{ objectFit: "contain" }} />
-              </Link>
-            </div>
-          )}
-          <div className="ml-auto flex items-center gap-2">
+        {/* Desktop top header — overlays main so scrolled content passes
+            under the progressive blur. pointer-events disabled on the bar
+            itself so content beneath stays clickable; re-enabled per child. */}
+        <header className="pointer-events-none absolute inset-x-0 top-0 z-30 hidden h-14 items-center justify-between px-4 md:flex md:px-6">
+          {/* Progressive blur: stacked layers, blur strongest at top, fading
+              to clear at the bottom edge (mask bands at 20/40/60/80%). */}
+          <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
+            <div className="absolute inset-0" style={{ backdropFilter: "blur(1px)", WebkitBackdropFilter: "blur(1px)", maskImage: "linear-gradient(to top, transparent 20%, black 40%)", WebkitMaskImage: "linear-gradient(to top, transparent 20%, black 40%)" }} />
+            <div className="absolute inset-0" style={{ backdropFilter: "blur(2px)", WebkitBackdropFilter: "blur(2px)", maskImage: "linear-gradient(to top, transparent 40%, black 60%)", WebkitMaskImage: "linear-gradient(to top, transparent 40%, black 60%)" }} />
+            <div className="absolute inset-0" style={{ backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)", maskImage: "linear-gradient(to top, transparent 60%, black 80%)", WebkitMaskImage: "linear-gradient(to top, transparent 60%, black 80%)" }} />
+            <div className="absolute inset-0" style={{ backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", maskImage: "linear-gradient(to top, transparent 80%, black 100%)", WebkitMaskImage: "linear-gradient(to top, transparent 80%, black 100%)" }} />
+          </div>
+          <Link href="/" prefetch className="pointer-events-auto absolute left-1/2 flex -translate-x-1/2 items-center" style={{ marginTop: 6 }}>
+            <Image src={logoSrc} alt={logoAlt} width={120} height={38} className="logo-adaptive" style={{ objectFit: "contain" }} />
+          </Link>
+          <div className="pointer-events-auto ml-auto flex items-center gap-2">
             {rightSlot}
             <CoachSettingsButton me={me ?? null} />
           </div>
         </header>
-        <div className="relative h-0 z-30"><SyncBar /></div>
-        <main className="flex-1 overflow-y-auto relative flex flex-col">
+        {variant === "athlete" && <div className="relative h-0 z-30"><SyncBar /></div>}
+        <main className="flex-1 overflow-y-auto relative flex flex-col md:pt-14">
           {coachPending ? (
             <CoachSkeleton href={coachPending} />
           ) : (
