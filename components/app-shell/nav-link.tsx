@@ -12,12 +12,15 @@ export function NavLink({
   label,
   variant = "coach",
   badge = 0,
+  rail = false,
 }: {
   href: string;
   icon: ReactNode;
   label: string;
   variant?: "athlete" | "coach";
   badge?: number;
+  /** Desktop hover-rail: label hidden until the sidebar (group/sb) is hovered. */
+  rail?: boolean;
 }) {
   const pathname = usePathname();
   const { pendingHref, setPendingHref } = usePendingNav();
@@ -64,7 +67,14 @@ export function NavLink({
           </span>
         )}
       </span>
-      <span className="relative">{label}</span>
+      <span
+        className={cn(
+          "relative whitespace-nowrap",
+          rail && "md:opacity-0 md:transition-opacity md:duration-200 group-hover/sb:md:opacity-100"
+        )}
+      >
+        {label}
+      </span>
     </Link>
   );
 }
