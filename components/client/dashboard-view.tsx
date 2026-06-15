@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { useCallback, useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { getNextWorkout, getWeeklyVolume, getWeeklyCompletion, getLatestPRs } from "@/lib/queries/workouts";
 import { usePrToast } from "@/hooks/use-pr-toast";
@@ -40,165 +39,6 @@ function getCompletionFeedback(pct: number): string {
   if (pct <= 66)  return "Puolivälissä – pidä vauhti yllä.";
   if (pct < 100)  return "Melkein maalissa – loistava viikko.";
   return "Täydellinen viikko. Upea suoritus.";
-}
-
-// ── Quotes ────────────────────────────────────────────────────────────────────
-
-const QUOTES = [
-  "The only bad workout is the one that didn't happen.",
-  "Push yourself — no one else is going to do it for you.",
-  "It never gets easier. You just get stronger.",
-  "The body achieves what the mind believes.",
-  "Discipline is choosing what you want most over what you want now.",
-  "Don't stop when you're tired. Stop when you're done.",
-  "The pain you feel today will be the strength you feel tomorrow.",
-  "If it doesn't challenge you, it won't change you.",
-  "Your only limit is you.",
-  "Good things come to those who sweat.",
-  "You are one workout away from a good mood.",
-  "The harder you work, the luckier you get.",
-  "Fall seven times. Stand up eight.",
-  "What seems impossible today will be your warm-up tomorrow.",
-  "Strength comes from overcoming what you thought you couldn't.",
-  "Your body can stand almost anything. It's your mind you have to convince.",
-  "Don't wish for it. Work for it.",
-  "Be stronger than your excuses.",
-  "Sweat now. Shine later.",
-  "Results happen over time, not overnight. Work hard. Stay consistent.",
-  "Every champion was once a contender who refused to give up.",
-  "Make yourself proud.",
-  "Success is the sum of small efforts repeated day in and day out.",
-  "You don't get what you wish for. You get what you work for.",
-  "Show up. Work hard. Don't stop.",
-  "Small steps every day lead to big results.",
-  "Progress, not perfection.",
-  "Believe in the process.",
-  "Your future self will thank you.",
-  "One more rep. One more step. One more day.",
-] as const;
-
-const INTERVAL_MS = 24_000;
-const ANIM_MS = 480;
-
-function QuoteCard() {
-  const [current, setCurrent] = useState(0);
-  useEffect(() => { setCurrent(Math.floor(Math.random() * QUOTES.length)); }, []);
-  const [departing, setDeparting] = useState<number | null>(null);
-  const [slideDir, setSlideDir] = useState<"left" | "right">("left");
-  const animating = useRef(false);
-  const touchStartX = useRef<number | null>(null);
-  const touchStartY = useRef<number | null>(null);
-
-  const navigate = useCallback((dir: "left" | "right") => {
-    if (animating.current) return;
-    animating.current = true;
-    setCurrent((prev) => {
-      const next = dir === "left"
-        ? (prev + 1) % QUOTES.length
-        : (prev - 1 + QUOTES.length) % QUOTES.length;
-      setDeparting(prev);
-      setSlideDir(dir);
-      return next;
-    });
-    setTimeout(() => {
-      setDeparting(null);
-      animating.current = false;
-    }, ANIM_MS);
-  }, []);
-
-  useEffect(() => {
-    const t = setInterval(() => navigate("left"), INTERVAL_MS);
-    return () => clearInterval(t);
-  }, [navigate, current]);
-
-  const onTouchStart = (e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0]?.clientX ?? null;
-    touchStartY.current = e.touches[0]?.clientY ?? null;
-  };
-  const onTouchEnd = (e: React.TouchEvent) => {
-    if (touchStartX.current === null) return;
-    const dx = (e.changedTouches[0]?.clientX ?? 0) - touchStartX.current;
-    const dy = (e.changedTouches[0]?.clientY ?? 0) - (touchStartY.current ?? 0);
-    touchStartX.current = null;
-    touchStartY.current = null;
-    if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) {
-      navigate(dx < 0 ? "left" : "right");
-    }
-  };
-
-  const currentQuote = QUOTES[current] ?? "";
-  const departingQuote = departing !== null ? (QUOTES[departing] ?? "") : "";
-
-  return (
-    <div
-      style={{
-        background: "linear-gradient(135deg, color-mix(in srgb, var(--c-pink) 12%, transparent) 0%, color-mix(in srgb, var(--c-pink) 8%, transparent) 100%)",
-        border: "1px solid color-mix(in srgb, var(--c-pink) 20%, transparent)",
-        borderRadius: "var(--r-xl)",
-        padding: "22px 22px 18px",
-        position: "relative",
-        overflow: "hidden",
-        touchAction: "pan-y",
-        userSelect: "none",
-      }}
-      onTouchStart={onTouchStart}
-      onTouchEnd={onTouchEnd}
-    >
-      <div style={{ position: "relative", minHeight: 108 }}>
-        {/* Departing quote */}
-        {departing !== null && (
-          <div
-            key={`d-${departing}`}
-            style={{
-              position: "absolute",
-              inset: 0,
-              pointerEvents: "none",
-              animation: `${slideDir === "left" ? "quote-out-left" : "quote-out-right"} ${ANIM_MS}ms var(--ease-ios) both`,
-            }}
-          >
-            <QuoteContent text={departingQuote} />
-          </div>
-        )}
-
-        {/* Current quote */}
-        <div
-          key={`c-${current}`}
-          style={{
-            animation: departing !== null
-              ? `${slideDir === "left" ? "quote-in-right" : "quote-in-left"} ${ANIM_MS}ms var(--ease-ios) both`
-              : "none",
-          }}
-        >
-          <QuoteContent text={currentQuote} />
-        </div>
-      </div>
-
-      {/* Auto-advance progress bar */}
-      <div style={{ height: 2, background: "var(--c-surface3)", borderRadius: 1, overflow: "hidden", marginTop: 18 }}>
-        <div
-          key={`p-${current}`}
-          style={{
-            height: "100%",
-            background: "linear-gradient(90deg, var(--c-pink), color-mix(in srgb, var(--c-pink) 75%, var(--c-bg)))",
-            animation: `quote-progress ${INTERVAL_MS}ms linear forwards`,
-          }}
-        />
-      </div>
-    </div>
-  );
-}
-
-function QuoteContent({ text }: { text: string }) {
-  return (
-    <>
-      <div style={{ fontSize: 9, color: "var(--c-pink)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "2px", marginBottom: 12 }}>
-        ✦ Daily Motivation
-      </div>
-      <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-0.5px", lineHeight: 1.4, color: "var(--c-text)" }}>
-        &ldquo;{text}&rdquo;
-      </div>
-    </>
-  );
 }
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
@@ -304,7 +144,7 @@ export function ClientDashboardView({
               <Eyebrow style={{ letterSpacing: "1px", marginBottom: 8 }}>
                 Viikon treenit
               </Eyebrow>
-              <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: "-1px", color: wcPct === 100 ? "var(--c-success)" : "var(--c-pink)", lineHeight: 1 }}>
+              <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: "-1px", color: wcPct === 100 ? "var(--c-success)" : "var(--c-text)", lineHeight: 1 }}>
                 {wcPct}%
               </div>
               <div style={{ fontSize: 12, color: "var(--c-text-muted)", marginTop: 6, marginBottom: 10 }}>
@@ -316,7 +156,7 @@ export function ClientDashboardView({
                   width: `${wcPct}%`,
                   background: wcPct === 100
                     ? "linear-gradient(90deg, var(--c-success), color-mix(in srgb, var(--c-success) 75%, #000))"
-                    : "linear-gradient(90deg,var(--c-pink),color-mix(in srgb, var(--c-pink) 75%, var(--c-bg)))",
+                    : "var(--c-cta-bg)",
                   borderRadius: 2,
                   minWidth: wcDone > 0 ? 4 : 0,
                 }} />
@@ -329,7 +169,7 @@ export function ClientDashboardView({
               <Eyebrow style={{ letterSpacing: "1px", marginBottom: 8 }}>
                 Viikon volyymi
               </Eyebrow>
-              <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: "-1px", color: "var(--c-pink)", lineHeight: 1 }}>
+              <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: "-1px", color: "var(--c-text)", lineHeight: 1 }}>
                 {volume >= 1000
                   ? `${(volume / 1000).toLocaleString("fi-FI", { maximumFractionDigits: 1 })}t`
                   : `${volume.toLocaleString("fi-FI")} kg`}
@@ -368,7 +208,7 @@ export function ClientDashboardView({
               return (
                 <div key={pr.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                   <div style={{ fontSize: 14, fontWeight: 600, color: "var(--c-text)" }}>{name}</div>
-                  <div style={{ fontSize: 13, color: "var(--c-pink)", fontWeight: 700, flexShrink: 0, marginLeft: 8 }}>{label}</div>
+                  <div style={{ fontSize: 13, color: "var(--c-text)", fontWeight: 700, flexShrink: 0, marginLeft: 8 }}>{label}</div>
                 </div>
               );
             })}
@@ -377,21 +217,16 @@ export function ClientDashboardView({
       )}
 
       {/* Bodyweight quick-log — sits right above the hero so logging the
-          morning weight and starting the workout are a thumb-pair.
-          When the BW card isn't active (e.g. user isn't tracking weight),
-          promote the QuoteCard into this slot so the fold doesn't get a
-          dead gap between the last stat and the hero. */}
-      {bwQuickLog
-        ? <div style={{ marginBottom: 16, ...enterStyle(170) }}>{bwQuickLog}</div>
-        : <div style={{ marginBottom: 16, ...enterStyle(170) }}><QuoteCard /></div>}
+          morning weight and starting the workout are a thumb-pair. */}
+      {bwQuickLog && <div style={{ marginBottom: 16, ...enterStyle(170) }}>{bwQuickLog}</div>}
 
       {/* HERO: Next workout — the dashboard's reason to exist.
           `marginTop: auto` inside the fold section pushes it to the
           bottom of the visible viewport on landing. */}
       {workout ? (
         <div style={{
-          background: "linear-gradient(135deg,color-mix(in srgb, var(--c-pink) 18%, transparent) 0%,color-mix(in srgb, var(--c-pink) 12%, transparent) 100%)",
-          border: "1px solid color-mix(in srgb, var(--c-pink) 30%, transparent)",
+          background: "var(--c-hero-bg)",
+          border: "1px solid var(--c-hero-border)",
           borderRadius: "var(--r-2xl)",
           padding: "22px 22px 20px",
           marginBottom: 16,
@@ -417,9 +252,9 @@ export function ClientDashboardView({
                   style={{
                     position: "absolute", top: 14, right: 14,
                     width: 34, height: 34, borderRadius: "50%",
-                    border: "1px solid color-mix(in srgb, var(--c-pink) 35%, transparent)",
-                    background: "color-mix(in srgb, var(--c-pink) 10%, transparent)",
-                    color: "var(--c-pink)",
+                    border: "1px solid var(--c-hero-border)",
+                    background: "var(--c-pink-dim)",
+                    color: "var(--c-text)",
                     fontSize: 13, fontWeight: 700,
                     display: "flex", alignItems: "center", justifyContent: "center",
                     cursor: "pointer",
@@ -459,14 +294,14 @@ export function ClientDashboardView({
               display: "block",
               width: "100%",
               padding: "18px",
-              background: "var(--c-pink)",
+              background: "var(--c-cta-bg)",
               borderRadius: "var(--r-lg)",
-              color: "var(--c-pink-fg, #fff)",
+              color: "var(--c-cta-fg, #fff)",
               fontSize: 17,
               fontWeight: 800,
               textAlign: "center",
               textDecoration: "none",
-              boxShadow: "0 6px 24px var(--c-pink-glow)",
+              boxShadow: "0 6px 24px var(--c-cta-glow)",
               letterSpacing: "-0.3px",
             }}
           >
@@ -510,10 +345,6 @@ export function ClientDashboardView({
           <Subtitle>{workout.program_days.program_weeks.description}</Subtitle>
         </SurfaceCard>
       )}
-
-      {/* Motivational quotes — only rendered here when the BW slot used
-          it; if BW promoted the quote into the fold, don't repeat it. */}
-      {bwQuickLog && <div style={enterStyle(340)}><QuoteCard /></div>}
     </div>
   );
 }

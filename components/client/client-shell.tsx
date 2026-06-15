@@ -300,7 +300,7 @@ function SettingsPanel({ me, coach, closing, onAnimationEnd, hasUnread, markRead
           {hasUnread && (
             <span style={{
               fontSize: 10, fontWeight: 700, letterSpacing: "0.04em",
-              color: "var(--c-pink-fg, #fff)", background: "var(--c-pink)",
+              color: "var(--c-cta-fg, #fff)", background: "var(--c-cta-bg)",
               padding: "1px 7px", borderRadius: "var(--r-pill)",
             }}>
               Uutta
@@ -616,7 +616,7 @@ export function ClientShell({
               style={{
                 position: "absolute", top: -2, right: -2,
                 width: 10, height: 10, borderRadius: "50%",
-                background: "var(--c-pink)",
+                background: "var(--c-cta-bg)",
                 border: "2px solid var(--c-bg)",
                 pointerEvents: "none",
               }}
@@ -772,7 +772,7 @@ export function ClientShell({
                       left: "30%",
                       width: "40%",
                       height: 2,
-                      background: "var(--c-pink)",
+                      background: "var(--c-cta-bg)",
                       borderRadius: "0 0 2px 2px",
                       boxShadow: "0 0 8px var(--c-pink-glow)",
                     }}
@@ -788,7 +788,7 @@ export function ClientShell({
                     <span style={{
                       position: "absolute", top: -4, right: -6,
                       minWidth: 16, height: 16, borderRadius: "var(--r-sm)",
-                      background: "var(--c-pink)", color: "var(--c-pink-fg, #fff)",
+                      background: "var(--c-cta-bg)", color: "var(--c-cta-fg, #fff)",
                       fontSize: 10, fontWeight: 700, lineHeight: "16px",
                       textAlign: "center", padding: "0 3px",
                     }}>
