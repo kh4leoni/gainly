@@ -49,23 +49,17 @@ function useDndSensors() {
   );
 }
 import {
-  Check,
   ChevronLeft,
   ChevronRight,
-  ChevronsDown,
   ChevronsLeft,
   ChevronsRight,
-  ChevronsUp,
   Copy,
   GripVertical,
   History,
   Pencil,
   Plus,
-  Search,
   Settings2,
-  TrendingUp,
   X,
-  MoreHorizontal,
   ArrowUpRight,
   ClipboardList,
 } from "lucide-react";
@@ -242,16 +236,6 @@ function plannedSetsLine(cfgs: SetConfig[]): string {
   return buildSetsLine(cfgs.map((s) => ({ reps: s.reps, weight: s.weight, rpe: s.rpe })));
 }
 
-function achievedSetsLine(logs: CompletedSet[]): string {
-  return buildSetsLine(
-    logs.map((l) => ({
-      reps: l.reps != null ? String(l.reps) : null,
-      weight: l.weight,
-      rpe: l.rpe != null ? String(l.rpe) : null,
-    }))
-  );
-}
-
 function shortenExName(name: string): string {
   if (name.length <= 16) return name;
   return name
@@ -263,21 +247,6 @@ function shortenExName(name: string): string {
     .replace("Pohjeprässi", "Pohjepr.")
     .replace("Hauiskääntö", "Hauiskä.")
     .slice(0, 18);
-}
-
-// Day completion status: done / today / future
-function dayStatus(
-  dayId: string,
-  completion: ProgramCompletion | undefined,
-  showCompletion: boolean
-): "done" | "today" | "future" {
-  if (!showCompletion || !completion) return "future";
-  const sw = completion.byDayId[dayId];
-  if (!sw) return "future";
-  if (sw.status === "completed") return "done";
-  const today = new Date().toISOString().slice(0, 10);
-  if (sw.scheduled_date && sw.scheduled_date.slice(0, 10) === today) return "today";
-  return "future";
 }
 
 // Logs grouped by program_exercise_id
@@ -379,12 +348,8 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
   };
 
   // ── Layout state ──
-  const [phaseView, setPhaseView] = useState<"expanded" | "compact" | "off">("compact");
-  // Off by default: the rail eats ~230px of horizontal space, which on
-  // smaller Safari windows squeezed the set table so the RPE column got
-  // clipped. Coach opts in via the "Lisäasetukset oikealla" toggle.
-  const [showSummaryRail, setShowSummaryRail] = useState(false);
-  const [showCompletion] = useState(true);
+  // Two overview modes only (Iso grid / Riband). Chosen behind the gear menu.
+  const [phaseView, setPhaseView] = useState<"expanded" | "compact">("compact");
 
   // ── Selection state ──
   // Memoize blocks so it's referentially stable when program is unchanged.
@@ -432,6 +397,26 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
       setSelExIdx(0);
     }
   }, [block, week, day]);
+
+  // Keyboard: [ / ] (or Alt+↑/↓) cycle exercises in the open day; ignored while
+  // typing in a field so it never fights the inputs.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const el = e.target as HTMLElement | null;
+      if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable)) return;
+      const count = day?.program_exercises.length ?? 0;
+      if (count === 0) return;
+      if (e.key === "]" || (e.altKey && e.key === "ArrowDown")) {
+        e.preventDefault();
+        setSelExIdx((i) => Math.min(count - 1, i + 1));
+      } else if (e.key === "[" || (e.altKey && e.key === "ArrowUp")) {
+        e.preventDefault();
+        setSelExIdx((i) => Math.max(0, i - 1));
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [day]);
 
   // ── Topbar state ──
   const [saveLabel, setSaveLabel] = useState("Tallenna");
@@ -1240,16 +1225,10 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
 
       {/* Topbar */}
       <Topbar
-        programId={programId}
         programTitle={program.title}
-        saveLabel={saveLabel}
-        saving={rescheduleMutation.isPending}
-        onSave={handleSave}
         onAddBlock={() => addBlock.mutate()}
         phaseView={phaseView}
         setPhaseView={setPhaseView}
-        showSummaryRail={showSummaryRail}
-        setShowSummaryRail={setShowSummaryRail}
         isTemplate={clientId === null}
       />
 
@@ -1293,8 +1272,6 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
         <PhaseOverview
           block={block}
           weeks={weeks}
-          completion={completion}
-          showCompletion={showCompletion}
           selWeekId={week?.id ?? null}
           selDayId={day?.id ?? null}
           onPick={(weekId, dayId) => {
@@ -1303,7 +1280,6 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
             setSelExIdx(0);
           }}
           onAddWeek={() => addWeek.mutate(block.id)}
-          onCollapse={() => setPhaseView("compact")}
           onRequestDeleteWeek={(w) =>
             setPendingDeleteWeek({ id: w.id, label: `Vk ${w.week_number}${w.name?.trim() ? ` — ${w.name.trim()}` : ""}` })
           }
@@ -1312,8 +1288,6 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
       {phaseView === "compact" && (
         <PhaseRibbon
           weeks={weeks}
-          completion={completion}
-          showCompletion={showCompletion}
           selWeekId={week?.id ?? null}
           selDayId={day?.id ?? null}
           onPick={(weekId, dayId) => {
@@ -1322,7 +1296,6 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
             setSelExIdx(0);
           }}
           onAddWeek={() => addWeek.mutate(block.id)}
-          onExpand={() => setPhaseView("expanded")}
           onRequestDeleteWeek={(w) =>
             setPendingDeleteWeek({ id: w.id, label: `Vk ${w.week_number}${w.name?.trim() ? ` — ${w.name.trim()}` : ""}` })
           }
@@ -1420,12 +1393,41 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
           can't fit, so the editor keeps a usable width instead of being squeezed
           into a narrow strip between the fixed session/exercise columns. */}
       <div style={{ display: "flex", flex: 1, minHeight: 0, overflowX: "auto", overflowY: "hidden", gap: 12, padding: 12 }}>
+        {!week && (
+          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, textAlign: "center", maxWidth: 340 }}>
+              <div
+                style={{
+                  width: 52,
+                  height: 52,
+                  borderRadius: 14,
+                  background: "var(--bg-2)",
+                  border: "1px solid var(--line)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "var(--fg-3)",
+                }}
+              >
+                <Plus size={22} />
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                <div style={{ fontSize: 15, fontWeight: 600, color: "var(--fg-0)" }}>Ei viikkoja vielä</div>
+                <p style={{ fontSize: 13, color: "var(--fg-2)", margin: 0, lineHeight: 1.5 }}>
+                  Aloita lisäämällä ensimmäinen viikko. Sen jälkeen voit luoda treenit ja liikkeet.
+                </p>
+              </div>
+              <Mv2Button kind="primary" onClick={() => addWeek.mutate(block.id)}>
+                <Plus size={14} /> Lisää ensimmäinen viikko
+              </Mv2Button>
+            </div>
+          </div>
+        )}
         {week && (
           <SessionsColumn
             week={week}
+            block={block}
             selDayId={day?.id ?? null}
-            completion={completion}
-            showCompletion={showCompletion}
             onSelect={(dayId) => {
               setSelDayId(dayId);
               setSelExIdx(0);
@@ -1436,6 +1438,10 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
               setPendingDeleteDay({ id: d.id, weekId: week.id, label: dayDisplayName(d) })
             }
             onRenameWeek={(name) => renameWeek.mutate({ weekId: week.id, name })}
+            onDuplicateWeek={() => duplicateWeek.mutate({ weekId: week.id, blockId: block.id })}
+            onSetActiveWeek={() => setActiveWeek.mutate(week.id)}
+            onClearActiveWeek={() => clearActiveWeek.mutate()}
+            onExportPdf={() => exportWeekToPdf(week, block)}
           />
         )}
         {day && (
@@ -1518,17 +1524,40 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
             <EmptyDetail onAdd={() => addExerciseMut.mutate(day.id)} />
           )}
         </div>
-
-        {showSummaryRail && week && (
-          <SummaryRail
-            week={week}
-            block={block}
-            onDuplicateWeek={() => duplicateWeek.mutate({ weekId: week.id, blockId: block.id })}
-            onSetActiveWeek={() => setActiveWeek.mutate(week.id)}
-            onClearActiveWeek={() => clearActiveWeek.mutate()}
-          />
-        )}
       </div>
+
+      {/* Persistent save — floats bottom-right so it always follows scroll.
+          Only for client programs; templates auto-save. */}
+      {clientId !== null && (
+        <button
+          onClick={handleSave}
+          disabled={rescheduleMutation.isPending}
+          title="Tallenna ja ajasta ohjelma"
+          style={{
+            position: "fixed",
+            right: 24,
+            bottom: 24,
+            zIndex: 60,
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 7,
+            padding: "11px 20px",
+            borderRadius: 13,
+            border: "none",
+            background: "var(--cta-bg)",
+            color: "var(--cta-fg)",
+            fontFamily: "inherit",
+            fontSize: 14,
+            fontWeight: 700,
+            letterSpacing: "-0.01em",
+            cursor: rescheduleMutation.isPending ? "default" : "pointer",
+            boxShadow: "0 8px 24px var(--cta-glow), 0 2px 8px rgba(0,0,0,0.25)",
+            opacity: rescheduleMutation.isPending ? 0.7 : 1,
+          }}
+        >
+          {rescheduleMutation.isPending ? "Tallennetaan…" : saveLabel}
+        </button>
+      )}
     </div>
   );
 }
@@ -1536,31 +1565,18 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
 // ── Topbar ────────────────────────────────────────────────────────────────────
 
 function Topbar({
-  programId,
   programTitle,
-  saveLabel,
-  saving,
-  onSave,
   onAddBlock,
   phaseView,
   setPhaseView,
-  showSummaryRail,
-  setShowSummaryRail,
   isTemplate,
 }: {
-  programId: string;
   programTitle: string;
-  saveLabel: string;
-  saving: boolean;
-  onSave: () => void;
   onAddBlock: () => void;
-  phaseView: "expanded" | "compact" | "off";
-  setPhaseView: (v: "expanded" | "compact" | "off") => void;
-  showSummaryRail: boolean;
-  setShowSummaryRail: (v: boolean) => void;
+  phaseView: "expanded" | "compact";
+  setPhaseView: (v: "expanded" | "compact") => void;
   isTemplate: boolean;
 }) {
-  const [menuOpen, setMenuOpen] = useState(false);
   return (
     <div
       style={{
@@ -1588,113 +1604,49 @@ function Topbar({
       </div>
 
       <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6 }}>
-        <div style={{ position: "relative" }}>
-          <input
-            placeholder="Hae liikettä, viikkoa…"
-            style={{
-              background: "var(--bg-2)",
-              border: "1px solid var(--line)",
-              borderRadius: 7,
-              color: "var(--fg-0)",
-              padding: "6px 10px 6px 28px",
-              fontSize: 12,
-              width: 200,
-              outline: "none",
-            }}
-          />
-          <Search
-            size={12}
-            style={{ position: "absolute", left: 9, top: "50%", transform: "translateY(-50%)", color: "var(--fg-3)" }}
-          />
-        </div>
-        {!isTemplate && (
-          <Link
-            href={`/coach/client-programs/${programId}/edit-v1`}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 5,
-              padding: "6px 10px",
-              borderRadius: 6,
-              border: "1px dashed var(--accent-line)",
-              background: "transparent",
-              color: "var(--accent-fg)",
-              fontSize: 11,
-              fontWeight: 500,
-              textDecoration: "none",
-            }}
-            title="Vaihda vanhaan editoriin"
-          >
-            ← v1
-          </Link>
-        )}
         <Mv2Button kind="ghost" onClick={onAddBlock}>
           <Plus size={13} /> Jakso
         </Mv2Button>
-        <div style={{ position: "relative" }}>
-          <Mv2Button kind="ghost" onClick={() => setMenuOpen((o) => !o)} title="Näkymäasetukset">
-            <Settings2 size={13} />
-          </Mv2Button>
-          {menuOpen && (
-            <>
-              <div onClick={() => setMenuOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
-              <div
+        <div
+          style={{
+            display: "inline-flex",
+            gap: 2,
+            padding: 2,
+            background: "var(--bg-2)",
+            border: "1px solid var(--line)",
+            borderRadius: 11,
+          }}
+        >
+          {(["compact", "expanded"] as const).map((v) => {
+            const active = phaseView === v;
+            return (
+              <button
+                key={v}
+                onClick={() => setPhaseView(v)}
+                title={v === "expanded" ? "Iso ruudukko" : "Tiivis nauha"}
                 style={{
-                  position: "absolute",
-                  right: 0,
-                  top: "calc(100% + 4px)",
-                  zIndex: 41,
-                  background: "var(--bg-3)",
-                  border: "1px solid var(--line-2)",
-                  borderRadius: 10,
-                  boxShadow: "0 12px 32px rgba(0,0,0,0.5)",
-                  padding: 10,
-                  width: 230,
+                  padding: "5px 12px",
+                  borderRadius: 8,
+                  border: "none",
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                  fontSize: 12.5,
+                  fontWeight: 600,
+                  background: active ? "var(--bg-4)" : "transparent",
+                  color: active ? "var(--fg-0)" : "var(--fg-2)",
+                  boxShadow: active ? "0 1px 2px rgba(0,0,0,0.25)" : "none",
+                  transition: "background 0.12s, color 0.12s",
                 }}
               >
-                <div style={{ fontSize: 10, color: "var(--fg-3)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>
-                  Jakson yleiskuva
-                </div>
-                <div style={{ display: "flex", gap: 4, marginBottom: 12 }}>
-                  {(["expanded", "compact", "off"] as const).map((v) => (
-                    <button
-                      key={v}
-                      onClick={() => setPhaseView(v)}
-                      style={{
-                        flex: 1,
-                        padding: "6px 0",
-                        borderRadius: 6,
-                        background: phaseView === v ? "var(--accent-soft)" : "transparent",
-                        border: `1px solid ${phaseView === v ? "var(--accent-line)" : "var(--line)"}`,
-                        color: phaseView === v ? "var(--accent-fg)" : "var(--fg-2)",
-                        fontSize: 11.5,
-                        cursor: "pointer",
-                      }}
-                    >
-                      {v === "expanded" ? "Iso" : v === "compact" ? "Riband" : "Pois"}
-                    </button>
-                  ))}
-                </div>
-                <label style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 12, color: "var(--fg-1)", padding: "4px 0", cursor: "pointer" }}>
-                  Lisäasetukset oikealla
-                  <input
-                    type="checkbox"
-                    checked={showSummaryRail}
-                    onChange={(e) => setShowSummaryRail(e.target.checked)}
-                  />
-                </label>
-              </div>
-            </>
-          )}
+                {v === "expanded" ? "Iso ruudukko" : "Tiivis nauha"}
+              </button>
+            );
+          })}
         </div>
-        {isTemplate ? (
-          <span style={{ fontSize: 11, color: "var(--fg-3)", paddingLeft: 4 }}>
+        {isTemplate && (
+          <span style={{ fontSize: 12, color: "var(--fg-3)", paddingLeft: 4 }}>
             Muutokset tallentuvat automaattisesti
           </span>
-        ) : (
-          <Mv2Button kind="primary" onClick={onSave} disabled={saving}>
-            {saving ? "Tallennetaan…" : saveLabel}
-          </Mv2Button>
         )}
       </div>
     </div>
@@ -1720,10 +1672,10 @@ function Mv2Button({
     display: "inline-flex",
     alignItems: "center",
     gap: 5,
-    fontSize: size === "sm" ? 11 : 12,
-    fontWeight: 500,
-    padding: size === "sm" ? "4px 8px" : "6px 10px",
-    borderRadius: 6,
+    fontSize: size === "sm" ? 12 : 13,
+    fontWeight: 600,
+    padding: size === "sm" ? "5px 9px" : "7px 12px",
+    borderRadius: 9,
     cursor: disabled ? "not-allowed" : "pointer",
     opacity: disabled ? 0.5 : 1,
     border: "1px solid transparent",
@@ -1738,10 +1690,12 @@ function Mv2Button({
     base.background = "var(--bg-2)";
   }
   if (kind === "primary") {
-    base.background = "var(--accent-fg)";
-    base.borderColor = "var(--accent-fg)";
-    base.color = "var(--accent-contrast)";
-    base.fontWeight = 600;
+    // The one brand accent: rainbow gradient (default) / solid Gainly pink (co-brand).
+    base.background = "var(--cta-bg)";
+    base.borderColor = "transparent";
+    base.color = "var(--cta-fg)";
+    base.fontWeight = 700;
+    base.boxShadow = "0 4px 14px var(--cta-glow)";
   }
   if (kind === "outline") {
     base.border = "1px solid var(--line-2)";
@@ -1817,11 +1771,11 @@ function PhaseStrip({
       >
         <ChevronLeft size={13} />
       </button>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 }}>
-        <span style={{ fontSize: 10, fontWeight: 700, color: "var(--accent-fg)", letterSpacing: "0.05em", textTransform: "uppercase", flexShrink: 0 }}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 10, minWidth: 0, flex: 1 }}>
+        <span style={{ fontSize: 11, fontWeight: 700, color: "var(--accent-fg)", letterSpacing: "0.06em", textTransform: "uppercase", flexShrink: 0 }}>
           Jakso {blockNumber}
         </span>
-        <div style={{ fontSize: 14, fontWeight: 600, minWidth: 0, flex: 1, maxWidth: 280 }}>
+        <div style={{ fontFamily: "var(--font-disp)", fontSize: 21, fontWeight: 700, letterSpacing: "-0.02em", minWidth: 0, flex: 1, maxWidth: 320 }}>
           <EditableTitle
             value={blockName}
             fallback={`Jakso ${blockNumber}`}
@@ -1849,23 +1803,20 @@ function PhaseStrip({
         <ChevronRight size={13} />
       </button>
       <div style={{ width: 1, height: 18, background: "var(--line)" }} />
-      <div style={{ display: "flex", gap: 12, color: "var(--fg-2)", fontSize: 12 }}>
+      <div style={{ display: "flex", gap: 14, color: "var(--fg-2)", fontSize: 13 }}>
         <span>
-          <b style={{ color: "var(--fg-0)" }}>{weekCount}</b> viikkoa
+          <b style={{ color: "var(--fg-0)", fontWeight: 700 }}>{weekCount}</b> viikkoa
         </span>
         <span>
-          <b style={{ color: "var(--fg-0)" }}>{workoutCount}</b> treeniä
+          <b style={{ color: "var(--fg-0)", fontWeight: 700 }}>{workoutCount}</b> treeniä
         </span>
         <span>
-          <b style={{ color: "var(--fg-0)" }}>{setCount}</b> sarjaa
+          <b style={{ color: "var(--fg-0)", fontWeight: 700 }}>{setCount}</b> sarjaa
         </span>
       </div>
       <div style={{ marginLeft: "auto", display: "flex", gap: 6, position: "relative" }}>
-        <Mv2Button kind="ghost" size="sm" onClick={onDuplicate}>
-          <Copy size={11} /> Monista jakso
-        </Mv2Button>
-        <Mv2Button kind="ghost" size="sm" title="Lisää" onClick={() => setMenuOpen((o) => !o)}>
-          <MoreHorizontal size={12} />
+        <Mv2Button kind="ghost" size="sm" title="Jakson toiminnot" onClick={() => setMenuOpen((o) => !o)}>
+          <Settings2 size={12} /> Jakso
         </Mv2Button>
         {menuOpen && (
           <>
@@ -1878,12 +1829,37 @@ function PhaseStrip({
                 zIndex: 51,
                 background: "var(--bg-3)",
                 border: "1px solid var(--line-2)",
-                borderRadius: 8,
+                borderRadius: 12,
                 boxShadow: "0 12px 32px rgba(0,0,0,0.5)",
-                padding: 4,
-                minWidth: 180,
+                padding: 5,
+                minWidth: 200,
               }}
             >
+              <button
+                onClick={() => {
+                  setMenuOpen(false);
+                  onDuplicate();
+                }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  width: "100%",
+                  padding: "7px 10px",
+                  background: "transparent",
+                  border: "none",
+                  borderRadius: 5,
+                  color: "var(--fg-1)",
+                  fontSize: 12.5,
+                  fontFamily: "inherit",
+                  cursor: "pointer",
+                  textAlign: "left",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "var(--row-hover-soft)")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+              >
+                <Copy size={12} /> Monista jakso
+              </button>
               <button
                 onClick={() => {
                   setMenuOpen(false);
@@ -1927,24 +1903,18 @@ function PhaseStrip({
 function PhaseOverview({
   block,
   weeks,
-  completion,
-  showCompletion,
   selWeekId,
   selDayId,
   onPick,
   onAddWeek,
-  onCollapse,
   onRequestDeleteWeek,
 }: {
   block: Block;
   weeks: Week[];
-  completion: ProgramCompletion | undefined;
-  showCompletion: boolean;
   selWeekId: string | null;
   selDayId: string | null;
   onPick: (weekId: string, dayId: string) => void;
   onAddWeek: () => void;
-  onCollapse: () => void;
   onRequestDeleteWeek: (week: Week) => void;
 }) {
   // Determine unique day_numbers across phase (rows)
@@ -2013,39 +1983,6 @@ function PhaseOverview({
         flex: "0 0 auto",
       }}
     >
-      <div
-        style={{
-          position: "sticky",
-          top: 0,
-          zIndex: 5,
-          background: "var(--bg-1)",
-          padding: "10px 18px",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          boxShadow: "0 1px 0 var(--line)",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 10, fontWeight: 700, color: "var(--accent-fg)", letterSpacing: "0.05em", textTransform: "uppercase" }}>
-            Jakson yleiskuva
-          </span>
-          <span style={{ fontSize: 11, color: "var(--fg-3)" }}>
-            kaikki treenit kerralla · klikkaa solua avataksesi alle
-          </span>
-        </div>
-        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-          <div style={{ display: "flex", gap: 10, fontSize: 10.5, color: "var(--fg-3)" }}>
-            <Legend dot="var(--green)">tehty</Legend>
-            <Legend dot="var(--accent-fg)">tänään</Legend>
-            <Legend square>tuleva</Legend>
-          </div>
-          <Mv2Button kind="ghost" size="sm" onClick={onCollapse} title="Tiivistä yleiskuva">
-            <ChevronsUp size={12} /> Tiivistä
-          </Mv2Button>
-        </div>
-      </div>
-
       <div style={{ overflowX: "auto" }}>
       <div
         style={{
@@ -2082,23 +2019,25 @@ function PhaseOverview({
                 position: "relative",
               }}
             >
-              <span style={{ fontFamily: "ui-monospace, JetBrains Mono, monospace", fontSize: 10, color: sel ? "var(--accent-fg)" : "var(--fg-2)", fontWeight: 600, letterSpacing: "0.02em" }}>
-                VK{w.week_number}
+              <span style={{ fontSize: 12.5, fontWeight: 700, color: sel ? "var(--accent-fg)" : "var(--fg-0)", whiteSpace: "nowrap", flexShrink: 0 }}>
+                Viikko {w.week_number}
               </span>
-              <span
-                style={{
-                  fontSize: 11.5,
-                  fontWeight: 500,
-                  color: sel ? "var(--fg-0)" : "var(--fg-1)",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                  minWidth: 0,
-                  flex: 1,
-                }}
-              >
-                {w.name?.trim() || `Viikko ${w.week_number}`}
-              </span>
+              {w.name?.trim() && (
+                <span
+                  style={{
+                    fontSize: 11.5,
+                    fontWeight: 500,
+                    color: sel ? "var(--fg-1)" : "var(--fg-2)",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    minWidth: 0,
+                    flex: 1,
+                  }}
+                >
+                  {w.name.trim()}
+                </span>
+              )}
               {w.is_active && (
                 <span
                   style={{
@@ -2160,8 +2099,6 @@ function PhaseOverview({
             key={dn}
             dayNumber={dn}
             weeks={weeks}
-            completion={completion}
-            showCompletion={showCompletion}
             selWeekId={selWeekId}
             selDayId={selDayId}
             onPick={onPick}
@@ -2173,35 +2110,15 @@ function PhaseOverview({
   );
 }
 
-function Legend({ dot, square, children }: { dot?: string; square?: boolean; children: ReactNode }) {
-  return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-      <span
-        style={{
-          width: 8,
-          height: 8,
-          borderRadius: square ? 2 : "50%",
-          background: square ? "var(--chip-bg-mid)" : dot,
-        }}
-      />
-      {children}
-    </span>
-  );
-}
-
 function DayRow({
   dayNumber,
   weeks,
-  completion,
-  showCompletion,
   selWeekId,
   selDayId,
   onPick,
 }: {
   dayNumber: number;
   weeks: Week[];
-  completion: ProgramCompletion | undefined;
-  showCompletion: boolean;
   selWeekId: string | null;
   selDayId: string | null;
   onPick: (weekId: string, dayId: string) => void;
@@ -2250,15 +2167,11 @@ function DayRow({
           );
         }
         const selected = w.id === selWeekId && d.id === selDayId;
-        const status = dayStatus(d.id, completion, showCompletion);
         return (
           <OverviewCell
             key={d.id}
             day={d}
-            week={w}
-            completion={completion}
             selected={selected}
-            status={status}
             onClick={() => onPick(w.id, d.id)}
           />
         );
@@ -2270,34 +2183,23 @@ function DayRow({
 
 function OverviewCell({
   day,
-  week,
-  completion,
   selected,
-  status,
   onClick,
 }: {
   day: Day;
-  week: Week;
-  completion: ProgramCompletion | undefined;
   selected: boolean;
-  status: "done" | "today" | "future";
   onClick: () => void;
 }) {
   const c = dayColor(day.day_number);
-  const isFuture = status === "future";
-  const isDone = status === "done";
-  const peLogs = logsByPe(completion, day.id);
   return (
     <div
       onClick={onClick}
       style={{
-        background: selected ? c.bg : "var(--bg-2)",
-        border: `1px solid ${selected ? c.fg : "var(--line)"}`,
-        borderLeft: `3px solid ${c.fg}`,
+        background: selected ? c.bg : `color-mix(in srgb, ${c.fg} 6%, var(--bg-2))`,
+        border: `1px solid ${selected ? c.fg : `color-mix(in srgb, ${c.fg} 35%, var(--line))`}`,
         borderRadius: 7,
-        padding: "7px 9px 8px 10px",
+        padding: "7px 9px 8px 9px",
         cursor: "pointer",
-        opacity: isFuture ? 0.85 : 1,
         transition: "background 0.12s, border-color 0.12s",
         display: "flex",
         flexDirection: "column",
@@ -2309,7 +2211,6 @@ function OverviewCell({
       <div
         style={{
           display: "flex",
-          justifyContent: "space-between",
           alignItems: "center",
           gap: 5,
           paddingBottom: 4,
@@ -2329,67 +2230,20 @@ function OverviewCell({
         >
           {dayDisplayName(day, `Treeni ${day.day_number}`)}
         </span>
-        {isDone && (
-          <span
-            style={{
-              flex: "0 0 auto",
-              color: "var(--green)",
-              fontSize: 10.5,
-              fontWeight: 700,
-              letterSpacing: "0.05em",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 2,
-            }}
-          >
-            <Check size={10} /> TEHTY
-          </span>
-        )}
-        {status === "today" && (
-          <span
-            style={{
-              flex: "0 0 auto",
-              color: "var(--accent-fg)",
-              fontSize: 10.5,
-              fontWeight: 700,
-              letterSpacing: "0.05em",
-            }}
-          >
-            ● TÄNÄÄN
-          </span>
-        )}
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
         {day.program_exercises.map((ex) => (
-          <OverviewExerciseRow
-            key={ex.id}
-            ex={ex}
-            accent={c.fg}
-            isDone={isDone}
-            logs={peLogs.get(ex.id) ?? []}
-          />
+          <OverviewExerciseRow key={ex.id} ex={ex} />
         ))}
       </div>
     </div>
   );
 }
 
-function OverviewExerciseRow({
-  ex,
-  accent,
-  isDone,
-  logs,
-}: {
-  ex: ProgramExerciseRow;
-  accent: string;
-  isDone: boolean;
-  logs: CompletedSet[];
-}) {
+function OverviewExerciseRow({ ex }: { ex: ProgramExerciseRow }) {
   const cfgs = configsFromExercise(ex);
   const plannedLine = plannedSetsLine(cfgs);
   const exName = ex.exercises?.name ?? "—";
-  const plannedColor = isDone ? "var(--fg-2)" : "var(--fg-1)";
-  const hasLogs = isDone && logs.length > 0;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 2, lineHeight: 1.3 }}>
       <div style={{ fontSize: 12.5, fontWeight: 500, color: "var(--fg-0)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -2399,26 +2253,12 @@ function OverviewExerciseRow({
         style={{
           fontFamily: "ui-monospace, JetBrains Mono, monospace",
           fontSize: 11.5,
-          color: plannedColor,
+          color: "var(--fg-1)",
           lineHeight: 1.4,
         }}
       >
         {plannedLine}
       </div>
-      {hasLogs && (
-        <div
-          style={{
-            fontFamily: "ui-monospace, JetBrains Mono, monospace",
-            fontSize: 11.5,
-            color: accent,
-            fontWeight: 600,
-            lineHeight: 1.4,
-          }}
-        >
-          <span style={{ marginRight: 3 }}>✓</span>
-          {achievedSetsLine(logs)}
-        </div>
-      )}
     </div>
   );
 }
@@ -2427,23 +2267,17 @@ function OverviewExerciseRow({
 
 function PhaseRibbon({
   weeks,
-  completion,
-  showCompletion,
   selWeekId,
   selDayId,
   onPick,
   onAddWeek,
-  onExpand,
   onRequestDeleteWeek,
 }: {
   weeks: Week[];
-  completion: ProgramCompletion | undefined;
-  showCompletion: boolean;
   selWeekId: string | null;
   selDayId: string | null;
   onPick: (weekId: string, dayId: string) => void;
   onAddWeek: () => void;
-  onExpand: () => void;
   onRequestDeleteWeek: (week: Week) => void;
 }) {
   return (
@@ -2455,24 +2289,12 @@ function PhaseRibbon({
         flex: "0 0 auto",
       }}
     >
-      {/* Header — mirrors PhaseOverview so the toggle button stays in the same spot */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 10, fontWeight: 700, color: "var(--accent-fg)", letterSpacing: "0.05em", textTransform: "uppercase" }}>
-            Jakson yleiskuva
-          </span>
-          <span style={{ fontSize: 11, color: "var(--fg-3)" }}>tiivistetty · klikkaa solua avataksesi alle</span>
-        </div>
-        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-          <div style={{ display: "flex", gap: 10, fontSize: 10.5, color: "var(--fg-3)" }}>
-            <Legend dot="var(--green)">tehty</Legend>
-            <Legend dot="var(--accent-fg)">tänään</Legend>
-            <Legend square>tuleva</Legend>
-          </div>
-          <Mv2Button kind="ghost" size="sm" onClick={onExpand} title="Laajenna yleiskuva">
-            <ChevronsDown size={12} /> Laajenna
-          </Mv2Button>
-        </div>
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+        <span style={{ fontSize: 10, fontWeight: 700, color: "var(--accent-fg)", letterSpacing: "0.05em", textTransform: "uppercase" }}>
+          Jakson yleiskuva
+        </span>
+        <span style={{ fontSize: 11, color: "var(--fg-3)" }}>klikkaa solua avataksesi alle</span>
       </div>
 
       <div
@@ -2521,11 +2343,11 @@ function PhaseRibbon({
               />
             )}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 4 }}>
-              <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, fontWeight: 600, color: isSel ? "var(--accent-fg)" : "var(--fg-2)" }}>
-                VK{w.week_number}
+              <span style={{ fontSize: 13, fontWeight: 700, color: isSel ? "var(--accent-fg)" : "var(--fg-0)" }}>
+                Viikko {w.week_number}
               </span>
               <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 9.5, color: "var(--fg-3)" }}>
+                <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, color: "var(--fg-3)" }}>
                   {setCount}
                 </span>
                 <button
@@ -2554,13 +2376,14 @@ function PhaseRibbon({
                 </button>
               </div>
             </div>
-            <div style={{ fontSize: 11.5, fontWeight: 500, color: isSel ? "var(--fg-0)" : "var(--fg-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {w.name?.trim() || `Viikko ${w.week_number}`}
-            </div>
+            {w.name?.trim() && (
+              <div style={{ fontSize: 11.5, fontWeight: 500, color: isSel ? "var(--fg-1)" : "var(--fg-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {w.name.trim()}
+              </div>
+            )}
             <div style={{ display: "flex", gap: 3, marginTop: 1 }}>
               {w.program_days.map((d) => {
                 const c = dayColor(d.day_number);
-                const status = dayStatus(d.id, completion, showCompletion);
                 const cellSel = isSel && d.id === selDayId;
                 return (
                   <div
@@ -2579,8 +2402,6 @@ function PhaseRibbon({
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      position: "relative",
-                      opacity: status === "future" ? 0.55 : 1,
                       cursor: "pointer",
                       padding: "0 4px",
                     }}
@@ -2599,19 +2420,6 @@ function PhaseRibbon({
                     >
                       {dayDisplayName(d)}
                     </span>
-                    {status === "done" && (
-                      <span
-                        style={{
-                          position: "absolute",
-                          bottom: 1,
-                          right: 1,
-                          width: 4,
-                          height: 4,
-                          borderRadius: "50%",
-                          background: "var(--green)",
-                        }}
-                      />
-                    )}
                   </div>
                 );
               })}
@@ -2646,26 +2454,41 @@ function PhaseRibbon({
 
 function SessionsColumn({
   week,
+  block,
   selDayId,
-  completion,
-  showCompletion,
   onSelect,
   onAddDay,
   onReorder,
   onRequestDeleteDay,
   onRenameWeek,
+  onDuplicateWeek,
+  onSetActiveWeek,
+  onClearActiveWeek,
+  onExportPdf,
 }: {
   week: Week;
+  block: Block;
   selDayId: string | null;
-  completion: ProgramCompletion | undefined;
-  showCompletion: boolean;
   onSelect: (dayId: string) => void;
   onAddDay: () => void;
   onReorder: (orderedIds: string[]) => void;
   onRequestDeleteDay: (day: Day) => void;
   onRenameWeek: (name: string | null) => void;
+  onDuplicateWeek: () => void;
+  onSetActiveWeek: () => void;
+  onClearActiveWeek: () => void;
+  onExportPdf: () => void;
 }) {
   const sensors = useDndSensors();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [pending, setPending] = useState<{
+    title: string;
+    description: string;
+    confirmLabel: string;
+    onConfirm: () => void;
+  } | null>(null);
+  const nextWeekNum =
+    (block.program_weeks[block.program_weeks.length - 1]?.week_number ?? week.week_number) + 1;
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
@@ -2678,6 +2501,7 @@ function SessionsColumn({
   }
 
   return (
+    <>
     <ColumnShell
       title={
         <>
@@ -2692,16 +2516,93 @@ function SessionsColumn({
       }
       subtitle="TREENIT"
       action={
-        <Mv2Button kind="ghost" size="sm" onClick={onAddDay}>
-          <Plus size={11} /> Treeni
-        </Mv2Button>
+        <div style={{ display: "flex", gap: 4, position: "relative" }}>
+          <Mv2Button kind="ghost" size="sm" onClick={onAddDay}>
+            <Plus size={11} /> Päivä
+          </Mv2Button>
+          <Mv2Button kind="ghost" size="sm" title="Viikon toiminnot" onClick={() => setMenuOpen((o) => !o)}>
+            <Settings2 size={12} />
+          </Mv2Button>
+          {menuOpen && (
+            <>
+              <div onClick={() => setMenuOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 50 }} />
+              <div
+                style={{
+                  position: "absolute",
+                  top: "calc(100% + 6px)",
+                  right: 0,
+                  zIndex: 51,
+                  background: "var(--bg-3)",
+                  border: "1px solid var(--line-2)",
+                  borderRadius: 12,
+                  boxShadow: "0 12px 32px rgba(0,0,0,0.5)",
+                  padding: 5,
+                  minWidth: 210,
+                }}
+              >
+                <MenuRow
+                  icon={<Copy size={12} />}
+                  label={`Monista viikoksi ${nextWeekNum}`}
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setPending({
+                      title: `Monistetaanko viikoksi ${nextWeekNum}?`,
+                      description: `Tämän viikon treenit ja sarjat kopioidaan uudeksi viikoksi ${nextWeekNum}.`,
+                      confirmLabel: "Monista",
+                      onConfirm: onDuplicateWeek,
+                    });
+                  }}
+                />
+                {week.is_active ? (
+                  <MenuRow
+                    icon={<span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--green)", display: "inline-block" }} />}
+                    label="Poista aktiivisuus"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      setPending({
+                        title: "Poistetaanko aktiivisuus?",
+                        description: `Viikkoa ${week.week_number} ei enää merkitä aktiiviseksi.`,
+                        confirmLabel: "Poista aktiivisuus",
+                        onConfirm: onClearActiveWeek,
+                      });
+                    }}
+                  />
+                ) : (
+                  <MenuRow
+                    icon={<span style={{ width: 8, height: 8, borderRadius: "50%", border: "1px solid var(--fg-3)", display: "inline-block" }} />}
+                    label="Aseta aktiiviseksi"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      setPending({
+                        title: "Asetetaanko viikko aktiiviseksi?",
+                        description: `Viikko ${week.week_number} merkitään aktiiviseksi ja aiempi aktiivinen viikko poistetaan.`,
+                        confirmLabel: "Aseta aktiiviseksi",
+                        onConfirm: onSetActiveWeek,
+                      });
+                    }}
+                  />
+                )}
+                <MenuRow
+                  icon={<ClipboardList size={12} />}
+                  label="Vie PDF"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onExportPdf();
+                  }}
+                />
+              </div>
+            </>
+          )}
+        </div>
       }
       width={260}
     >
       {week.program_days.length === 0 && (
-        <p style={{ padding: "12px 14px", color: "var(--fg-3)", fontSize: 12, textAlign: "center" }}>
-          Ei treenejä. Lisää treeni ↑
-        </p>
+        <EmptyColumnHint
+          text="Ei treenejä vielä."
+          actionLabel="Lisää ensimmäinen päivä"
+          onAction={onAddDay}
+        />
       )}
       <DndContext id={`mv2-days-${week.id}`} sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SC items={week.program_days.map((d) => d.id)} strategy={verticalListSortingStrategy}>
@@ -2710,8 +2611,6 @@ function SessionsColumn({
               key={d.id}
               day={d}
               selected={d.id === selDayId}
-              completion={completion}
-              showCompletion={showCompletion}
               onSelect={() => onSelect(d.id)}
               onDelete={() => onRequestDeleteDay(d)}
             />
@@ -2719,21 +2618,67 @@ function SessionsColumn({
         </SC>
       </DndContext>
     </ColumnShell>
+    <ConfirmDialog
+      open={!!pending}
+      onOpenChange={(o) => { if (!o) setPending(null); }}
+      title={pending?.title ?? ""}
+      description={pending?.description ?? ""}
+      confirmLabel={pending?.confirmLabel}
+      onConfirm={() => pending?.onConfirm()}
+    />
+    </>
+  );
+}
+
+// Shared dropdown row used by the week/phase action menus.
+function MenuRow({ icon, label, onClick }: { icon: ReactNode; label: string; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        width: "100%",
+        padding: "7px 10px",
+        background: "transparent",
+        border: "none",
+        borderRadius: 5,
+        color: "var(--fg-1)",
+        fontSize: 12.5,
+        fontFamily: "inherit",
+        cursor: "pointer",
+        textAlign: "left",
+      }}
+      onMouseEnter={(e) => (e.currentTarget.style.background = "var(--row-hover-soft)")}
+      onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+    >
+      <span style={{ display: "inline-flex", width: 14, justifyContent: "center" }}>{icon}</span>
+      {label}
+    </button>
+  );
+}
+
+// Teaching empty state for the narrow Sessions/Exercises columns.
+function EmptyColumnHint({ text, actionLabel, onAction }: { text: string; actionLabel: string; onAction: () => void }) {
+  return (
+    <div style={{ padding: "18px 14px", textAlign: "center", display: "flex", flexDirection: "column", gap: 8, alignItems: "center" }}>
+      <p style={{ color: "var(--fg-3)", fontSize: 12, margin: 0 }}>{text}</p>
+      <Mv2Button kind="outline" size="sm" onClick={onAction}>
+        <Plus size={12} /> {actionLabel}
+      </Mv2Button>
+    </div>
   );
 }
 
 function SortableSessionRow({
   day,
   selected,
-  completion,
-  showCompletion,
   onSelect,
   onDelete,
 }: {
   day: Day;
   selected: boolean;
-  completion: ProgramCompletion | undefined;
-  showCompletion: boolean;
   onSelect: () => void;
   onDelete: () => void;
 }) {
@@ -2747,7 +2692,6 @@ function SortableSessionRow({
   };
   const c = dayColor(day.day_number);
   const cfgs = day.program_exercises.reduce((acc, e) => acc + configsFromExercise(e).length, 0);
-  const status = dayStatus(day.id, completion, showCompletion);
 
   return (
     <div ref={setNodeRef} style={style}>
@@ -2755,12 +2699,12 @@ function SortableSessionRow({
         onClick={onSelect}
         className="mv2-row"
         style={{
-          padding: "8px 10px",
-          margin: "1px 4px",
-          borderRadius: 7,
+          padding: "9px 11px",
+          margin: "2px 6px",
+          borderRadius: 10,
           background: selected ? "var(--accent-soft)" : "transparent",
+          boxShadow: selected ? "inset 0 0 0 1px var(--accent-line)" : "none",
           cursor: "pointer",
-          borderLeft: `2px solid ${selected ? "var(--accent-fg)" : c.fg}`,
           display: "flex",
           alignItems: "center",
           gap: 11,
@@ -2778,9 +2722,9 @@ function SortableSessionRow({
         </span>
         <div
           style={{
-            width: 34,
-            height: 34,
-            borderRadius: 8,
+            width: 36,
+            height: 36,
+            borderRadius: 10,
             background: c.bg,
             border: `1px solid ${c.line}`,
             display: "flex",
@@ -2790,43 +2734,15 @@ function SortableSessionRow({
             position: "relative",
           }}
         >
-          <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, color: c.fg, fontWeight: 700 }}>
+          <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, color: c.fg, fontWeight: 700, letterSpacing: "-0.02em" }}>
             {dayBadge(day)}
           </span>
-          {status === "done" && (
-            <span
-              style={{
-                position: "absolute",
-                top: -3,
-                right: -3,
-                width: 11,
-                height: 11,
-                borderRadius: "50%",
-                background: "var(--green)",
-                border: "2px solid var(--bg-1)",
-              }}
-            />
-          )}
-          {status === "today" && (
-            <span
-              style={{
-                position: "absolute",
-                top: -3,
-                right: -3,
-                width: 11,
-                height: 11,
-                borderRadius: "50%",
-                background: "var(--accent-fg)",
-                border: "2px solid var(--bg-1)",
-              }}
-            />
-          )}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          <div style={{ fontSize: 14.5, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {dayDisplayName(day)}
           </div>
-          <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, color: "var(--fg-3)", marginTop: 1 }}>
+          <div style={{ fontSize: 12, color: "var(--fg-2)", marginTop: 2 }}>
             {day.program_exercises.length} liikettä · {cfgs} sarjaa
           </div>
         </div>
@@ -2913,9 +2829,11 @@ function ExercisesColumn({
       width={250}
     >
       {day.program_exercises.length === 0 && (
-        <p style={{ padding: "12px 14px", color: "var(--fg-3)", fontSize: 12, textAlign: "center" }}>
-          Ei liikkeitä.
-        </p>
+        <EmptyColumnHint
+          text="Ei liikkeitä vielä."
+          actionLabel="Lisää liike"
+          onAction={onAdd}
+        />
       )}
       <DndContext id={`mv2-ex-${day.id}`} sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SC items={day.program_exercises.map((e) => e.id)} strategy={verticalListSortingStrategy}>
@@ -2968,12 +2886,12 @@ function SortableExerciseRow({
         onClick={onSelect}
         className="mv2-row"
         style={{
-          padding: "8px 10px",
-          margin: "1px 4px",
-          borderRadius: 7,
+          padding: "9px 11px",
+          margin: "2px 6px",
+          borderRadius: 10,
           background: selected ? "var(--accent-soft)" : "transparent",
+          boxShadow: selected ? "inset 0 0 0 1px var(--accent-line)" : "none",
           cursor: "pointer",
-          borderLeft: `2px solid ${selected ? "var(--accent-fg)" : accentFg}`,
           display: "flex",
           alignItems: "center",
           gap: 10,
@@ -2988,14 +2906,14 @@ function SortableExerciseRow({
         >
           <GripVertical size={11} />
         </span>
-        <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, color: "var(--fg-3)", width: 16 }}>
+        <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, fontWeight: 600, color: selected ? "var(--accent-fg)" : accentFg, width: 16, textAlign: "center", flexShrink: 0 }}>
           {idx + 1}
         </span>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 13, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          <div style={{ fontSize: 14.5, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {name}
           </div>
-          <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, color: "var(--fg-3)", marginTop: 1 }}>
+          <div style={{ fontSize: 12, color: "var(--fg-2)", marginTop: 2 }}>
             {summary}
           </div>
         </div>
@@ -3148,18 +3066,20 @@ function ColumnShell({
         minHeight: 0,
       }}
     >
-      <div style={{ padding: "13px 14px 11px", borderBottom: "1px solid var(--line)" }}>
+      <div style={{ padding: "14px 14px 12px", borderBottom: "1px solid var(--line)" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             {subtitle && (
-              <div style={{ fontSize: 10, fontWeight: 700, color: "var(--fg-3)", letterSpacing: "0.05em", textTransform: "uppercase" }}>
+              <div style={{ fontSize: 10.5, fontWeight: 700, color: "var(--fg-3)", letterSpacing: "0.07em", textTransform: "uppercase", marginBottom: 2 }}>
                 {subtitle}
               </div>
             )}
             <div
               style={{
-                fontSize: 13.5,
-                fontWeight: 600,
+                fontFamily: "var(--font-disp)",
+                fontSize: 16,
+                fontWeight: 700,
+                letterSpacing: "-0.01em",
                 color: titleColor || "var(--fg-0)",
                 minWidth: 0,
                 display: "flex",
@@ -3445,12 +3365,12 @@ function ExerciseDetail({
     <>
     <div style={{ padding: "20px 26px 30px" }}>
       <FitScale natural={720} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-      <div style={{ display: "flex", gap: 8, fontSize: 11, color: "var(--fg-3)" }}>
+      <div style={{ display: "flex", gap: 8, fontSize: 12.5, color: "var(--fg-2)", fontWeight: 500 }}>
         <span>
           Vk {week.week_number} · {week.name?.trim() || `Viikko ${week.week_number}`}
         </span>
-        <span>›</span>
-        <span style={{ color: c.fg }}>{dayDisplayName(day)}</span>
+        <span style={{ color: "var(--fg-3)" }}>›</span>
+        <span style={{ color: c.fg, fontWeight: 600 }}>{dayDisplayName(day)}</span>
         <span>›</span>
         <span style={{ color: "var(--fg-1)" }}>
           Liike {idx + 1}/{total}
@@ -3473,38 +3393,39 @@ function ExerciseDetail({
               onClick={onOpenPicker}
               title="Vaihda liike"
               style={{
-                fontSize: 26,
-                fontWeight: 600,
-                letterSpacing: "-0.01em",
+                fontFamily: "var(--font-disp)",
+                fontSize: 31,
+                fontWeight: 700,
+                letterSpacing: "-0.025em",
+                lineHeight: 1.05,
                 background: "none",
                 border: "none",
                 color: "inherit",
                 padding: 0,
                 cursor: "pointer",
                 textAlign: "left",
-                fontFamily: "inherit",
               }}
             >
               {ex.exercises.name}
             </button>
           )}
-          <div style={{ color: "var(--fg-2)", fontSize: 12, marginTop: 5, display: "flex", gap: 14 }}>
+          <div style={{ color: "var(--fg-2)", fontSize: 13.5, marginTop: 8, display: "flex", gap: 16 }}>
             <span>
-              <b style={{ color: "var(--fg-1)" }}>{cfgs.length}</b> sarjaa
+              <b style={{ color: "var(--fg-0)", fontWeight: 700 }}>{cfgs.length}</b> sarjaa
             </span>
             <span>
-              <b style={{ color: "var(--fg-1)" }}>{totalReps}</b> toistoa yht.
+              <b style={{ color: "var(--fg-0)", fontWeight: 700 }}>{totalReps}</b> toistoa yht.
             </span>
             <span>
-              keskim. RPE <b style={{ color: c.fg }}>{avgRpe}</b>
+              keskim. RPE <b style={{ color: c.fg, fontWeight: 700 }}>{avgRpe}</b>
             </span>
           </div>
         </div>
         <div style={{ display: "flex", gap: 6 }}>
-          <Mv2Button kind="ghost" size="sm" onClick={onPrev} disabled={idx === 0}>
+          <Mv2Button kind="ghost" size="sm" onClick={onPrev} disabled={idx === 0} title="Edellinen liike  [  [  ]">
             <ChevronsLeft size={12} /> Edell.
           </Mv2Button>
-          <Mv2Button kind="ghost" size="sm" onClick={onNext} disabled={idx >= total - 1}>
+          <Mv2Button kind="ghost" size="sm" onClick={onNext} disabled={idx >= total - 1} title="Seuraava liike  [  ]  ]">
             Seur. <ChevronsRight size={12} />
           </Mv2Button>
           <div style={{ width: 1, height: 22, background: "var(--line)", alignSelf: "center" }} />
@@ -3519,11 +3440,8 @@ function ExerciseDetail({
               <span style={{ color: "var(--fg-3)", fontWeight: 600 }}>{historySessions.length}</span>
             )}
           </Mv2Button>
-          <Mv2Button kind="ghost" size="sm" onClick={onOpenPicker}>
-            Korvaa
-          </Mv2Button>
-          <Mv2Button kind="ghost" size="sm">
-            <MoreHorizontal size={12} />
+          <Mv2Button kind="ghost" size="sm" onClick={onOpenPicker} title="Vaihda liike toiseksi">
+            <Pencil size={12} /> Vaihda liike
           </Mv2Button>
         </div>
       </div>
@@ -3588,7 +3506,7 @@ function ExerciseDetail({
             maxWidth: 620,
           }}
         >
-          <div style={{ fontSize: 10, fontWeight: 700, color: "var(--fg-3)", letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: 10 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--fg-2)", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 10 }}>
             Ohje asiakkaalle
           </div>
           <textarea
@@ -3604,9 +3522,9 @@ function ExerciseDetail({
               width: "100%",
               background: "var(--bg-2)",
               border: "1px solid var(--line)",
-              borderRadius: 6,
-              color: "var(--fg-1)",
-              fontSize: 12.5,
+              borderRadius: 9,
+              color: "var(--fg-0)",
+              fontSize: 14,
               lineHeight: 1.55,
               padding: "8px 10px",
               resize: "vertical",
@@ -3829,7 +3747,7 @@ function CurrentWeekTable({
           inputs claim a wider intrinsic min-width), the table keeps a readable
           min-width and scrolls — nothing is hidden. */}
       <div style={{ overflowX: "auto" }}>
-      <table style={{ width: "100%", minWidth: 380, borderCollapse: "collapse", fontSize: 13 }}>
+      <table style={{ width: "100%", minWidth: 380, borderCollapse: "collapse", fontSize: 14 }}>
         <thead>
           <tr style={{ background: "var(--bg-2)" }}>
             {["", "Sarja", "Toistot", "Kuorma", "RPE", ""].map((h, i) => (
@@ -4327,176 +4245,6 @@ td:first-child{width:40%;font-weight:500}
   setTimeout(cleanup, 60000);
 }
 
-// ── Summary rail ──────────────────────────────────────────────────────────────
-
-function SummaryRail({
-  week,
-  block,
-  onDuplicateWeek,
-  onSetActiveWeek,
-  onClearActiveWeek,
-}: {
-  week: Week;
-  block: Block;
-  onDuplicateWeek: () => void;
-  onSetActiveWeek: () => void;
-  onClearActiveWeek: () => void;
-}) {
-  const nextWeekNum = (block.program_weeks[block.program_weeks.length - 1]?.week_number ?? week.week_number) + 1;
-
-  // Every quick action routes through a confirmation step first.
-  const [pending, setPending] = useState<{
-    title: string;
-    description: string;
-    confirmLabel: string;
-    variant?: "destructive" | "default";
-    onConfirm: () => void;
-  } | null>(null);
-
-  return (
-    <div
-      style={{
-        width: 230,
-        flex: "0 0 auto",
-        borderLeft: "1px solid var(--line)",
-        background: "var(--bg-1)",
-        padding: "16px 14px",
-        overflow: "auto",
-        display: "flex",
-        flexDirection: "column",
-        gap: 18,
-      }}
-    >
-      <div>
-        <div style={{ fontSize: 10, fontWeight: 700, color: "var(--fg-3)", letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: 9 }}>
-          Pikatoiminnot
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          {week.is_active ? (
-            <RailButton
-              onClick={() =>
-                setPending({
-                  title: "Poistetaanko aktiivisuus?",
-                  description: `Viikkoa ${week.week_number} ei enää merkitä aktiiviseksi.`,
-                  confirmLabel: "Poista aktiivisuus",
-                  onConfirm: onClearActiveWeek,
-                })
-              }
-            >
-              <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--green)", display: "inline-block" }} />
-              Aktiivinen — poista
-            </RailButton>
-          ) : (
-            <RailButton
-              onClick={() =>
-                setPending({
-                  title: "Asetetaanko viikko aktiiviseksi?",
-                  description: `Viikko ${week.week_number} merkitään aktiiviseksi ja aiempi aktiivinen viikko poistetaan.`,
-                  confirmLabel: "Aseta aktiiviseksi",
-                  variant: "default",
-                  onConfirm: onSetActiveWeek,
-                })
-              }
-            >
-              <span style={{ width: 8, height: 8, borderRadius: "50%", border: "1px solid var(--fg-3)", display: "inline-block" }} />
-              Aseta aktiiviseksi
-            </RailButton>
-          )}
-          <RailButton
-            onClick={() =>
-              setPending({
-                title: `Monistetaanko viikoksi ${nextWeekNum}?`,
-                description: `Tämän viikon treenit ja sarjat kopioidaan uudeksi viikoksi ${nextWeekNum}.`,
-                confirmLabel: "Monista",
-                variant: "default",
-                onConfirm: onDuplicateWeek,
-              })
-            }
-          >
-            <Copy size={12} /> Monista viikoksi {nextWeekNum}
-          </RailButton>
-          <RailButton
-            onClick={() =>
-              setPending({
-                title: "Lisätäänkö painoja 2,5 %?",
-                description: "Kaikkien tämän viikon liikkeiden kuormia nostetaan 2,5 %.",
-                confirmLabel: "Lisää painoja",
-                variant: "default",
-                onConfirm: () => {},
-              })
-            }
-          >
-            <TrendingUp size={12} /> Lisää 2.5 % painoja
-          </RailButton>
-          <RailButton
-            onClick={() =>
-              setPending({
-                title: "Muunnetaanko deloadiksi?",
-                description: "Tämän viikon volyymi ja kuormat kevennetään deload-viikoksi.",
-                confirmLabel: "Muunna deloadiksi",
-                variant: "default",
-                onConfirm: () => {},
-              })
-            }
-          >
-            ↓ Muunna deloadiksi
-          </RailButton>
-          <RailButton
-            onClick={() =>
-              setPending({
-                title: "Viedäänkö PDF?",
-                description: "Tämä viikko avataan tulostusnäkymään. Valitse \"Tallenna PDF:nä\".",
-                confirmLabel: "Vie PDF",
-                variant: "default",
-                onConfirm: () => exportWeekToPdf(week, block),
-              })
-            }
-          >
-            <ClipboardList size={12} /> Vie PDF
-          </RailButton>
-        </div>
-      </div>
-
-      <ConfirmDialog
-        open={!!pending}
-        onOpenChange={(o) => {
-          if (!o) setPending(null);
-        }}
-        title={pending?.title ?? ""}
-        description={pending?.description ?? ""}
-        confirmLabel={pending?.confirmLabel}
-        variant={pending?.variant}
-        onConfirm={() => pending?.onConfirm()}
-      />
-    </div>
-  );
-}
-
-function RailButton({ children, onClick }: { children: ReactNode; onClick?: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "flex-start",
-        gap: 6,
-        padding: "7px 10px",
-        background: "var(--bg-2)",
-        border: "1px solid var(--line)",
-        borderRadius: 6,
-        color: "var(--fg-1)",
-        fontSize: 12,
-        fontFamily: "inherit",
-        cursor: "pointer",
-        textAlign: "left",
-      }}
-    >
-      {children}
-    </button>
-  );
-}
-
 // ── Empty detail ──────────────────────────────────────────────────────────────
 
 function EmptyDetail({ onAdd }: { onAdd: () => void }) {
@@ -4508,14 +4256,34 @@ function EmptyDetail({ onAdd }: { onAdd: () => void }) {
         alignItems: "center",
         justifyContent: "center",
         height: "100%",
-        gap: 10,
-        color: "var(--fg-3)",
-        fontSize: 13,
+        gap: 14,
+        padding: 24,
+        textAlign: "center",
       }}
     >
-      Ei liikkeitä tässä treenissä.
-      <Mv2Button kind="ghost" size="sm" onClick={onAdd}>
-        <Plus size={12} /> Lisää liike
+      <div
+        style={{
+          width: 52,
+          height: 52,
+          borderRadius: 14,
+          background: "var(--bg-2)",
+          border: "1px solid var(--line)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: "var(--fg-3)",
+        }}
+      >
+        <ClipboardList size={22} />
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 4, maxWidth: 320 }}>
+        <div style={{ fontSize: 15, fontWeight: 600, color: "var(--fg-0)" }}>Tyhjä treeni</div>
+        <p style={{ fontSize: 13, color: "var(--fg-2)", margin: 0, lineHeight: 1.5 }}>
+          Lisää ensimmäinen liike, niin voit määrittää sille sarjat, toistot ja kuorman.
+        </p>
+      </div>
+      <Mv2Button kind="primary" onClick={onAdd}>
+        <Plus size={14} /> Lisää ensimmäinen liike
       </Mv2Button>
     </div>
   );
@@ -4535,9 +4303,10 @@ function Mv2Style() {
         --line: rgba(255,255,255,0.12);
         --line-2: rgba(255,255,255,0.20);
         --fg-0: #fafafa;
-        --fg-1: #d2d2da;
-        --fg-2: #9a9aa6;
-        --fg-3: #74747f;
+        --fg-1: #d6d6de;
+        --fg-2: #aeaeba;
+        --fg-3: #8c8c98;
+        --font-disp: var(--font-display), "Bricolage Grotesque", system-ui, sans-serif;
         --pink: #ff3d8a;
         --pink-soft: rgba(255,61,138,0.14);
         --pink-line: rgba(255,61,138,0.4);
@@ -4548,6 +4317,12 @@ function Mv2Style() {
         --accent-soft: rgba(255,255,255,0.10);
         --accent-line: rgba(255,255,255,0.28);
         --accent-contrast: #14121a;
+        /* The one default brand accent: the rainbow CTA gradient (white-text-safe
+           band). Lives on primary surfaces only — CTAs, active indicators. Co-brand
+           collapses it to solid Gainly pink (override below). */
+        --cta-bg: linear-gradient(120deg, #4f46e5, #7c3aed, #c026d3, #db2777, #e11d48);
+        --cta-fg: #ffffff;
+        --cta-glow: rgba(192,38,211,0.35);
         /* Day-1 identity colour — neutral blue (no pink) unless co-branded. */
         --day1-fg: #6ea8fe;
         --day1-bg: rgba(110,168,254,0.12);
@@ -4571,8 +4346,8 @@ function Mv2Style() {
         --line-2: rgba(0,0,0,0.22);
         --fg-0: #14121a;
         --fg-1: #34323f;
-        --fg-2: #565463;
-        --fg-3: #78768a;
+        --fg-2: #524f5e;
+        --fg-3: #66647a;
         --accent-fg: #14121a;
         --accent-soft: rgba(0,0,0,0.06);
         --accent-line: rgba(0,0,0,0.22);
@@ -4593,6 +4368,10 @@ function Mv2Style() {
         --accent-soft: rgba(255,61,138,0.12);
         --accent-line: rgba(255,61,138,0.4);
         --accent-contrast: #ffffff;
+        /* Co-brand collapses the rainbow to solid Gainly pink. */
+        --cta-bg: #ff1d8c;
+        --cta-fg: #ffffff;
+        --cta-glow: rgba(255,29,140,0.35);
         --day1-fg: #ff7aa8;
         --day1-bg: rgba(255,122,168,0.10);
         --day1-line: rgba(255,122,168,0.35);
