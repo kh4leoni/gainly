@@ -1389,10 +1389,10 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
         }}
       />
 
-      {/* Drill-down — scrolls horizontally as a whole when the columns + editor
-          can't fit, so the editor keeps a usable width instead of being squeezed
-          into a narrow strip between the fixed session/exercise columns. */}
-      <div style={{ display: "flex", flex: 1, minHeight: 0, overflowX: "auto", overflowY: "hidden", gap: 12, padding: 12 }}>
+      {/* Drill-down — one left outline rail (days stacked over the selected day's
+          exercises) + a wide detail pane. No horizontal scroll: the rail is fixed
+          width and the detail flexes. */}
+      <div style={{ display: "flex", flex: 1, minHeight: 0, overflow: "hidden", gap: 12, padding: 12 }}>
         {!week && (
           <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, textAlign: "center", maxWidth: 340 }}>
@@ -1424,6 +1424,7 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
           </div>
         )}
         {week && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12, width: 320, flex: "0 0 auto", minHeight: 0 }}>
           <SessionsColumn
             week={week}
             block={block}
@@ -1443,8 +1444,7 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
             onClearActiveWeek={() => clearActiveWeek.mutate()}
             onExportPdf={() => exportWeekToPdf(week, block)}
           />
-        )}
-        {day && (
+          {day && (
           <ExercisesColumn
             day={day}
             selExIdx={selExIdx}
@@ -1456,12 +1456,14 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
               setPendingDeleteExercise({ id: pe.id, dayId: day.id, label: pe.exercises?.name ?? "Liike" })
             }
           />
+          )}
+          </div>
         )}
 
         <div
           style={{
             flex: 1,
-            minWidth: 780,
+            minWidth: 0,
             overflow: "auto",
             background: "var(--bg-0)",
           }}
@@ -2595,7 +2597,8 @@ function SessionsColumn({
           )}
         </div>
       }
-      width={260}
+      fill
+      grow={1}
     >
       {week.program_days.length === 0 && (
         <EmptyColumnHint
@@ -2826,7 +2829,8 @@ function ExercisesColumn({
           <Plus size={11} /> Liike
         </Mv2Button>
       }
-      width={250}
+      fill
+      grow={1.5}
     >
       {day.program_exercises.length === 0 && (
         <EmptyColumnHint
@@ -3043,20 +3047,24 @@ function ColumnShell({
   titleColor,
   action,
   width,
+  fill,
+  grow,
   children,
 }: {
   title: ReactNode;
   subtitle?: string;
   titleColor?: string;
   action?: ReactNode;
-  width: number;
+  width?: number;
+  fill?: boolean;
+  grow?: number;
   children: ReactNode;
 }) {
   return (
     <div
       style={{
-        width,
-        flex: "0 0 auto",
+        width: fill ? "100%" : width,
+        flex: fill ? `${grow ?? 1} 1 0` : "0 0 auto",
         border: "1px solid var(--line)",
         borderRadius: 12,
         overflow: "hidden",
@@ -3066,7 +3074,7 @@ function ColumnShell({
         minHeight: 0,
       }}
     >
-      <div style={{ padding: "14px 14px 12px", borderBottom: "1px solid var(--line)" }}>
+      <div style={{ padding: "14px 14px 12px", background: "var(--bg-2)", borderBottom: "1px solid var(--line)" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             {subtitle && (
@@ -3363,7 +3371,15 @@ function ExerciseDetail({
 
   return (
     <>
-    <div style={{ padding: "20px 26px 30px" }}>
+    <div
+      style={{
+        padding: "20px 26px 30px",
+        // Day colour zone: a soft wash of the active day's accent fades down the
+        // top of the detail so you always know which day you're editing.
+        background: `linear-gradient(180deg, color-mix(in srgb, ${c.fg} 9%, var(--bg-0)) 0%, var(--bg-0) 230px)`,
+        minHeight: "100%",
+      }}
+    >
       <FitScale natural={720} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
       <div style={{ display: "flex", gap: 8, fontSize: 12.5, color: "var(--fg-2)", fontWeight: 500 }}>
         <span>
@@ -3653,6 +3669,8 @@ function ExercisePicker({
 
 // ── Current week — editable table ─────────────────────────────────────────────
 
+type ColKey = "reps" | "weight" | "rpe";
+
 function CurrentWeekTable({
   ex,
   cfgs,
@@ -3697,6 +3715,31 @@ function CurrentWeekTable({
     onUpdate({ id: ex.id, set_configs: next, sets: next.length });
   }
 
+  // ── Spreadsheet-style keyboard nav over the set cells ──
+  // Cells carry a stable data-cell="col:row"; we re-focus by that after a
+  // commit re-renders the (uncontrolled) inputs.
+  const gridRef = useRef<HTMLDivElement | null>(null);
+  function focusCell(col: ColKey, row: number) {
+    requestAnimationFrame(() => {
+      const el = gridRef.current?.querySelector<HTMLInputElement>(`[data-cell="${col}:${row}"]`);
+      if (el) { el.focus(); el.select(); }
+    });
+  }
+  function moveCell(col: ColKey, row: number, dir: "up" | "down") {
+    const target = dir === "down" ? row + 1 : row - 1;
+    if (target < 0 || target > cfgs.length - 1) return;
+    focusCell(col, target);
+  }
+  function enterAdvance(col: ColKey, row: number) {
+    if (row >= cfgs.length - 1) addRow();
+    focusCell(col, row + 1);
+  }
+  function fillDown(col: ColKey, row: number, value: string) {
+    const v = normalizeRange(value);
+    const next = cfgs.map((s, i) => (i >= row ? { ...s, [col]: v } : s));
+    onUpdate({ id: ex.id, set_configs: next, sets: next.length });
+  }
+
   const sensors = useDndSensors();
   const rowIds = cfgs.map((_, i) => `set-${i}`);
 
@@ -3730,8 +3773,13 @@ function CurrentWeekTable({
           gap: 8,
         }}
       >
-        <span style={{ fontSize: 10, fontWeight: 700, color: c.fg, letterSpacing: "0.05em", textTransform: "uppercase" }}>
-          Vk {week.week_number} · Nykyinen
+        <span style={{ display: "inline-flex", alignItems: "baseline", gap: 8 }}>
+          <span style={{ fontSize: 10, fontWeight: 700, color: c.fg, letterSpacing: "0.05em", textTransform: "uppercase" }}>
+            Vk {week.week_number} · Nykyinen
+          </span>
+          <span style={{ fontSize: 10.5, color: "var(--fg-3)" }} title="↑/↓ siirry riviltä toiselle · Enter seuraava · ⌘/Ctrl+D täytä alas">
+            ↑↓ · Enter · ⌘D
+          </span>
         </span>
         <div style={{ display: "flex", gap: 4 }}>
           <Mv2Button kind="ghost" size="sm" onClick={onCopyFromPrev} disabled={!canCopyFromPrev} title="Kopioi sarjat viime viikolta">
@@ -3746,7 +3794,7 @@ function CurrentWeekTable({
           point where the set columns can't fit (notably on macOS/Safari, whose
           inputs claim a wider intrinsic min-width), the table keeps a readable
           min-width and scrolls — nothing is hidden. */}
-      <div style={{ overflowX: "auto" }}>
+      <div ref={gridRef} style={{ overflowX: "auto" }}>
       <table style={{ width: "100%", minWidth: 380, borderCollapse: "collapse", fontSize: 14 }}>
         <thead>
           <tr style={{ background: "var(--bg-2)" }}>
@@ -3784,6 +3832,9 @@ function CurrentWeekTable({
                   accentFg={c.fg}
                   onChange={(p) => setAt(i, p)}
                   onDelete={() => removeRow(i)}
+                  onCellMove={moveCell}
+                  onCellEnter={enterAdvance}
+                  onCellFill={fillDown}
                 />
               ))}
               <tr style={{ borderTop: "1px solid var(--line)", background: "var(--row-hover-soft)" }}>
@@ -3813,6 +3864,9 @@ function SortableSetRow({
   accentFg,
   onChange,
   onDelete,
+  onCellMove,
+  onCellEnter,
+  onCellFill,
 }: {
   rowId: string;
   s: SetConfig;
@@ -3822,7 +3876,11 @@ function SortableSetRow({
   accentFg: string;
   onChange: (p: Partial<SetConfig>) => void;
   onDelete: () => void;
+  onCellMove: (col: ColKey, row: number, dir: "up" | "down") => void;
+  onCellEnter: (col: ColKey, row: number) => void;
+  onCellFill: (col: ColKey, row: number, value: string) => void;
 }) {
+  const cellNav = { onMove: onCellMove, onEnter: onCellEnter, onFill: onCellFill };
   const { setNodeRef, transform, transition, isDragging, attributes, listeners } = useSortable({ id: rowId });
   const style: CSSProperties = {
     transform: CSS.Transform.toString(transform),
@@ -3848,6 +3906,9 @@ function SortableSetRow({
       <td style={{ padding: "6px 10px" }}>
         <CellInput
           key={`r-${idx}-${s.reps ?? ""}`}
+          col="reps"
+          row={idx}
+          nav={cellNav}
           defaultValue={s.reps ?? ""}
           inputMode="numeric"
           placeholder="esim. 10-12"
@@ -3857,6 +3918,9 @@ function SortableSetRow({
       <td style={{ padding: "6px 10px", position: "relative" }}>
         <CellInput
           key={`w-${idx}-${s.weight ?? ""}`}
+          col="weight"
+          row={idx}
+          nav={cellNav}
           defaultValue={s.weight ?? ""}
           inputMode="numeric"
           placeholder="esim. 160-170"
@@ -3867,6 +3931,9 @@ function SortableSetRow({
       <td style={{ padding: "6px 10px" }}>
         <CellInput
           key={`rpe-${idx}-${s.rpe ?? ""}`}
+          col="rpe"
+          row={idx}
+          nav={cellNav}
           defaultValue={s.rpe ?? ""}
           inputMode="numeric"
           placeholder="esim. 6-7"
@@ -3891,6 +3958,12 @@ function SortableSetRow({
   );
 }
 
+type CellNav = {
+  onMove: (col: ColKey, row: number, dir: "up" | "down") => void;
+  onEnter: (col: ColKey, row: number) => void;
+  onFill: (col: ColKey, row: number, value: string) => void;
+};
+
 function CellInput({
   defaultValue,
   type,
@@ -3900,6 +3973,9 @@ function CellInput({
   onCommit,
   textColor,
   bold,
+  col,
+  row,
+  nav,
 }: {
   defaultValue: string | number;
   type?: string;
@@ -3909,10 +3985,14 @@ function CellInput({
   onCommit: (v: string) => void;
   textColor?: string;
   bold?: boolean;
+  col?: ColKey;
+  row?: number;
+  nav?: CellNav;
 }) {
   return (
     <div style={{ position: "relative" }}>
       <input
+        data-cell={col && row != null ? `${col}:${row}` : undefined}
         defaultValue={defaultValue}
         type={type}
         inputMode={inputMode}
@@ -3920,7 +4000,24 @@ function CellInput({
         size={1}
         onBlur={(e) => onCommit(e.currentTarget.value)}
         onKeyDown={(e) => {
-          if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
+          const input = e.currentTarget as HTMLInputElement;
+          if (e.key === "Enter") {
+            e.preventDefault();
+            onCommit(input.value);
+            if (nav && col && row != null) nav.onEnter(col, row);
+            else input.blur();
+          } else if (e.key === "ArrowDown" && nav && col && row != null) {
+            e.preventDefault();
+            onCommit(input.value);
+            nav.onMove(col, row, "down");
+          } else if (e.key === "ArrowUp" && nav && col && row != null) {
+            e.preventDefault();
+            onCommit(input.value);
+            nav.onMove(col, row, "up");
+          } else if ((e.metaKey || e.ctrlKey) && (e.key === "d" || e.key === "D") && nav && col && row != null) {
+            e.preventDefault();
+            nav.onFill(col, row, input.value);
+          }
         }}
         style={{
           width: "100%",
@@ -4296,12 +4393,12 @@ function Mv2Style() {
     <style>{`
       .mv2 {
         --bg-0: #0a0a0d;
-        --bg-1: #111116;
-        --bg-2: #17171f;
-        --bg-3: #1f1f29;
-        --bg-4: #2a2a36;
-        --line: rgba(255,255,255,0.12);
-        --line-2: rgba(255,255,255,0.20);
+        --bg-1: #121218;
+        --bg-2: #1a1a22;
+        --bg-3: #22222d;
+        --bg-4: #2c2c38;
+        --line: rgba(255,255,255,0.08);
+        --line-2: rgba(255,255,255,0.16);
         --fg-0: #fafafa;
         --fg-1: #d6d6de;
         --fg-2: #aeaeba;
@@ -4337,13 +4434,13 @@ function Mv2Style() {
         --danger-fg: #ff6b6b;
       }
       html.light .mv2 {
-        --bg-0: #f5f4f8;
+        --bg-0: #f3f2f7;
         --bg-1: #ffffff;
-        --bg-2: #f0eef5;
+        --bg-2: #f1eff6;
         --bg-3: #e8e6ef;
-        --bg-4: #d8d6e2;
-        --line: rgba(0,0,0,0.14);
-        --line-2: rgba(0,0,0,0.22);
+        --bg-4: #dddbe6;
+        --line: rgba(0,0,0,0.10);
+        --line-2: rgba(0,0,0,0.18);
         --fg-0: #14121a;
         --fg-1: #34323f;
         --fg-2: #524f5e;
