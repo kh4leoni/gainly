@@ -64,6 +64,10 @@ html.light .client-app {
   --c-text: #1a1820;
   --c-text-muted: rgba(26,24,32,0.55);
   --c-text-subtle: rgba(26,24,32,0.3);
+  --c-pink: #1a1820;
+  --c-pink-dim: linear-gradient(120deg, rgba(79,70,229,0.14) 0%, rgba(124,58,237,0.12) 30%, rgba(192,38,211,0.10) 55%, rgba(219,39,119,0.12) 78%, rgba(225,29,72,0.12) 100%);
+  --c-pink-glow: rgba(192, 38, 211, 0.30);
+  --c-pink-fg: #ffffff;
   color: var(--c-text);
   background: var(--c-bg);
   color-scheme: light;
@@ -71,10 +75,15 @@ html.light .client-app {
 html.light body:has(.client-app) { background: #f5f4f8; }
 
 .client-app {
-  /* Default = plain (no co-brand): text-color neutral. Cobrand override below sets pink. */
+  /* Rainbow-only brand: the ONE accent is the rainbow gradient, carried on
+     surfaces (CTAs via --c-cta-bg, selected/active backgrounds via the
+     --c-pink-dim gradient tint, glow via --c-pink-glow). Text / icons /
+     borders stay neutral ink (--c-pink resolves to the ink colour). The
+     html.gainly-cobrand override below collapses the whole family to solid
+     Gainly pink for Fanni's co-branded clients. */
   --c-pink: #f0eef5;
-  --c-pink-dim: rgba(240,238,245,0.10);
-  --c-pink-glow: rgba(240,238,245,0.30);
+  --c-pink-dim: linear-gradient(120deg, rgba(79,70,229,0.18) 0%, rgba(124,58,237,0.15) 30%, rgba(192,38,211,0.13) 55%, rgba(219,39,119,0.15) 78%, rgba(225,29,72,0.15) 100%);
+  --c-pink-glow: rgba(192, 38, 211, 0.40);
   --c-pink-fg: #070708;
   /* Semantic colors */
   --c-success: #3ECF8E;
@@ -82,6 +91,15 @@ html.light body:has(.client-app) { background: #f5f4f8; }
   --c-info: #818CF8;
   --c-info-alt: #34D399;
   --c-green: #3ECF8E;
+  /* Primary CTA / hero surface. Default = a multi-hue rainbow gradient
+     (kept in the indigo→violet→fuchsia→pink→rose band so white text
+     clears WCAG AA across the whole sweep). The co-brand block below
+     swaps this to solid Gainly pink. */
+  --c-cta-bg: linear-gradient(120deg, #4f46e5 0%, #7c3aed 30%, #c026d3 55%, #db2777 78%, #e11d48 100%);
+  --c-cta-fg: #ffffff;
+  --c-cta-glow: rgba(192, 38, 211, 0.40);
+  --c-hero-bg: linear-gradient(135deg, rgba(124,58,237,0.18) 0%, rgba(219,39,119,0.13) 100%);
+  --c-hero-border: rgba(192, 38, 211, 0.32);
   --c-bg: #070708;
   --c-bg-rgb: 7, 7, 8;
   --c-surface: #0f0f12;
@@ -162,14 +180,19 @@ html.light .client-app {
    regardless of where the Radix portal mounts it. */
 .client-themed {
   --c-pink: #f0eef5;
-  --c-pink-dim: rgba(240,238,245,0.10);
-  --c-pink-glow: rgba(240,238,245,0.30);
+  --c-pink-dim: linear-gradient(120deg, rgba(79,70,229,0.18) 0%, rgba(124,58,237,0.15) 30%, rgba(192,38,211,0.13) 55%, rgba(219,39,119,0.15) 78%, rgba(225,29,72,0.15) 100%);
+  --c-pink-glow: rgba(192, 38, 211, 0.40);
   --c-pink-fg: #070708;
   --c-success: #3ECF8E;
   --c-warning: #F5A623;
   --c-info: #818CF8;
   --c-info-alt: #34D399;
   --c-green: #3ECF8E;
+  --c-cta-bg: linear-gradient(120deg, #4f46e5 0%, #7c3aed 30%, #c026d3 55%, #db2777 78%, #e11d48 100%);
+  --c-cta-fg: #ffffff;
+  --c-cta-glow: rgba(192, 38, 211, 0.40);
+  --c-hero-bg: linear-gradient(135deg, rgba(124,58,237,0.18) 0%, rgba(219,39,119,0.13) 100%);
+  --c-hero-border: rgba(192, 38, 211, 0.32);
   --c-bg: #070708;
   --c-bg-rgb: 7, 7, 8;
   --c-surface: #0f0f12;
@@ -206,18 +229,25 @@ html.light .client-themed {
   --c-text-muted: rgba(26,24,32,0.55);
   --c-text-subtle: rgba(26,24,32,0.3);
   --c-pink: #1a1820;
-  --c-pink-dim: rgba(26,24,32,0.08);
-  --c-pink-glow: rgba(26,24,32,0.22);
+  --c-pink-dim: linear-gradient(120deg, rgba(79,70,229,0.14) 0%, rgba(124,58,237,0.12) 30%, rgba(192,38,211,0.10) 55%, rgba(219,39,119,0.12) 78%, rgba(225,29,72,0.12) 100%);
+  --c-pink-glow: rgba(192, 38, 211, 0.30);
   --c-pink-fg: #ffffff;
   color-scheme: light;
 }
-/* ── Co-brand accent (Gainly × coach): switch neutral to Gainly pink ───── */
+/* ── Co-brand accent (Gainly × coach): switch neutral to Gainly pink ─────
+   Also collapse the default rainbow CTA/hero back to solid Gainly pink so
+   the co-branded shell reads as one brand colour, not a spectrum. */
 html.gainly-cobrand .client-app,
 html.gainly-cobrand .client-themed {
   --c-pink: #FF1D8C;
   --c-pink-dim: rgba(255,29,140,0.12);
   --c-pink-glow: rgba(255,29,140,0.40);
   --c-pink-fg: #ffffff;
+  --c-cta-bg: #FF1D8C;
+  --c-cta-fg: #ffffff;
+  --c-cta-glow: rgba(255, 29, 140, 0.40);
+  --c-hero-bg: linear-gradient(135deg, color-mix(in srgb, #FF1D8C 18%, transparent) 0%, color-mix(in srgb, #FF1D8C 12%, transparent) 100%);
+  --c-hero-border: color-mix(in srgb, #FF1D8C 30%, transparent);
 }
 
 /* Hide scrollbar on horizontal pagers (progress tabs, week chips) */
@@ -253,11 +283,6 @@ html.gainly-cobrand .client-themed {
 @keyframes shimmer         { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
 .c-shimmer { background:linear-gradient(90deg,var(--shimmer-base) 0%,var(--shimmer-base) 35%,var(--shimmer-shine) 50%,var(--shimmer-base) 65%,var(--shimmer-base) 100%); background-size:300% 100%; animation:shimmer 1.5s ease-in-out infinite; }
 @keyframes spin            { to{transform:rotate(360deg)} }
-@keyframes quote-in-right  { from{opacity:0;transform:translateX(64px)}  to{opacity:1;transform:none} }
-@keyframes quote-in-left   { from{opacity:0;transform:translateX(-64px)} to{opacity:1;transform:none} }
-@keyframes quote-out-right { from{opacity:1;transform:none} to{opacity:0;transform:translateX(64px)}  }
-@keyframes quote-out-left  { from{opacity:1;transform:none} to{opacity:0;transform:translateX(-64px)} }
-@keyframes quote-progress  { from{width:0%} to{width:100%} }
 
 /* ── Icon hover animations ───────────────────────────────────────────────── */
 @keyframes icon-bounce {

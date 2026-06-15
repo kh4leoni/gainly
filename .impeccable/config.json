@@ -1,0 +1,19 @@
+{
+  "hook": {
+    "enabled": true,
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "bounce-easing",
+        "value": "cubic-bezier(0.34, 1.56, 0.64, 1)",
+        "createdAt": "2026-06-15T10:42:06.257Z",
+        "reason": "Intentional --ease-ios-spring identity (toggles, taps, PR burst, card entrance); documented in DESIGN.md"
+      }
+    ],
+    "limits": {
+      "maxFindings": 5,
+      "maxChars": 8000
+    }
+  }
+}

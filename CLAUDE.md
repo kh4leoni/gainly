@@ -77,3 +77,12 @@ Query keys follow the pattern `["resource", { filters }]`. The `"realtime"` key 
 
 ### Database schema overview
 Core tables: `profiles`, `coach_clients`, `exercises`, `programs`, `program_weeks`, `program_days`, `program_exercises`, `scheduled_workouts`, `workout_logs`, `set_logs`, `personal_records`, `threads`, `messages`. After schema changes run `npm run db:types` to regenerate TypeScript types.
+
+## Design Context
+
+Two design-system roots, two registers:
+
+- `PRODUCT.md` + `DESIGN.md` at this repo root → **product** register (the PWA itself): near-black "Black Stage", restrained co-brand pink `#FF1D8C`, Bricolage Grotesque + Plus Jakarta Sans, iOS-grade craft. Saturated color marks meaning, never decoration.
+- `marketing/PRODUCT.md` + `marketing/DESIGN.md` → **brand** register (the landing page Vite project in `marketing/`, dev on port 3001): "Editorial Neon" on `#141414`, full neon rainbow as primary voice, Cabinet Grotesk + Satoshi. The rainbow is committed; absolute bans like gradient text and numbered eyebrows are intentional brand choices, not slop.
+
+The two surfaces are deliberately different. Do not mix tokens, fonts, or rules across them. impeccable commands read the nearest `PRODUCT.md`/`DESIGN.md` to the working dir.
