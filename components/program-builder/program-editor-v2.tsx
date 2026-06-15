@@ -113,7 +113,7 @@ type ColorKey = keyof typeof COLORS;
 const COLOR_CYCLE: ColorKey[] = ["day1", "amber", "violet", "cyan"];
 
 function dayColor(dayNumber: number): (typeof COLORS)[ColorKey] {
-  const k = COLOR_CYCLE[(dayNumber - 1) % COLOR_CYCLE.length] ?? "rose";
+  const k = COLOR_CYCLE[(dayNumber - 1) % COLOR_CYCLE.length] ?? "day1";
   return COLORS[k];
 }
 
