@@ -44,7 +44,7 @@ export function PlansList({ plans }: { plans: PlanListItem[] }) {
             <span
               className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100"
               style={{
-                background: "linear-gradient(135deg, rgba(99,102,241,0.10) 0%, rgba(192,38,211,0.05) 100%)",
+                background: "var(--c-pink-dim)",
                 transition: "opacity 280ms cubic-bezier(0.34,1.56,0.64,1)",
               }}
             />

@@ -27,7 +27,16 @@ export function NewPlanButton() {
   }
 
   return (
-    <Button className="btn-spring" onClick={submit} disabled={submitting}>
+    <Button
+      onClick={submit}
+      disabled={submitting}
+      className="border-none transition-transform hover:scale-[1.04] active:scale-[0.97]"
+      style={{
+        background: "var(--c-cta-bg)",
+        color: "var(--c-cta-fg, #fff)",
+        boxShadow: "0 4px 14px var(--c-cta-glow)",
+      }}
+    >
       <Plus className="h-4 w-4" />
       {submitting ? "Luodaan…" : "Uusi suunnitelma"}
     </Button>
