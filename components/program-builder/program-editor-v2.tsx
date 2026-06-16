@@ -2822,7 +2822,7 @@ function ExercisesColumn({
           onSave={onRenameDay}
         />
       }
-      subtitle={`T${day.day_number}`}
+      subtitle="Liikkeet"
       titleColor={c.fg}
       action={
         <Mv2Button kind="ghost" size="sm" onClick={onAdd}>
