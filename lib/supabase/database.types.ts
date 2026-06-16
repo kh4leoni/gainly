@@ -453,54 +453,6 @@ export type Database = {
           },
         ]
       }
-      plans: {
-        Row: {
-          client_id: string | null
-          coach_id: string
-          created_at: string
-          grid: Json
-          id: string
-          title: string
-          updated_at: string
-          weeks: number
-        }
-        Insert: {
-          client_id?: string | null
-          coach_id: string
-          created_at?: string
-          grid?: Json
-          id?: string
-          title?: string
-          updated_at?: string
-          weeks?: number
-        }
-        Update: {
-          client_id?: string | null
-          coach_id?: string
-          created_at?: string
-          grid?: Json
-          id?: string
-          title?: string
-          updated_at?: string
-          weeks?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "plans_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "plans_coach_id_fkey"
-            columns: ["coach_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       meal_plans: {
         Row: {
           client_id: string | null
@@ -671,6 +623,54 @@ export type Database = {
             columns: ["set_log_id"]
             isOneToOne: false
             referencedRelation: "set_logs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plans: {
+        Row: {
+          client_id: string | null
+          coach_id: string
+          created_at: string
+          grid: Json
+          id: string
+          title: string
+          updated_at: string
+          weeks: number
+        }
+        Insert: {
+          client_id?: string | null
+          coach_id: string
+          created_at?: string
+          grid?: Json
+          id?: string
+          title?: string
+          updated_at?: string
+          weeks?: number
+        }
+        Update: {
+          client_id?: string | null
+          coach_id?: string
+          created_at?: string
+          grid?: Json
+          id?: string
+          title?: string
+          updated_at?: string
+          weeks?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plans_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plans_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
