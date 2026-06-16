@@ -1587,8 +1587,9 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
           title="Tallenna ja ajasta ohjelma"
           style={{
             position: "fixed",
-            right: 24,
-            bottom: 24,
+            right: isMobile ? 16 : 24,
+            // Lift clear of the mobile bottom nav so it doesn't sit on top of it.
+            bottom: isMobile ? 86 : 24,
             zIndex: 60,
             display: "inline-flex",
             alignItems: "center",

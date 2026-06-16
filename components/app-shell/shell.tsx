@@ -3,8 +3,9 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
+import { MoreHorizontal } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { NavLink } from "./nav-link";
 import { CoachSettingsButton } from "./coach-settings";
@@ -15,7 +16,7 @@ import { createClient } from "@/lib/supabase/client";
 import { getUnreadCount } from "@/lib/queries/messages";
 import { cn } from "@/lib/utils";
 
-type NavItem = { href: string; icon: ReactNode; label: string; badge?: number };
+type NavItem = { href: string; icon: ReactNode; label: string; badge?: number; mobilePrimary?: boolean };
 type Me = { id: string; full_name: string | null; email?: string | null } | null;
 
 export function AppShell({
@@ -50,8 +51,9 @@ export function AppShell({
   }, [coBrandLabel]);
 
   const pathname = usePathname();
-  const { pendingHref } = usePendingNav();
+  const { pendingHref, setPendingHref } = usePendingNav();
   const coachPending = pendingHref?.startsWith("/coach/") ? pendingHref : null;
+  const [moreOpen, setMoreOpen] = useState(false);
 
   const msgHref = nav.find(n => n.href.endsWith("/messages"))?.href ?? "";
   const serverBadge = nav.find(n => n.href === msgHref)?.badge ?? 0;
@@ -80,6 +82,15 @@ export function AppShell({
   const navWithBadge = nav.map(n =>
     n.href === msgHref ? { ...n, badge: msgBadge } : n
   );
+
+  // Mobile bottom bar: when the layout marks primaries, show those + a "Lisää"
+  // overflow sheet for the rest (6+ icons don't fit a phone bar). Otherwise show
+  // everything inline (athlete shell, small navs).
+  const mobilePrimaries = navWithBadge.filter((n) => n.mobilePrimary);
+  const useOverflow = mobilePrimaries.length > 0;
+  const mobileMain = useOverflow ? mobilePrimaries : navWithBadge;
+  const mobileRest = useOverflow ? navWithBadge.filter((n) => !n.mobilePrimary) : [];
+  const restActive = mobileRest.some((n) => pathname === n.href || pathname.startsWith(n.href + "/"));
 
   return (
     <div className="min-h-dvh md:flex">
@@ -142,11 +153,56 @@ export function AppShell({
           )}
         </main>
 
+        {/* Mobile "Lisää" overflow sheet */}
+        {useOverflow && moreOpen && (
+          <div className="fixed inset-0 z-50 md:hidden" onClick={() => setMoreOpen(false)}>
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px]" />
+            <div
+              className="absolute inset-x-0 bottom-0 rounded-t-2xl border-t bg-background p-2 shadow-2xl"
+              style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 10px)" }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="mx-auto mb-2 mt-1 h-1 w-10 rounded-full bg-muted" />
+              {mobileRest.map((n) => {
+                const active = pathname === n.href || pathname.startsWith(n.href + "/");
+                return (
+                  <Link
+                    key={n.href}
+                    href={n.href}
+                    prefetch
+                    onClick={() => { setPendingHref(n.href); setMoreOpen(false); }}
+                    className={cn(
+                      "flex items-center gap-3 rounded-xl px-4 py-3 text-[15px] font-medium",
+                      active ? "bg-accent text-accent-foreground" : "text-foreground active:bg-muted"
+                    )}
+                  >
+                    <span className={active ? "text-primary" : "text-muted-foreground"}>{n.icon}</span>
+                    {n.label}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Mobile bottom nav — not fixed, stays at bottom of h-dvh column */}
         <nav className="shrink-0 flex border-t bg-background md:hidden" style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
-          {navWithBadge.map((n) => (
+          {mobileMain.map((n) => (
             <NavLink key={n.href} {...n} variant={variant} />
           ))}
+          {useOverflow && (
+            <button
+              type="button"
+              onClick={() => setMoreOpen(true)}
+              className={cn(
+                "group relative flex flex-1 flex-col items-center justify-center gap-0.5 py-2 text-xs font-medium",
+                restActive ? "border-b-2 border-primary text-primary" : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <MoreHorizontal size={20} />
+              <span className="whitespace-nowrap">Lisää</span>
+            </button>
+          )}
         </nav>
       </div>
     </div>
