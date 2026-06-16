@@ -3408,6 +3408,7 @@ function ExerciseDetail({
               type="button"
               onClick={onOpenPicker}
               title="Vaihda liike"
+              className="mv2-editable-title"
               style={{
                 fontFamily: "var(--font-disp)",
                 fontSize: 31,
@@ -3420,9 +3421,17 @@ function ExerciseDetail({
                 padding: 0,
                 cursor: "pointer",
                 textAlign: "left",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 12,
               }}
             >
-              {ex.exercises.name}
+              <span>{ex.exercises.name}</span>
+              <Pencil
+                size={18}
+                className="mv2-editable-pencil"
+                style={{ flexShrink: 0, color: "var(--fg-3)", opacity: 0.55 }}
+              />
             </button>
           )}
           <div style={{ color: "var(--fg-2)", fontSize: 13.5, marginTop: 8, display: "flex", gap: 16 }}>
