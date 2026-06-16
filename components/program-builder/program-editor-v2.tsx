@@ -48,6 +48,21 @@ function useDndSensors() {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 }
+
+// Narrow-viewport flag. The editor switches from the side-by-side master-detail
+// rail to a single-pane (list ↔ detail) flow below this width so it stays usable
+// on phones, where the 320px rail + detail can't sit side by side.
+function useIsMobile(maxWidth = 820) {
+  const [mobile, setMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia(`(max-width: ${maxWidth}px)`);
+    const sync = () => setMobile(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, [maxWidth]);
+  return mobile;
+}
 import {
   ChevronLeft,
   ChevronRight,
@@ -350,6 +365,9 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
   // ── Layout state ──
   // Two overview modes only (Iso grid / Riband). Chosen behind the gear menu.
   const [phaseView, setPhaseView] = useState<"expanded" | "compact">("compact");
+  // Mobile: show one pane at a time (the outline list, or the exercise detail).
+  const isMobile = useIsMobile();
+  const [mobilePane, setMobilePane] = useState<"list" | "detail">("list");
 
   // ── Selection state ──
   // Memoize blocks so it's referentially stable when program is unchanged.
@@ -1423,8 +1441,8 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
             </div>
           </div>
         )}
-        {week && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 12, width: 320, flex: "0 0 auto", minHeight: 0 }}>
+        {week && (!isMobile || mobilePane === "list") && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12, width: isMobile ? "100%" : 320, flex: isMobile ? "1 1 0" : "0 0 auto", minWidth: 0, minHeight: 0 }}>
           <SessionsColumn
             week={week}
             block={block}
@@ -1448,7 +1466,10 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
           <ExercisesColumn
             day={day}
             selExIdx={selExIdx}
-            onSelect={setSelExIdx}
+            onSelect={(idx) => {
+              setSelExIdx(idx);
+              if (isMobile) setMobilePane("detail");
+            }}
             onAdd={() => addExerciseMut.mutate(day.id)}
             onReorder={(orderedIds) => reorderExercises.mutate({ dayId: day.id, orderedIds })}
             onRenameDay={(name) => renameDay.mutate({ dayId: day.id, name })}
@@ -1460,6 +1481,7 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
           </div>
         )}
 
+        {(!isMobile || mobilePane === "detail") && (
         <div
           style={{
             flex: 1,
@@ -1468,6 +1490,33 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
             background: "var(--bg-0)",
           }}
         >
+          {isMobile && (
+            <button
+              type="button"
+              onClick={() => setMobilePane("list")}
+              style={{
+                position: "sticky",
+                top: 0,
+                zIndex: 5,
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                width: "100%",
+                padding: "10px 14px",
+                background: "var(--bg-1)",
+                border: "none",
+                borderBottom: "1px solid var(--line)",
+                color: "var(--fg-1)",
+                fontSize: 13,
+                fontWeight: 600,
+                fontFamily: "inherit",
+                cursor: "pointer",
+                textAlign: "left",
+              }}
+            >
+              <ChevronLeft size={16} /> Takaisin liikkeisiin
+            </button>
+          )}
           {exercise && day && week && block && (
             <ExerciseDetail
               programId={programId}
@@ -1526,6 +1575,7 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
             <EmptyDetail onAdd={() => addExerciseMut.mutate(day.id)} />
           )}
         </div>
+        )}
       </div>
 
       {/* Persistent save — floats bottom-right so it always follows scroll.
@@ -1579,6 +1629,7 @@ function Topbar({
   setPhaseView: (v: "expanded" | "compact") => void;
   isTemplate: boolean;
 }) {
+  const isMobile = useIsMobile();
   return (
     <div
       style={{
@@ -1609,6 +1660,7 @@ function Topbar({
         <Mv2Button kind="ghost" onClick={onAddBlock}>
           <Plus size={13} /> Jakso
         </Mv2Button>
+        {!isMobile && (
         <div
           style={{
             display: "inline-flex",
@@ -1645,7 +1697,8 @@ function Topbar({
             );
           })}
         </div>
-        {isTemplate && (
+        )}
+        {isTemplate && !isMobile && (
           <span style={{ fontSize: 12, color: "var(--fg-3)", paddingLeft: 4 }}>
             Muutokset tallentuvat automaattisesti
           </span>
@@ -1742,13 +1795,14 @@ function PhaseStrip({
   onDuplicate: () => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const isMobile = useIsMobile();
   return (
     <div
       style={{
-        padding: "10px 22px",
+        padding: isMobile ? "9px 12px" : "10px 22px",
         display: "flex",
         alignItems: "center",
-        gap: 14,
+        gap: isMobile ? 8 : 14,
         borderBottom: "1px solid var(--line)",
         background: "var(--bg-1)",
         flex: "0 0 auto",
@@ -1804,18 +1858,20 @@ function PhaseStrip({
       >
         <ChevronRight size={13} />
       </button>
-      <div style={{ width: 1, height: 18, background: "var(--line)" }} />
-      <div style={{ display: "flex", gap: 14, color: "var(--fg-2)", fontSize: 13 }}>
-        <span>
-          <b style={{ color: "var(--fg-0)", fontWeight: 700 }}>{weekCount}</b> viikkoa
-        </span>
-        <span>
-          <b style={{ color: "var(--fg-0)", fontWeight: 700 }}>{workoutCount}</b> treeniä
-        </span>
-        <span>
-          <b style={{ color: "var(--fg-0)", fontWeight: 700 }}>{setCount}</b> sarjaa
-        </span>
-      </div>
+      {!isMobile && <div style={{ width: 1, height: 18, background: "var(--line)" }} />}
+      {!isMobile && (
+        <div style={{ display: "flex", gap: 14, color: "var(--fg-2)", fontSize: 13 }}>
+          <span>
+            <b style={{ color: "var(--fg-0)", fontWeight: 700 }}>{weekCount}</b> viikkoa
+          </span>
+          <span>
+            <b style={{ color: "var(--fg-0)", fontWeight: 700 }}>{workoutCount}</b> treeniä
+          </span>
+          <span>
+            <b style={{ color: "var(--fg-0)", fontWeight: 700 }}>{setCount}</b> sarjaa
+          </span>
+        </div>
+      )}
       <div style={{ marginLeft: "auto", display: "flex", gap: 6, position: "relative" }}>
         <Mv2Button kind="ghost" size="sm" title="Jakson toiminnot" onClick={() => setMenuOpen((o) => !o)}>
           <Settings2 size={12} /> Jakso
@@ -3121,7 +3177,10 @@ function FitScale({
   children: ReactNode;
   style?: CSSProperties;
 }) {
-  return <div style={{ minWidth: natural, ...style }}>{children}</div>;
+  // On phones, drop the readable min-width so the detail fits the screen and
+  // scrolls vertically instead of forcing a horizontal scroll.
+  const isMobile = useIsMobile();
+  return <div style={{ minWidth: isMobile ? 0 : natural, ...style }}>{children}</div>;
 }
 
 function HistorySessionBlock({ session, accent }: { session: HistorySession; accent: string }) {
@@ -3333,6 +3392,7 @@ function ExerciseDetail({
 }) {
   const c = dayColor(day.day_number);
   const cfgs = configsFromExercise(ex);
+  const isMobile = useIsMobile();
 
   const [historyOpen, setHistoryOpen] = useState(false);
   const historySessions = useMemo(
@@ -3373,7 +3433,7 @@ function ExerciseDetail({
     <>
     <div
       style={{
-        padding: "20px 26px 30px",
+        padding: isMobile ? "14px 14px 28px" : "20px 26px 30px",
         // Day colour zone: a soft wash of the active day's accent fades down the
         // top of the detail so you always know which day you're editing.
         background: `linear-gradient(180deg, color-mix(in srgb, ${c.fg} 9%, var(--bg-0)) 0%, var(--bg-0) 230px)`,
@@ -3393,7 +3453,7 @@ function ExerciseDetail({
         </span>
       </div>
 
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 18 }}>
+      <div style={{ display: "flex", flexWrap: isMobile ? "wrap" : "nowrap", justifyContent: "space-between", alignItems: "flex-start", gap: isMobile ? 10 : 18 }}>
         <div style={{ flex: 1, minWidth: 0, position: "relative" }}>
           {pickerOpen || !ex.exercises ? (
             <ExercisePicker
@@ -3469,8 +3529,8 @@ function ExerciseDetail({
 
       {/* Three-week comparison — only meaningful for lifting */}
       {ex.exercises?.kind !== "cardio" && ex.exercises?.kind !== "free" && (
-      <div style={{ display: "flex", gap: 12, alignItems: "stretch" }}>
-        <div style={{ flex: "0 0 154px", minWidth: 0 }}>
+      <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: 12, alignItems: "stretch" }}>
+        <div style={{ flex: isMobile ? "1 1 auto" : "0 0 154px", minWidth: 0, order: isMobile ? 2 : 0 }}>
           <NeighborWeekCard
             week={prevWeek}
             ex={prevNb.ex}
@@ -3482,7 +3542,7 @@ function ExerciseDetail({
             onJump={prevWeek ? () => onJumpWeek(prevWeek.id) : null}
           />
         </div>
-        <div style={{ flex: "1 1 0", minWidth: 0 }}>
+        <div style={{ flex: "1 1 0", minWidth: 0, order: isMobile ? 1 : 0 }}>
           <CurrentWeekTable
             ex={ex}
             cfgs={cfgs}
@@ -3496,7 +3556,7 @@ function ExerciseDetail({
             canCopyToNext={!!nextWeek}
           />
         </div>
-        <div style={{ flex: "0 0 154px", minWidth: 0 }}>
+        <div style={{ flex: isMobile ? "1 1 auto" : "0 0 154px", minWidth: 0, order: isMobile ? 3 : 0 }}>
           <NeighborWeekCard
             week={nextWeek}
             ex={nextNb.ex}
