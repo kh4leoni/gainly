@@ -1,0 +1,260 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-06-15T00:00:00.000Z",
+  "title": "Design System: Gainly Marketing",
+  "extensions": {
+    "colorMeta": {
+      "cobrand-pink": {
+        "role": "primary",
+        "displayName": "Co-brand Pink",
+        "canonical": "#ff2d95",
+        "tonalRamp": ["#2d0218", "#590430", "#860648", "#b3085f", "#df0a77", "#ff2d95", "#ff5cad", "#ff8ec5"]
+      },
+      "neon-pink": {
+        "role": "secondary",
+        "displayName": "Neon Pink",
+        "canonical": "#ff006e",
+        "tonalRamp": ["#290011", "#530023", "#7c0035", "#a50046", "#cd0058", "#ff006e", "#ff4d97", "#ff85ba"]
+      },
+      "neon-orange": {
+        "role": "secondary",
+        "displayName": "Neon Orange",
+        "canonical": "#ff6b00",
+        "tonalRamp": ["#291100", "#532300", "#7c3400", "#a54500", "#cd5700", "#ff6b00", "#ff944d", "#ffb985"]
+      },
+      "neon-yellow": {
+        "role": "secondary",
+        "displayName": "Neon Yellow",
+        "canonical": "#ffd60a",
+        "tonalRamp": ["#292202", "#534403", "#7c6605", "#a58807", "#cdaa08", "#ffd60a", "#ffe04d", "#ffea85"]
+      },
+      "neon-green": {
+        "role": "secondary",
+        "displayName": "Neon Green",
+        "canonical": "#39ff14",
+        "tonalRamp": ["#062903", "#0c5305", "#127c08", "#18a50a", "#1ecd0d", "#39ff14", "#76ff5c", "#a8ff8e"]
+      },
+      "neon-cyan": {
+        "role": "secondary",
+        "displayName": "Neon Cyan",
+        "canonical": "#00f5ff",
+        "tonalRamp": ["#002729", "#005053", "#00787c", "#00a0a5", "#00c9cd", "#00f5ff", "#5cf8ff", "#8efbff"]
+      },
+      "neon-blue": {
+        "role": "secondary",
+        "displayName": "Neon Blue",
+        "canonical": "#3a86ff",
+        "tonalRamp": ["#06152e", "#0c2a5c", "#123e8a", "#1853b8", "#1e68dd", "#3a86ff", "#76a8ff", "#a8c4ff"]
+      },
+      "neon-violet": {
+        "role": "secondary",
+        "displayName": "Neon Violet",
+        "canonical": "#8338ec",
+        "tonalRamp": ["#14062a", "#290c54", "#3d127c", "#5218a5", "#671ecd", "#8338ec", "#a570f1", "#c5a3f6"]
+      },
+      "stage-black": {
+        "role": "neutral",
+        "displayName": "Stage Black",
+        "canonical": "#141414",
+        "tonalRamp": ["#070708", "#0e0e0e", "#141414", "#1a1a1a", "#1e1e1e", "#2a2a2a", "#3a3a3a", "#4a4a4a"]
+      },
+      "surface-1": {
+        "role": "neutral",
+        "displayName": "Surface 1",
+        "canonical": "#1a1a1a",
+        "tonalRamp": ["#0e0e0e", "#141414", "#1a1a1a", "#1e1e1e", "#242424", "#2a2a2a", "#363636", "#4a4a4a"]
+      },
+      "surface-2": {
+        "role": "neutral",
+        "displayName": "Surface 2",
+        "canonical": "#1e1e1e",
+        "tonalRamp": ["#141414", "#1a1a1a", "#1e1e1e", "#262626", "#2e2e2e", "#363636", "#464646", "#5a5a5a"]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "#f4f4f5",
+        "tonalRamp": ["#27272a", "#3f3f46", "#52525b", "#71717a", "#a1a1aa", "#cfcfcf", "#e4e4e7", "#f4f4f5"]
+      },
+      "ink-muted": {
+        "role": "neutral",
+        "displayName": "Ink Muted",
+        "canonical": "#cfcfcf",
+        "tonalRamp": ["#1a1a1a", "#2a2a2a", "#404040", "#606060", "#8a8a8a", "#a8a8a8", "#cfcfcf", "#ebebeb"]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Hero h1 only. Manual <br>; two-line copy budget; text-wrap balance implied."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Every section heading. Hosts FlipWords cycles or Highlight underlines."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Feature-row titles inside ClientFeaturesShowcase, paired with the big index numeral."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "All paragraph copy. Default color text-muted-foreground (#cfcfcf), not pure ink."
+      },
+      "eyebrow": {
+        "displayName": "Eyebrow Kicker",
+        "purpose": "Committed editorial kicker above every section heading. Satoshi 500, 11.26px, 0.2em tracking, uppercase."
+      },
+      "index-numeral": {
+        "displayName": "Index Numeral",
+        "purpose": "Feature-row index '01'/'02'/'03' in the ClientFeaturesShowcase. Tabular-nums; opacity flip on active."
+      }
+    },
+    "shadows": [
+      { "name": "laptop-drop", "value": "0 50px 100px -25px rgba(0,0,0,0.75)", "purpose": "Under the animated MacBook in hero and BenefitsSection." },
+      { "name": "phone-drop", "value": "0 40px 80px -25px rgba(0,0,0,0.8)", "purpose": "Behind tilted iPhone mockups in feature halos." },
+      { "name": "magenta-halo", "value": "radial-gradient(ellipse at center, rgba(255,45,149,0.25), transparent 65%) blur(48px)", "purpose": "Primary device glow under the hero MacBook and BenefitsSection laptop." },
+      { "name": "cyan-sheen", "value": "radial-gradient(ellipse at center, rgba(0,245,255,0.12), transparent 70%) blur(96px)", "purpose": "Secondary atmospheric layer behind the laptop, under the magenta halo." },
+      { "name": "feature-halo", "value": "radial-gradient(ellipse at center, <feature-color>40, transparent 65%) blur(96px)", "purpose": "Per-feature iPhone halo in ClientFeaturesShowcase; alpha 25% so the screenshot reads first." },
+      { "name": "conic-puddle", "value": "conic-gradient(from 0deg, rgba(255,45,149,0.25), rgba(255,107,0,0.18), rgba(0,245,255,0.22), rgba(131,56,236,0.25), rgba(255,45,149,0.25)) blur(96px)", "purpose": "Rainbow reflection puddle under the hero MacBook and tilted hero phone." },
+      { "name": "cta-arrow-glow", "value": "0 0 20px -2px rgba(255,45,149,0.6)", "purpose": "Co-brand glow under the primary CTA's neon arrow circle." },
+      { "name": "mobile-card-inset", "value": "0 0 0 1px rgba(255,255,255,0.08) inset, 0 30px 60px -30px rgba(0,0,0,0.6)", "purpose": "Mobile-only .mobile-card ring + soft drop; disappears at lg: breakpoint." }
+    ],
+    "motion": [
+      { "name": "ease-spring", "value": "cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Hero entrance, laptop lid open, screen power-on, large-element 3D transforms." },
+      { "name": "ease-aceternity", "value": "cubic-bezier(0.22, 1, 0.36, 1)", "purpose": "AnimatedHeading/Text, feature row title/icon shifts, screenshot crossfade, FlipWords cycle." },
+      { "name": "press-feedback", "value": "scale(0.96) over 60ms / scale(0.98) over 150ms", "purpose": "Active-state press on CTAs and tappable rows. Carries the parent product's btn-spring identity." },
+      { "name": "rainbow-shift", "value": "neon-shift 8s linear infinite (background-position 0% 50% → 200% 50%)", "purpose": "Animated rainbow gradient on .neon-text and .neon-bg." },
+      { "name": "noise-rotate", "value": "noise-rotate 4s linear infinite (--noise-angle 0deg → 360deg)", "purpose": "Conic-gradient noise rim rotation on the NoiseBackground CTA frame." },
+      { "name": "infinite-cards", "value": "scroll 40s linear infinite (translateX(0) → translateX(calc(-50% - 0.5rem)))", "purpose": "InfiniteMovingCards horizontal autoscroll for testimonials." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" },
+      { "name": "xl", "value": "1280px" },
+      { "name": "2xl", "value": "1536px" },
+      { "name": "doc-zoom-ceiling", "value": "1728px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary CTA Pill",
+      "kind": "button",
+      "refersTo": "cta-primary",
+      "description": "Black pill with rotating-neon-noise rim and a neon-rainbow arrow circle. The page's headline CTA.",
+      "html": "<button class=\"ds-cta-primary\"><span class=\"ds-cta-primary__rim\"></span><span class=\"ds-cta-primary__label\">Kokeile ilmaiseksi</span><span class=\"ds-cta-primary__arrow\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M7 7h10v10\"/><path d=\"M7 17 17 7\"/></svg></span></button>",
+      "css": ".ds-cta-primary { position: relative; display: inline-flex; align-items: center; gap: 12px; padding: 8px 8px 8px 24px; height: 52px; border: 0; cursor: pointer; border-radius: 9999px; background: linear-gradient(to right, #000, #000, #1a1a1a); color: #fff; font-family: Satoshi, system-ui, sans-serif; font-weight: 500; font-size: 14px; transition: background 0.15s ease, transform 0.15s ease; box-shadow: 0 1px 0 0 #0a0a0a inset, 0 1px 0 0 #262626; } .ds-cta-primary:hover { background: linear-gradient(to right, #1a1a1a, #000); } .ds-cta-primary:active { transform: scale(0.98); } .ds-cta-primary__rim { position: absolute; inset: -2px; border-radius: 9999px; padding: 2px; background: conic-gradient(from 0deg, #ff2d95, #00f5ff, #ffd60a, #39ff14, #8338ec, #ff2d95); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; animation: ds-rainbow-rim 5s linear infinite; pointer-events: none; } .ds-cta-primary__arrow { display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: 9999px; background: linear-gradient(90deg, #ff006e, #ff6b00, #ffd60a, #39ff14, #00f5ff, #3a86ff, #ff2d95); background-size: 200% 100%; animation: ds-rainbow-shift 8s linear infinite; box-shadow: 0 0 20px -2px rgba(255,45,149,0.6); color: #fff; } @keyframes ds-rainbow-rim { to { transform: rotate(360deg); } } @keyframes ds-rainbow-shift { 0% { background-position: 0% 50%; } 100% { background-position: 200% 50%; } }"
+    },
+    {
+      "name": "Secondary Inline Link",
+      "kind": "button",
+      "refersTo": "cta-secondary",
+      "description": "Text + arrow inline link sitting beside the primary CTA.",
+      "html": "<a class=\"ds-cta-secondary\" href=\"#\">Varaa esittely <svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M7 7h10v10\"/><path d=\"M7 17 17 7\"/></svg></a>",
+      "css": ".ds-cta-secondary { display: inline-flex; align-items: center; gap: 4px; color: #fff; text-decoration: none; font-family: Satoshi, system-ui, sans-serif; font-weight: 500; font-size: 14px; transition: opacity 0.15s ease; } .ds-cta-secondary:hover { opacity: 0.8; }"
+    },
+    {
+      "name": "Eyebrow Kicker",
+      "kind": "custom",
+      "description": "The committed editorial kicker above every section headline. Satoshi 500, 11.26px, 0.2em tracking, uppercase, muted ink.",
+      "html": "<div class=\"ds-eyebrow\">Asiakaspuoli</div>",
+      "css": ".ds-eyebrow { font-family: Satoshi, system-ui, sans-serif; font-weight: 500; font-size: 11.26px; letter-spacing: 0.2em; text-transform: uppercase; color: #cfcfcf; }"
+    },
+    {
+      "name": "Display Headline",
+      "kind": "custom",
+      "description": "Hero h1. Cabinet Grotesk 500. Two-line manual <br> budget. .neon-text on the rainbow word.",
+      "html": "<h1 class=\"ds-display\">Valmenna <span class=\"ds-display__neon\">asiakkaita</span>,<br>älä taulukoita.</h1>",
+      "css": ".ds-display { font-family: 'Cabinet Grotesk', system-ui, sans-serif; font-weight: 500; font-size: clamp(2.75rem, 6vw, 5.25rem); line-height: 1.05; letter-spacing: -0.02em; color: #fff; margin: 0; text-wrap: balance; } .ds-display__neon { background: linear-gradient(90deg, #ff006e, #ff6b00, #ffd60a, #39ff14, #00f5ff, #3a86ff, #ff2d95); background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: ds-rainbow-shift 8s linear infinite; } @keyframes ds-rainbow-shift { 0% { background-position: 0% 50%; } 100% { background-position: 200% 50%; } }"
+    },
+    {
+      "name": "Section Headline",
+      "kind": "custom",
+      "description": "Every section's heading. Cabinet Grotesk 500. Hosts FlipWords or Highlight inserts.",
+      "html": "<h2 class=\"ds-headline\">Miksi asiakkaasi<br>rakastavat Gainlya</h2>",
+      "css": ".ds-headline { font-family: 'Cabinet Grotesk', system-ui, sans-serif; font-weight: 500; font-size: clamp(2.125rem, 5vw, 3.625rem); line-height: 1.05; letter-spacing: -0.025em; color: #fff; margin: 0; text-wrap: balance; }"
+    },
+    {
+      "name": "Body Paragraph",
+      "kind": "custom",
+      "description": "Default body copy. Muted ink (#cfcfcf) on near-black for AA contrast headroom.",
+      "html": "<p class=\"ds-body\">Hyvä valmennustyökalu on yhtä paljon asiakkaan etu kuin sinun. Asiakaspuoli on tehty siitä mitä salilla oikeasti tarvitaan — nopeasti, ilman estoja.</p>",
+      "css": ".ds-body { font-family: Satoshi, system-ui, sans-serif; font-weight: 400; font-size: clamp(0.9375rem, 1.5vw, 1.125rem); line-height: 1.6; color: #cfcfcf; max-width: 65ch; margin: 0; text-wrap: pretty; }"
+    },
+    {
+      "name": "Feature Row",
+      "kind": "custom",
+      "description": "One row in the ClientFeaturesShowcase ribbon: index numeral + title + per-feature neon glow + icon. Active state swaps colors and slides the title.",
+      "html": "<div class=\"ds-feature-row ds-feature-row--active\" style=\"--ds-feature-color: #39ff14\"><span class=\"ds-feature-row__marker\" aria-hidden=\"true\"></span><div class=\"ds-feature-row__main\"><span class=\"ds-feature-row__index\">02</span><h3 class=\"ds-feature-row__title\">Nopea loggeri</h3></div><svg class=\"ds-feature-row__icon\" width=\"32\" height=\"32\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"m6.5 6.5 11 11\"/><path d=\"m21 21-1-1\"/><path d=\"m3 3 1 1\"/><path d=\"m18 22 4-4\"/><path d=\"m2 6 4-4\"/><path d=\"m3 10 7-7\"/><path d=\"m14 21 7-7\"/></svg></div>",
+      "css": ".ds-feature-row { display: flex; align-items: center; gap: 32px; padding: 20px 0; border-top: 1px solid rgba(255,255,255,0.08); position: relative; cursor: pointer; } .ds-feature-row__marker { position: absolute; top: -1px; left: 0; height: 2px; width: 12px; background: var(--ds-feature-color); opacity: 0.4; transition: width 0.7s cubic-bezier(0.22,1,0.36,1), opacity 0.7s cubic-bezier(0.22,1,0.36,1), box-shadow 0.7s cubic-bezier(0.22,1,0.36,1); } .ds-feature-row--active .ds-feature-row__marker { width: 64px; opacity: 1; box-shadow: 0 0 18px var(--ds-feature-color), 0 0 6px var(--ds-feature-color); } .ds-feature-row__main { display: flex; align-items: center; gap: 32px; flex: 1; min-width: 0; } .ds-feature-row__index { font-family: 'Cabinet Grotesk', system-ui, sans-serif; font-weight: 900; font-size: clamp(1.875rem, 3.5vw, 3rem); line-height: 1; letter-spacing: -0.025em; font-variant-numeric: tabular-nums; color: rgba(255,255,255,0.2); transition: color 0.5s ease; flex-shrink: 0; } .ds-feature-row--active .ds-feature-row__index { color: rgba(255,255,255,0.9); } .ds-feature-row__title { font-family: 'Cabinet Grotesk', system-ui, sans-serif; font-weight: 700; font-size: clamp(1.25rem, 2.5vw, 1.875rem); line-height: 1.2; letter-spacing: -0.02em; color: rgba(255,255,255,0.4); margin: 0; transition: color 0.5s cubic-bezier(0.22,1,0.36,1), transform 0.5s cubic-bezier(0.22,1,0.36,1); } .ds-feature-row--active .ds-feature-row__title { color: #fff; transform: translateX(4px); } .ds-feature-row__icon { width: 32px; height: 32px; flex-shrink: 0; color: var(--ds-feature-color); filter: drop-shadow(0 0 14px var(--ds-feature-color)); transition: transform 0.5s ease, color 0.5s ease, filter 0.5s ease, opacity 0.5s ease; } .ds-feature-row:not(.ds-feature-row--active) .ds-feature-row__icon { color: rgba(255,255,255,0.6); filter: none; transform: scale(0.9); opacity: 0.4; } .ds-feature-row--active .ds-feature-row__icon { transform: scale(1.1); }"
+    },
+    {
+      "name": "Floating Navbar Pill",
+      "kind": "nav",
+      "description": "Desktop centered nav: translucent pill with icons + Finnish labels. Auto-hides on scroll-down.",
+      "html": "<nav class=\"ds-floating-nav\"><a class=\"ds-floating-nav__item\" href=\"#\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z\"/><polyline points=\"9 22 9 12 15 12 15 22\"/></svg>Etusivu</a><a class=\"ds-floating-nav__item\" href=\"#features\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3z\"/></svg>Ominaisuudet</a><a class=\"ds-floating-nav__item\" href=\"#pricing\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z\"/><circle cx=\"7.5\" cy=\"7.5\" r=\".5\" fill=\"currentColor\"/></svg>Hinnoittelu</a><a class=\"ds-floating-nav__item\" href=\"#contact\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect width=\"20\" height=\"16\" x=\"2\" y=\"4\" rx=\"2\"/><path d=\"m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7\"/></svg>Yhteys</a></nav>",
+      "css": ".ds-floating-nav { position: fixed; top: 32px; left: 50%; transform: translateX(-50%); z-index: 50; display: inline-flex; align-items: center; gap: 4px; padding: 8px 12px; border-radius: 9999px; background: rgba(20,20,20,0.6); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 8px 32px rgba(0,0,0,0.4); } .ds-floating-nav__item { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 9999px; color: #fff; text-decoration: none; font-family: Satoshi, system-ui, sans-serif; font-weight: 500; font-size: 14px; transition: background 0.2s ease, color 0.2s ease; } .ds-floating-nav__item:hover { background: rgba(255,255,255,0.08); }"
+    },
+    {
+      "name": "Hamburger Button",
+      "kind": "button",
+      "refersTo": "hamburger-button",
+      "description": "Mobile-only round button that opens the full-screen menu overlay.",
+      "html": "<button class=\"ds-hamburger\" aria-label=\"Avaa valikko\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><line x1=\"4\" x2=\"20\" y1=\"12\" y2=\"12\"/><line x1=\"4\" x2=\"20\" y1=\"6\" y2=\"6\"/><line x1=\"4\" x2=\"20\" y1=\"18\" y2=\"18\"/></svg></button>",
+      "css": ".ds-hamburger { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 9999px; border: 0; cursor: pointer; background: rgba(20,20,20,0.85); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); color: #fff; transition: background 0.15s ease, transform 0.15s ease; } .ds-hamburger:hover { background: rgba(20,20,20,0.95); } .ds-hamburger:active { transform: scale(0.96); }"
+    },
+    {
+      "name": "Mobile Section Card",
+      "kind": "card",
+      "refersTo": "section-card-mobile",
+      "description": "Wraps every <section> on mobile so the page reads as a stack of dark cards on the black surround. Disappears at lg breakpoint.",
+      "html": "<section class=\"ds-mobile-card\"><div class=\"ds-eyebrow\">Miksi Gainly</div><h2 class=\"ds-headline\">Rakennettu treenaajien<br>toimesta — sinulle.</h2><p class=\"ds-body\">Gainlyn tekijät ovat itse urheilijoita ja valmentajia.</p></section>",
+      "css": ".ds-mobile-card { display: block; padding: 80px 20px; background: #1a1a1a; border-radius: 28px; box-shadow: 0 0 0 1px rgba(255,255,255,0.08) inset, 0 30px 60px -30px rgba(0,0,0,0.6); margin: 0 12px; isolation: isolate; overflow: hidden; } .ds-mobile-card > * + * { margin-top: 24px; } @media (min-width: 1024px) { .ds-mobile-card { margin: 0; padding: 128px 48px; border-radius: 0; box-shadow: none; isolation: auto; overflow: visible; } }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Editorial Neon",
+    "overview": "The Gainly marketing site is a near-black editorial layout that uses the full neon rainbow as its primary voice. Where the product app is restrained (the parent gainly/DESIGN.md's 'Black Stage' with one co-brand pink), the marketing site turns the lights all the way up — every section names its kicker, its display headline, and its supporting paragraph in a two-column rhythm, and each one is anchored by a different saturated neon. The rainbow isn't decorative; each color is doing the same job a spotlight does on a stage — telling the eye which character to watch. The site shows the product, it doesn't describe it. A 3D-animated MacBook lid opens to reveal the coach dashboard. iPhone screenshots tilt in space inside neon halos. Scroll-driven sections sync laptop frames to text. The motion is iOS-grade and respects reduced-motion. This system explicitly rejects crypto/Web3 neon-on-black bro-tech, generic Stripe/Linear SaaS landings, American big-box gym aesthetic, and generic consumer fitness apps.",
+    "keyCharacteristics": [
+      "Near-black surface (#141414) under a deliberately-rationed full neon rainbow.",
+      "Editorial cadence: kicker + headline + paragraph + distinctive showcase per section. Variety is the rhythm; no identical card grids.",
+      "Real product imagery: animated MacBook, tilted iPhone mockups, real Finnish coach testimonials.",
+      "Display type does the work, not chrome. Cabinet Grotesk medium-weight headlines run to two balanced lines and stop.",
+      "Motion-rich but reduced-motion-honest. Every animation has a fallback.",
+      "Finnish first; English locale slots in without rework."
+    ],
+    "rules": [
+      { "name": "The Spotlight Rule", "body": "Saturated color is a spotlight, never wallpaper. Each neon glow on this page is doing exactly one job: pointing at a feature row, anchoring a device halo, glowing under a CTA arrow, or carrying a Spotlight beam into the hero. Decorative rainbow fills are forbidden.", "section": "colors" },
+      { "name": "The Feature-Color Lock", "body": "Each client-app feature owns one neon hue across the page: offline = cyan, logger = green, PRs = yellow, messaging = pink, meals = orange, weights = blue, install = violet. Never reassign a feature's hue for decorative reasons.", "section": "colors" },
+      { "name": "The Co-brand Holds the Hero", "body": "The hero and the page-level CTA always lead with #ff2d95. Other neons appear only after the visitor has met the brand color first.", "section": "colors" },
+      { "name": "The Two-Display-Faces Rule", "body": "Cabinet Grotesk for display and titles, Satoshi for body and eyebrows. Never introduce a third face on the marketing surface.", "section": "typography" },
+      { "name": "The Two-Line Headline Rule", "body": "Display and headline copy is budgeted to two visual lines on every breakpoint, written with manual <br> to control wrap. If copy doesn't fit at the smallest breakpoint, rewrite the copy, don't shrink the type.", "section": "typography" },
+      { "name": "The Muted-Body Rule", "body": "Body copy is text-muted-foreground (#cfcfcf on #141414 = ~10.4:1 contrast), not pure ink. Pure white is reserved for headlines and the active row title — it's a hierarchy lever, not the default.", "section": "typography" },
+      { "name": "The Glow-Before-Shadow Rule", "body": "Depth on this page comes from neon glows under elements, not from dark drops under cards. Real drop shadows are reserved for actual rendered hardware (laptop, phone) and for the mobile-only card inset.", "section": "elevation" },
+      { "name": "The Flat-Section Default", "body": "Desktop sections are full-bleed and flat. The mobile-card class applies only at the mobile breakpoint and disappears at lg: because the desktop layout's width already creates rhythm without card frames.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do keep the body surface near-black #141414 and rely on tonal layering through Surface 1 and Surface 2 plus atmospheric neon glows to convey depth.",
+      "Do use the full neon rainbow as an editorial signal — one hue per client-app feature, magenta on the hero, white on default body text (the Spotlight Rule, the Feature-Color Lock, the Co-brand Holds the Hero).",
+      "Do follow the editorial cadence on every section: eyebrow kicker → headline → paragraph → distinctive showcase. The showcase format should vary.",
+      "Do keep display and headline copy to two visual lines with manual <br> breaks; rewrite copy before shrinking the type.",
+      "Do pair every motion entrance with whileInView: { once: true, margin: '-80px' } so reduced-motion users still see content reliably on first paint.",
+      "Do budget every neon-on-near-black combination against WCAG AA: body at #cfcfcf on #141414 is ~10.4:1; muted text at white/40 or white/60 over a neon-glow region needs an in-context audit case by case.",
+      "Do keep hover/active feedback press-shaped: active:scale-[0.96] to active:scale-[0.98] over 60–150ms.",
+      "Do ship Finnish copy as primary; budget every component so the English locale slots in later without a rewrite."
+    ],
+    "donts": [
+      "Don't make this site feel like crypto/Web3 neon-on-black bro-tech — no glitch text, no holographic foil, no anime-edgy fonts, no 'to the moon' hustle copy.",
+      "Don't turn it into a generic Stripe/Linear/Vercel SaaS landing — no soft-pastel gradients, no identical card grids, no hero-metric block, no 'trusted by these logos' strip.",
+      "Don't lean American big-box gym aesthetic — no Crunch/LA Fitness primary reds, no stock-photo athletes flexing, no all-caps 'GRIND. SWEAT. REPEAT.' copy.",
+      "Don't copy generic consumer fitness apps (MyFitnessPal/Strava/Fitbit) — no streak-gamification language, no 'your daily steps' framing.",
+      "Don't introduce a third display face; Cabinet Grotesk for display, Satoshi for body. The parent product app's Bricolage Grotesque + Plus Jakarta Sans is a different system.",
+      "Don't reassign a feature's color. Cyan = offline, green = logger, yellow = PRs, pink = messaging, orange = meals, blue = weights, violet = install.",
+      "Don't use the .neon-bg (animated rainbow surface) for decoration. It's reserved for the primary-CTA arrow circle, active progress bars, and intentional one-off accent fills.",
+      "Don't add drop shadows under desktop section cards or content blocks. Real drops are for rendered hardware and the mobile-only card inset, nothing else.",
+      "Don't use white-at-40 or white-at-60 as primary body color even when it 'looks elegant' — it's failing AA. Pull body up to text-muted-foreground (#cfcfcf) or to pure ink.",
+      "Don't add border-left/border-right colored stripes, glassmorphism for decoration, or gradient text outside .neon-text on headlines.",
+      "Don't stretch hero display copy past two lines or remove text-wrap: balance. The headline is the lede; let it breathe."
+    ]
+  }
+}

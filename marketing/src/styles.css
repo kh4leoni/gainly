@@ -1,0 +1,173 @@
+@import 'tailwindcss' source(none);
+@source "../src";
+
+@import 'tw-animate-css';
+
+/* ==========================================================
+   Gainly design tokens
+   Nox noir #141414 + neon rainbow accents
+   ========================================================== */
+:root {
+  --background: #141414;
+  --foreground: #f4f4f5;
+  --muted: #1e1e1e;
+  --muted-foreground: #cfcfcf;
+  --surface: #1a1a1a;
+  --accent: #ff2d95; /* neon magenta — primary accent */
+  --accent-foreground: #ffffff;
+  --border: rgba(207, 207, 207, 0.14);
+  --header-bg: rgba(20, 20, 20, 0.85);
+
+  /* neon rainbow palette */
+  --neon-magenta: #ff2d95;
+  --neon-pink: #ff006e;
+  --neon-orange: #ff6b00;
+  --neon-yellow: #ffd60a;
+  --neon-green: #39ff14;
+  --neon-cyan: #00f5ff;
+  --neon-blue: #3a86ff;
+  --neon-violet: #8338ec;
+
+  --neon-rainbow: linear-gradient(
+    90deg,
+    #ff006e 0%,
+    #ff6b00 18%,
+    #ffd60a 33%,
+    #39ff14 50%,
+    #00f5ff 66%,
+    #3a86ff 82%,
+    #ff2d95 100%
+  );
+}
+
+/* animated rainbow text */
+.neon-text {
+  background: var(--neon-rainbow);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: neon-shift 8s linear infinite;
+}
+
+/* solid rainbow background (animated) */
+.neon-bg {
+  background: var(--neon-rainbow);
+  background-size: 200% 100%;
+  animation: neon-shift 8s linear infinite;
+}
+
+@keyframes neon-shift {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+
+/* Aceternity NoiseBackground — rotating conic gradient angle */
+@property --noise-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes noise-rotate {
+  to { --noise-angle: 360deg; }
+}
+
+.noise-rotate {
+  --noise-angle: 0deg;
+  animation: noise-rotate var(--noise-duration, 4s) linear infinite;
+}
+
+/* Infinite Moving Cards — horizontal autoscroll */
+@keyframes scroll {
+  to {
+    transform: translateX(calc(-50% - 0.5rem));
+  }
+}
+.animate-scroll {
+  animation: scroll var(--animation-duration, 40s) var(--animation-direction, forwards) linear infinite;
+}
+
+/* Hide horizontal scrollbar for snap carousels */
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Mobile-only card frame (visible edges on black page bg).
+   On desktop the section returns to full-bleed. */
+.mobile-card {
+  margin-left: 0.75rem;
+  margin-right: 0.75rem;
+  border-radius: 28px;
+  overflow: hidden;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08) inset,
+    0 30px 60px -30px rgba(0, 0, 0, 0.6);
+  isolation: isolate;
+}
+@media (min-width: 1024px) {
+  .mobile-card {
+    margin: 0;
+    border-radius: 0;
+    box-shadow: none;
+    isolation: auto;
+    overflow: visible;
+  }
+}
+
+/* @theme inline maps tokens to Tailwind color utilities
+   (bg-surface, text-muted-foreground, bg-muted, bg-accent, ...) */
+@theme inline {
+  --font-sans: 'Satoshi', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --font-display: 'Cabinet Grotesk', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-surface: var(--surface);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-border: var(--border);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+* {
+  border-color: var(--color-border);
+}
+
+html,
+body,
+#app {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background: var(--background);
+  color: var(--foreground);
+  overflow-x: hidden;
+  overflow-wrap: anywhere;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, p, span {
+  min-width: 0;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display);
+  letter-spacing: -0.025em;
+  font-weight: 800;
+}
