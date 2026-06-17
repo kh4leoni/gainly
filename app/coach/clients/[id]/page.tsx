@@ -122,13 +122,15 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
 
   const bwHistory = (bwRes.data ?? []) as { weight_kg: number; logged_at: string }[];
   const latestBw = bwHistory[0] ?? null;
-  const prevBw = bwHistory[1] ?? null;
-  const bwDelta = latestBw && prevBw ? +(latestBw.weight_kg - prevBw.weight_kg).toFixed(1) : null;
+  const bwSeries = bwHistory.map((e) => ({ value: e.weight_kg, logged_at: e.logged_at }));
+  const bw7 = deltaOverDays(bwSeries, 7);
+  const bw30 = deltaOverDays(bwSeries, 30);
 
   const waistHistory = (waistRes.data ?? []) as { waist_cm: number; logged_at: string }[];
   const latestWaist = waistHistory[0] ?? null;
-  const prevWaist = waistHistory[1] ?? null;
-  const waistDelta = latestWaist && prevWaist ? +(latestWaist.waist_cm - prevWaist.waist_cm).toFixed(1) : null;
+  const waistSeries = waistHistory.map((e) => ({ value: e.waist_cm, logged_at: e.logged_at }));
+  const waist7 = deltaOverDays(waistSeries, 7);
+  const waist30 = deltaOverDays(waistSeries, 30);
 
   // Filter upcoming workouts to active week only from combined query
   const upcomingWorkouts = allScheduled.filter(
@@ -235,19 +237,13 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
                 <Scale className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm font-semibold">Kehonpaino</span>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-col items-end gap-1.5">
                 <span className="text-2xl font-bold text-primary">{latestBw!.weight_kg} kg</span>
-                {bwDelta !== null && (
-                  <span className={`flex items-center gap-0.5 text-xs font-semibold ${
-                    bwDelta > 0 ? "text-coach-ok" : bwDelta < 0 ? "text-coach-danger" : "text-muted-foreground"
-                  }`}>
-                    {bwDelta > 0
-                      ? <TrendingUp className="h-3.5 w-3.5" />
-                      : bwDelta < 0
-                      ? <TrendingDown className="h-3.5 w-3.5" />
-                      : <Minus className="h-3.5 w-3.5" />}
-                    {bwDelta > 0 ? "+" : ""}{bwDelta} kg
-                  </span>
+                {(bw7 !== null || bw30 !== null) && (
+                  <div className="flex items-center gap-1.5">
+                    <DeltaChip label="7 pv" delta={bw7} unit="kg" goodDown={false} />
+                    <DeltaChip label="30 pv" delta={bw30} unit="kg" goodDown={false} />
+                  </div>
                 )}
               </div>
             </div>
@@ -283,19 +279,13 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
                 <Scale className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm font-semibold">Vyötärö</span>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-col items-end gap-1.5">
                 <span className="text-2xl font-bold text-primary">{latestWaist!.waist_cm} cm</span>
-                {waistDelta !== null && (
-                  <span className={`flex items-center gap-0.5 text-xs font-semibold ${
-                    waistDelta > 0 ? "text-coach-danger" : waistDelta < 0 ? "text-coach-ok" : "text-muted-foreground"
-                  }`}>
-                    {waistDelta > 0
-                      ? <TrendingUp className="h-3.5 w-3.5" />
-                      : waistDelta < 0
-                      ? <TrendingDown className="h-3.5 w-3.5" />
-                      : <Minus className="h-3.5 w-3.5" />}
-                    {waistDelta > 0 ? "+" : ""}{waistDelta} cm
-                  </span>
+                {(waist7 !== null || waist30 !== null) && (
+                  <div className="flex items-center gap-1.5">
+                    <DeltaChip label="7 pv" delta={waist7} unit="cm" goodDown={true} />
+                    <DeltaChip label="30 pv" delta={waist30} unit="cm" goodDown={true} />
+                  </div>
                 )}
               </div>
             </div>
@@ -374,4 +364,52 @@ function computeStreak(workouts: Array<{ completed_at: string | null; status: st
   }
 
   return streak;
+}
+
+// Delta of latest value vs the most recent entry at least `days` old.
+// History is descending (latest first). Falls back to oldest entry when
+// none is old enough, so a partial window still shows available change.
+function deltaOverDays(history: { value: number; logged_at: string }[], days: number): number | null {
+  const latest = history[0];
+  if (!latest || history.length < 2) return null;
+  const cutoff = Date.now() - days * 86_400_000;
+  let ref: { value: number; logged_at: string } | null = null;
+  for (let i = 1; i < history.length; i++) {
+    const e = history[i]!;
+    if (new Date(e.logged_at).getTime() <= cutoff) {
+      ref = e;
+      break;
+    }
+  }
+  if (!ref) ref = history[history.length - 1]!;
+  if (ref === latest) return null;
+  return +(latest.value - ref.value).toFixed(1);
+}
+
+function DeltaChip({
+  label,
+  delta,
+  unit,
+  goodDown,
+}: {
+  label: string;
+  delta: number | null;
+  unit: string;
+  goodDown: boolean;
+}) {
+  if (delta === null) return null;
+  const positive = delta > 0;
+  const negative = delta < 0;
+  const good = goodDown ? negative : positive;
+  const bad = goodDown ? positive : negative;
+  const color = good ? "text-coach-ok" : bad ? "text-coach-danger" : "text-muted-foreground";
+  const Icon = positive ? TrendingUp : negative ? TrendingDown : Minus;
+  return (
+    <span className={`flex items-center gap-1 rounded-full bg-muted/50 px-2 py-0.5 text-xs font-semibold ${color}`}>
+      <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{label}</span>
+      <Icon className="h-3 w-3" />
+      {positive ? "+" : ""}
+      {delta} {unit}
+    </span>
+  );
 }
