@@ -380,16 +380,16 @@ export function ExerciseLibrary() {
               </span>
             );
           })}
-          {selectedTags.size > 0 && (
-            <button
-              type="button"
-              onClick={() => setSelectedTags(new Set())}
-              className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors border border-muted"
-            >
-              Tyhjennä
-            </button>
-          )}
         </div>
+        {selectedTags.size > 0 && (
+          <button
+            type="button"
+            onClick={() => setSelectedTags(new Set())}
+            className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors border border-muted"
+          >
+            Tyhjennä
+          </button>
+        )}
       </div>
 
       <div
