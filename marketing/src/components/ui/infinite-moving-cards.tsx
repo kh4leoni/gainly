@@ -75,7 +75,7 @@ export function InfiniteMovingCards({
             />
             <blockquote className="relative">
               <p className="text-sm sm:text-base text-foreground/90 leading-relaxed">
-                "{it.quote}"
+                &ldquo;{it.quote}&rdquo;
               </p>
               <footer className="mt-5 flex flex-col">
                 <span className="text-sm font-medium text-foreground">
