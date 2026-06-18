@@ -59,6 +59,14 @@ function isRange(s: string | null | undefined): boolean {
   return !!s && s.includes("-");
 }
 
+// Prescribed weight range ("160-170") → its midpoint ("165") as a concrete,
+// editable starting point. Non-range / unparseable → null.
+function rangeMidpoint(s: string): string | null {
+  const m = s.match(/^\s*(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)\s*$/);
+  if (!m) return null;
+  return String((parseFloat(m[1]!) + parseFloat(m[2]!)) / 2);
+}
+
 // ── Main logger ───────────────────────────────────────────────────────────────
 export function WorkoutLogger({ scheduledWorkoutId }: { scheduledWorkoutId: string }) {
   const supabase = createClient();
@@ -533,7 +541,7 @@ function resolveInitialRows(pe: any): RowState[] {
       // A prescribed range can't prefill the single loggable field (Number("160-170")
       // is NaN) — leave it blank so the athlete enters their actual weight.
       const rawWeight = c.weight != null ? String(c.weight) : (pe.intensity != null ? String(pe.intensity) : "");
-      const weight = isRange(rawWeight) ? "" : rawWeight;
+      const weight = isRange(rawWeight) ? (rangeMidpoint(rawWeight) ?? "") : rawWeight;
       const targetReps = c.reps ?? pe.reps ?? "";
       const reps = isRange(targetReps) ? "" : targetReps;
       return {
@@ -552,7 +560,8 @@ function resolveInitialRows(pe: any): RowState[] {
   const sets: number = pe.sets ?? 3;
   const perSetRpe: (number | null)[] | null = pe.target_rpes ?? null;
   return Array.from({ length: sets }, (_, i) => {
-    const weight = pe.intensity != null ? String(pe.intensity) : "";
+    const rawWeight = pe.intensity != null ? String(pe.intensity) : "";
+    const weight = isRange(rawWeight) ? (rangeMidpoint(rawWeight) ?? "") : rawWeight;
     const reps = isRange(pe.reps) ? "" : (pe.reps ?? "");
     return {
       weight,
@@ -663,6 +672,10 @@ function LiftingExerciseBlock({ programExercise, workoutLogId, clientId }: { pro
       const repsNum = r.reps ? parseInt(r.reps, 10) : null;
       if (repsNum === null || Number.isNaN(repsNum)) return r;
       if (r.weight !== r.initialWeight) return r;
+      // Valmentajan paino (tarkka tai välin keskikohta) on ehdotus sellaisenaan —
+      // älä korvaa sitä edellisellä suorituksella. Historiapaino täyttää vain
+      // täysin tyhjän kentän (valmentaja ei antanut painoa lainkaan).
+      if (r.weight.trim() !== "") return r;
       const hint = lastByReps.get(repsNum);
       if (!hint) return r;
       return { ...r, weight: String(hint.weight) };
@@ -919,11 +932,14 @@ function LiftingExerciseBlock({ programExercise, workoutLogId, clientId }: { pro
                       background: "var(--c-surface2)",
                       color: "var(--c-text-muted)",
                       display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
-                      fontSize: 13, fontWeight: 700,
                       transition: "all 0.15s",
                     }}
                   >
-                    ?
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <circle cx="12" cy="12" r="10" />
+                      <line x1="12" y1="16" x2="12" y2="12" />
+                      <line x1="12" y1="8" x2="12.01" y2="8" />
+                    </svg>
                   </button>
                 }
               />
@@ -1117,10 +1133,20 @@ function LiftingExerciseBlock({ programExercise, workoutLogId, clientId }: { pro
   );
 }
 
+// Move the caret to the end of a text input, reliably on both iOS and Android.
+// Deferred via setTimeout(0) so it runs AFTER the browser's own tap-to-caret
+// placement (on iOS that happens on touchend, which can fire after rAF).
+function caretToEnd(el: HTMLInputElement) {
+  setTimeout(() => {
+    const n = el.value.length;
+    try { el.setSelectionRange(n, n); } catch { /* type doesn't support it */ }
+  }, 0);
+}
+
 // ── Shared stepper cell ───────────────────────────────────────────────────────
 function StepperCell({
   display, disabled, onDec, onInc, canDec, canInc,
-  rawValue, onRawChange, inputMode, inputStep,
+  rawValue, onRawChange, inputMode,
 }: {
   display: string;
   disabled: boolean;
@@ -1131,7 +1157,6 @@ function StepperCell({
   rawValue?: string;
   onRawChange?: (v: string) => void;
   inputMode?: "decimal" | "numeric";
-  inputStep?: string;
 }) {
   function btn(active: boolean, onClick: () => void, kind: "plus" | "minus") {
     const stroke = (!active || disabled) ? "var(--c-text-subtle)" : "var(--c-text)";
@@ -1179,15 +1204,22 @@ function StepperCell({
       {btn(canDec, onDec, "minus")}
       {onRawChange ? (
         <input
-          type="number"
+          // type="text" (not "number") so the caret is addressable: number
+          // inputs reject setSelectionRange. inputMode keeps the numeric keypad.
+          type="text"
           inputMode={inputMode ?? "decimal"}
-          step={inputStep ?? "any"}
           value={rawValue ?? ""}
           onChange={(e) => onRawChange(e.target.value)}
           disabled={disabled}
           placeholder="–"
           style={{ ...centerStyle, width: "100%", minWidth: 0 }}
-          onFocus={(e) => { if (!disabled) e.target.style.borderColor = "var(--c-pink)"; }}
+          onFocus={(e) => {
+            if (!disabled) e.currentTarget.style.borderColor = "var(--c-pink)";
+            caretToEnd(e.currentTarget);
+          }}
+          // Also on click/tap: covers tapping an already-focused field, where
+          // focus doesn't refire but iOS still re-places the caret at the touch.
+          onClick={(e) => caretToEnd(e.currentTarget)}
           onBlur={(e) => { e.target.style.borderColor = disabled ? "transparent" : "var(--c-border)"; }}
         />
       ) : (
@@ -1260,7 +1292,6 @@ function SetTableRow({
         rawValue={row.weight}
         onRawChange={(v) => onChange({ weight: v })}
         inputMode="decimal"
-        inputStep="0.5"
       />
 
       <StepperCell
@@ -1273,7 +1304,6 @@ function SetTableRow({
         rawValue={row.reps}
         onRawChange={(v) => onChange({ reps: v })}
         inputMode="numeric"
-        inputStep="1"
       />
 
       <StepperCell
@@ -1293,8 +1323,8 @@ function SetTableRow({
           style={{
             width: "clamp(40px, 11vw, 48px)", height: "clamp(40px, 11vw, 48px)",
             borderRadius: "50%", padding: 0, flexShrink: 0,
-            background: row.confirmed ? "color-mix(in srgb, var(--c-success) 15%, transparent)" : "var(--c-pink-dim, rgba(236,72,153,0.10))",
-            border: `1.5px solid ${row.confirmed && !row.synced ? "color-mix(in srgb, var(--c-warning) 40%, transparent)" : row.confirmed ? "color-mix(in srgb, var(--c-success) 40%, transparent)" : "var(--c-pink, rgba(236,72,153,0.5))"}`,
+            background: row.confirmed ? "color-mix(in srgb, var(--c-success) 15%, transparent)" : "var(--c-surface3)",
+            border: `1.5px solid ${row.confirmed && !row.synced ? "color-mix(in srgb, var(--c-warning) 40%, transparent)" : row.confirmed ? "color-mix(in srgb, var(--c-success) 40%, transparent)" : "var(--c-border)"}`,
             cursor: "pointer",
             display: "flex", alignItems: "center", justifyContent: "center",
             transition: "all 0.2s",
@@ -1307,7 +1337,7 @@ function SetTableRow({
             </svg>
           ) : (
             <svg width="46%" height="46%" viewBox="0 0 24 24" fill="none"
-              stroke={row.confirmed ? "var(--c-success)" : "var(--c-pink, #ec4899)"}
+              stroke={row.confirmed ? "var(--c-success)" : "var(--c-text-muted)"}
               strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="20 6 9 17 4 12"/>
             </svg>

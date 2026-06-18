@@ -6,6 +6,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { getProgramFull, type ProgramFull, type ProgramExerciseRow } from "@/lib/queries/programs";
 import { ChevronRight, Pencil, Dumbbell } from "lucide-react";
+import { AssignProgramButton } from "@/components/program-builder/assign-program-button";
 
 function setsLine(pe: ProgramExerciseRow): string {
   const cfgs = pe.set_configs && pe.set_configs.length > 0
@@ -81,6 +82,7 @@ export function ProgramViewer({ programId, isTemplate }: { programId: string; is
             </span>
           )}
         </div>
+        {isTemplate && <AssignProgramButton programId={programId} />}
         <Link
           href={`/coach/programs/${programId}/edit`}
           className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"

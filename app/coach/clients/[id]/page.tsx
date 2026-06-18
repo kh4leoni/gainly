@@ -5,6 +5,7 @@ import { createClient, getCachedUser } from "@/lib/supabase/server";
 import { avatarColor, nameInitials } from "@/lib/utils";
 import { OhjelmoiButton } from "@/components/program-builder/ohjelmoi-button";
 import { ClientTrainingView } from "@/components/client-detail/client-training-view";
+import { ClientProgramsCard } from "@/components/client-detail/client-programs-card";
 import { ClientMealPlanCard } from "@/components/client-detail/meal-plan-card";
 import { getClientMealPlanId, listTemplateMealPlans } from "@/lib/queries/meals";
 import { RecordsSection } from "@/components/client-detail/pr-sections";
@@ -39,9 +40,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
       .from("programs")
       .select("id, title, program_weeks(week_number, description, is_active)")
       .eq("client_id", id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
+      .order("created_at", { ascending: false }),
     supabase
       .from("scheduled_workouts")
       .select(`
@@ -137,10 +136,21 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
     (w: any) => w.status !== "completed" && w.program_days?.program_weeks?.is_active === true
   );
 
-  // Active program info
-  const activeProg = activeProgRes.data;
-  const programTitle = activeProg?.title ?? null;
-  const activeWeek = (activeProg?.program_weeks as any[] | undefined)?.find((w: any) => w.is_active) ?? null;
+  // Client programs — a client can have several (custom-built and assigned templates).
+  const programRows = (activeProgRes.data ?? []) as any[];
+  const programs = programRows.map((p) => ({ id: p.id as string, title: p.title as string }));
+  // Active week = the is_active week across any of the client's programs.
+  let activeWeek: any = null;
+  let activeWeekProgram: any = null;
+  for (const prog of programRows) {
+    const w = (prog.program_weeks as any[] | undefined)?.find((x: any) => x.is_active);
+    if (w) { activeWeek = w; activeWeekProgram = prog; break; }
+  }
+  const programTitle =
+    programRows.length === 0 ? null
+    : programRows.length === 1 ? programRows[0].title
+    : `${programRows.length} ohjelmaa`;
+  const trainingProgId: string | null = activeWeekProgram?.id ?? programRows[0]?.id ?? null;
   const weekLabel = activeWeek ? `Jakso ${activeWeek.week_number}` : null;
   const weekDescription: string | null = activeWeek?.description ?? null;
 
@@ -179,8 +189,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
           </Link>
           <OhjelmoiButton
             clientId={profile.id}
-            clientName={name}
-            existingProgramId={activeProg?.id}
+            programs={programs}
           />
         </div>
       </div>
@@ -315,11 +324,13 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
         </div>
         )}
 
+        <ClientProgramsCard clientId={profile.id} programs={programs} />
+
         <ClientTrainingView
           upcomingWorkouts={upcomingWorkouts}
           pastWorkouts={pastWorkoutsRes.data ?? []}
           weekDescription={weekDescription}
-          ohjelmoiHref={activeProg?.id ? `/coach/client-programs/${activeProg.id}/edit` : null}
+          ohjelmoiHref={trainingProgId ? `/coach/client-programs/${trainingProgId}/edit` : null}
         />
 
         <ClientMealPlanCard clientId={profile.id} clientName={name} planId={mealPlanId} templates={mealTemplates} />

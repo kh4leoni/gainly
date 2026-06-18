@@ -200,11 +200,16 @@ function DayRow({ day }: { day: ScheduleDay }) {
                   border: "1px solid var(--c-border)",
                   background: "var(--c-surface2)",
                   color: "var(--c-text-muted)",
-                  fontSize: 12, fontWeight: 700,
                   display: "flex", alignItems: "center", justifyContent: "center",
                   cursor: "pointer", flexShrink: 0,
                 }}
-              >?</button>
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="16" x2="12" y2="12" />
+                  <line x1="12" y1="8" x2="12.01" y2="8" />
+                </svg>
+              </button>
             }
           />
         </div>
@@ -331,7 +336,7 @@ export function OhjelmaView({ clientId }: { clientId: string }) {
               cursor: "pointer",
             }}
           >
-            ← Aktiiviseen viikkoon
+            Aktiiviseen viikkoon
           </button>
         </div>
       )}

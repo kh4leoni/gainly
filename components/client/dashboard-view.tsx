@@ -104,13 +104,13 @@ export function ClientDashboardView({
   });
 
   return (
-    <div style={{ flex: 1, padding: "20px 20px 20px" }}>
+    <div style={{ flex: 1, minHeight: 0, padding: "20px 20px 20px", display: "flex", flexDirection: "column" }}>
       {/* ── Fold section ──
           Cards flow naturally top-down. Hero ends up wherever the stack
           ends — close to the bottom on phones where the stack fills the
           fold, slightly higher when there's less content. Quote/week
           desc sit immediately below, no leftover gap. */}
-      <section style={{ display: "flex", flexDirection: "column" }}>
+      <section style={{ flex: 1, display: "flex", flexDirection: "column" }}>
       {/* Slim greeting line — kept compact so the workout hero owns the fold */}
       <div style={{ marginBottom: 16, display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8, ...enterStyle(0) }}>
         <div style={{ fontSize: 17, fontWeight: 700, letterSpacing: "-0.3px", lineHeight: 1.1 }}>
@@ -229,6 +229,7 @@ export function ClientDashboardView({
           border: "1px solid var(--c-hero-border)",
           borderRadius: "var(--r-2xl)",
           padding: "22px 22px 20px",
+          marginTop: "auto",
           marginBottom: 16,
           position: "relative",
           ...enterStyle(60),
@@ -255,12 +256,15 @@ export function ClientDashboardView({
                     border: "1px solid var(--c-hero-border)",
                     background: "var(--c-pink-dim)",
                     color: "var(--c-text)",
-                    fontSize: 13, fontWeight: 700,
                     display: "flex", alignItems: "center", justifyContent: "center",
                     cursor: "pointer",
                   }}
                 >
-                  ?
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="16" x2="12" y2="12" />
+                    <line x1="12" y1="8" x2="12.01" y2="8" />
+                  </svg>
                 </button>
               }
             />
@@ -309,7 +313,7 @@ export function ClientDashboardView({
           </Link>
         </div>
       ) : (
-        <SurfaceCard radius="2xl" padding={0} style={{ marginBottom: 16, ...enterStyle(60) }}>
+        <SurfaceCard radius="2xl" padding={0} style={{ marginTop: "auto", marginBottom: 16, ...enterStyle(60) }}>
           <EmptyState
             icon={Moon}
             title="Ei tulevia treenejä"

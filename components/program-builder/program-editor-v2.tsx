@@ -356,6 +356,16 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
     queryKey: ["exercises"],
     queryFn: () => getExercises(supabase),
   });
+  // Whose program — shown in the topbar so the coach always sees the client.
+  const { data: clientName } = useQuery({
+    queryKey: ["client-name", clientId],
+    queryFn: async () => {
+      const { data } = await supabase.from("profiles").select("full_name").eq("id", clientId!).single();
+      return data?.full_name ?? null;
+    },
+    enabled: clientId !== null,
+    staleTime: 300_000,
+  });
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["program", programId] });
@@ -484,6 +494,14 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
       if (ctx?.prev) qc.setQueryData(["program", programId], ctx.prev);
     },
     onSettled: () => qc.invalidateQueries({ queryKey: ["program", programId] }),
+  });
+
+  const renameProgram = useMutation({
+    mutationFn: async (title: string) => {
+      const { error } = await supabase.from("programs").update({ title }).eq("id", programId);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["program", programId] }),
   });
 
   const addBlock = useMutation({
@@ -1244,6 +1262,8 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
       {/* Topbar */}
       <Topbar
         programTitle={program.title}
+        clientName={clientName ?? null}
+        onRename={(t) => renameProgram.mutate(t)}
         onAddBlock={() => addBlock.mutate()}
         phaseView={phaseView}
         setPhaseView={setPhaseView}
@@ -1619,18 +1639,31 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
 
 function Topbar({
   programTitle,
+  clientName,
+  onRename,
   onAddBlock,
   phaseView,
   setPhaseView,
   isTemplate,
 }: {
   programTitle: string;
+  clientName: string | null;
+  onRename: (title: string) => void;
   onAddBlock: () => void;
   phaseView: "expanded" | "compact";
   setPhaseView: (v: "expanded" | "compact") => void;
   isTemplate: boolean;
 }) {
   const isMobile = useIsMobile();
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState(programTitle);
+
+  function commitTitle() {
+    const next = titleDraft.trim();
+    setEditingTitle(false);
+    if (next && next !== programTitle) onRename(next);
+    else setTitleDraft(programTitle);
+  }
   return (
     <div
       style={{
@@ -1652,9 +1685,45 @@ function Topbar({
           Ohjelmat
         </Link>
         <ChevronRight size={13} style={{ color: "var(--fg-3)" }} />
-        <span style={{ color: "var(--fg-0)", fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-          {programTitle}
-        </span>
+        {editingTitle ? (
+          <input
+            autoFocus
+            value={titleDraft}
+            onChange={(e) => setTitleDraft(e.target.value)}
+            onBlur={commitTitle}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") commitTitle();
+              if (e.key === "Escape") { setTitleDraft(programTitle); setEditingTitle(false); }
+            }}
+            style={{
+              fontSize: 13, fontWeight: 600, color: "var(--fg-0)",
+              background: "var(--bg-2)", border: "1px solid var(--accent-line)",
+              borderRadius: 6, padding: "2px 6px", outline: "none", minWidth: 0, maxWidth: 220,
+              fontFamily: "inherit",
+            }}
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={() => { setTitleDraft(programTitle); setEditingTitle(true); }}
+            title="Muokkaa ohjelman nimeä"
+            style={{
+              color: "var(--fg-0)", fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden",
+              textOverflow: "ellipsis", background: "none", border: "none", padding: 0,
+              cursor: "pointer", fontFamily: "inherit", fontSize: 13, maxWidth: 220,
+            }}
+          >
+            {programTitle}
+          </button>
+        )}
+        {clientName && (
+          <>
+            <ChevronRight size={13} style={{ color: "var(--fg-3)", flexShrink: 0 }} />
+            <span style={{ color: "var(--accent-fg)", fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", flexShrink: 0 }}>
+              {clientName}
+            </span>
+          </>
+        )}
       </div>
 
       <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6 }}>
