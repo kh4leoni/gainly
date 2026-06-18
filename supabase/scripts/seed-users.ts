@@ -74,9 +74,9 @@ async function main() {
   }).select().single();
 
   await admin.from("program_exercises").insert([
-    { day_id: day!.id, exercise_id: "00000000-0000-0000-0000-000000000001", order_idx: 0, sets: 5, reps: "5",   intensity_type: "kg", intensity: 80, rest_sec: 180 },
-    { day_id: day!.id, exercise_id: "00000000-0000-0000-0000-000000000002", order_idx: 1, sets: 5, reps: "5",   intensity_type: "kg", intensity: 60, rest_sec: 180 },
-    { day_id: day!.id, exercise_id: "00000000-0000-0000-0000-000000000003", order_idx: 2, sets: 1, reps: "5",   intensity_type: "kg", intensity: 100, rest_sec: 180 },
+    { day_id: day!.id, exercise_id: "10000000-0000-0000-0000-000000000001", order_idx: 0, sets: 5, reps: "5",   intensity_type: "kg", intensity: 80, rest_sec: 180 },  // Takakyykky
+    { day_id: day!.id, exercise_id: "10000000-0000-0000-0000-000000000031", order_idx: 1, sets: 5, reps: "5",   intensity_type: "kg", intensity: 60, rest_sec: 180 },  // Penkkipunnerrus
+    { day_id: day!.id, exercise_id: "10000000-0000-0000-0000-000000000013", order_idx: 2, sets: 1, reps: "5",   intensity_type: "kg", intensity: 100, rest_sec: 180 }, // Romanialainen maastaveto
   ]);
 
   // Create thread
