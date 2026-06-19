@@ -1,7 +1,24 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
+import type { BigThreeKey } from "@/lib/powerlifting";
+
+// Coach's competition-lift pick for a client. RLS ("coach manages own
+// relations") scopes the update to the caller's own coach_clients rows.
+export async function setCompLift(clientId: string, key: BigThreeKey, exerciseId: string | null) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const { error } = await supabase.from("coach_clients")
+    .update({ [`comp_${key}_exercise_id`]: exerciseId })
+    .eq("coach_id", user.id)
+    .eq("client_id", clientId);
+  if (error) throw error;
+  revalidatePath(`/coach/clients/${clientId}`);
+}
 
 export async function inviteClient(coachId: string, email: string, name?: string) {
   const supabase = await createClient();

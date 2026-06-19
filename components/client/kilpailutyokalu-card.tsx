@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { roundKg } from "@/lib/calc/one-rm";
 import { ATTEMPT_MODES, BIG_THREE, calcAttempts } from "@/lib/powerlifting";
-import type { AttemptMode, BigThreeKey } from "@/lib/powerlifting";
+import type { AttemptMode, BigThreeKey, CompSelection } from "@/lib/powerlifting";
 
 function formatW(w: number | null) {
   if (w === null) return "—";
@@ -12,8 +12,14 @@ function formatW(w: number | null) {
 
 export function KilpailutyokaluCard({
   bigThreeE1rm,
+  selection,
+  options,
+  onSelect,
 }: {
   bigThreeE1rm: Record<BigThreeKey, number | null>;
+  selection: CompSelection;
+  options: { id: string; name: string }[];
+  onSelect: (key: BigThreeKey, exerciseId: string | null) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<AttemptMode>("normal");
@@ -70,12 +76,29 @@ export function KilpailutyokaluCard({
             const atts = e1rm != null ? calcAttempts(e1rm, ATTEMPT_MODES[mode].pcts) : null;
             return (
               <div key={key} style={{ background: "var(--c-surface, hsl(var(--card)))", border: "1px solid var(--c-border, hsl(var(--border)))", borderRadius: "var(--r-lg)", padding: "14px 16px" }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: atts ? 12 : 0 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
                   <div style={{ fontSize: 14, fontWeight: 700 }}>{label}</div>
                   {e1rm != null
                     ? <div style={{ fontSize: 12, color: "var(--c-text-muted, hsl(var(--muted-foreground)))" }}>e1RM {formatW(roundKg(e1rm))} kg</div>
                     : <div style={{ fontSize: 12, color: "var(--c-text-muted, hsl(var(--muted-foreground)))" }}>Ei dataa</div>}
                 </div>
+                <select
+                  value={selection[key] ?? ""}
+                  onChange={(e) => onSelect(key, e.target.value || null)}
+                  style={{
+                    width: "100%", marginBottom: atts ? 12 : 0,
+                    padding: "8px 10px", borderRadius: "var(--r-md)",
+                    border: "1px solid var(--c-border, hsl(var(--border)))",
+                    background: "var(--c-surface2, hsl(var(--muted)))",
+                    color: "var(--c-text, hsl(var(--foreground)))",
+                    fontSize: 13, fontFamily: "inherit", cursor: "pointer",
+                  }}
+                >
+                  <option value="">Valitse liike…</option>
+                  {options.map((o) => (
+                    <option key={o.id} value={o.id}>{o.name}</option>
+                  ))}
+                </select>
                 {atts && (
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
                     {atts.map((kg, i) => (
