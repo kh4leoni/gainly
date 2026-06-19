@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { House, CalendarDots, TrendUp, ClockCounterClockwise, ChatCircle, Sun, Moon, SignOut, PencilSimple, Gear, Key, UserMinus, Sparkle, CaretRight } from "@phosphor-icons/react";
+import { House, CalendarDots, TrendUp, ClockCounterClockwise, ChatCircle, Sun, Moon, SignOut, PencilSimple, Gear, Key, UserMinus, Sparkle, CaretRight, DeviceMobile } from "@phosphor-icons/react";
 import { ChangePasswordDialog } from "@/components/client/change-password-dialog";
 import { DeleteAccountDialog } from "@/components/client/delete-account-dialog";
 import { PushMessagesToggle } from "@/components/settings/push-toggle";
@@ -544,6 +544,14 @@ export function ClientShell({
       }}
     >
       <AppSplash coBrandLabel={coach?.coBrandLabel ?? null} />
+      {/* Phones can't be locked to portrait on iOS (Safari ignores manifest
+          orientation + screen.orientation.lock), so block landscape with a
+          CSS-only overlay. Scoped to the client shell + small heights so
+          tablets/desktop are unaffected. */}
+      <div className="rotate-lock" aria-hidden>
+        <DeviceMobile size={40} weight="light" color="var(--c-text-muted)" />
+        <p>Käännä puhelin pystyasentoon</p>
+      </div>
       <div
         ref={shellRef}
         style={{
