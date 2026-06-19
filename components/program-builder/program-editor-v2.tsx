@@ -1558,6 +1558,48 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
         }}
       />
 
+      {/* "You are here" week banner — persistent so it's always clear which week
+          is being edited (Fanni kept landing in the wrong week). */}
+      {week && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            padding: "8px 16px",
+            background: "var(--accent-soft)",
+            borderTop: "1px solid var(--line)",
+            borderBottom: "2px solid var(--accent-line)",
+            flex: "0 0 auto",
+          }}
+        >
+          <span
+            style={{
+              fontFamily: "var(--font-disp)",
+              fontSize: 26,
+              fontWeight: 800,
+              letterSpacing: "-0.02em",
+              textTransform: "uppercase",
+              lineHeight: 1,
+              color: "var(--accent-fg)",
+            }}
+          >
+            Viikko {week.week_number}
+          </span>
+          {week.name?.trim() && (
+            <span style={{ fontSize: 14, fontWeight: 600, color: "var(--fg-2)" }}>
+              · {week.name.trim()}
+            </span>
+          )}
+          {week.is_active && (
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 5, marginLeft: "auto", fontSize: 11, fontWeight: 600, color: "var(--green)" }}>
+              <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--green)", display: "inline-block" }} />
+              Aktiivinen
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Drill-down — one left outline rail (days stacked over the selected day's
           exercises) + a wide detail pane. No horizontal scroll: the rail is fixed
           width and the detail flexes. */}
@@ -2271,7 +2313,7 @@ function PhaseOverview({
                 padding: "3px 8px",
                 borderRadius: 6,
                 background: sel ? "var(--accent-soft)" : "transparent",
-                border: sel ? "1px solid var(--accent-line)" : "1px solid transparent",
+                border: sel ? "2px solid var(--accent-fg)" : "1px solid transparent",
                 cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
@@ -2433,6 +2475,7 @@ function DayRow({
             key={d.id}
             day={d}
             selected={selected}
+            dim={selWeekId != null && w.id !== selWeekId}
             onClick={() => onPick(w.id, d.id)}
           />
         );
@@ -2445,10 +2488,12 @@ function DayRow({
 function OverviewCell({
   day,
   selected,
+  dim = false,
   onClick,
 }: {
   day: Day;
   selected: boolean;
+  dim?: boolean;
   onClick: () => void;
 }) {
   const c = dayColor(day.day_number);
@@ -2461,7 +2506,9 @@ function OverviewCell({
         borderRadius: 7,
         padding: "7px 9px 8px 9px",
         cursor: "pointer",
-        transition: "background 0.12s, border-color 0.12s",
+        // Recede days in non-active weeks so the active week reads as one block.
+        opacity: dim && !selected ? 0.4 : 1,
+        transition: "background 0.12s, border-color 0.12s, opacity 0.12s",
         display: "flex",
         flexDirection: "column",
         gap: 5,
@@ -2583,11 +2630,14 @@ function PhaseRibbon({
               borderRadius: 8,
               cursor: "pointer",
               background: isSel ? "var(--accent-soft)" : "transparent",
-              border: `1px solid ${isSel ? "var(--accent-line)" : "var(--line)"}`,
+              border: isSel ? "2px solid var(--accent-fg)" : "1px solid var(--line)",
+              // Recede non-active weeks so the active one reads clearly.
+              opacity: selWeekId != null && !isSel ? 0.5 : 1,
               display: "flex",
               flexDirection: "column",
               gap: 5,
               position: "relative",
+              transition: "opacity 0.12s, border-color 0.12s, background 0.12s",
             }}
           >
             {w.is_active && (
