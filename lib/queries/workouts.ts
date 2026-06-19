@@ -74,12 +74,16 @@ export async function getNextWorkout(supabase: DB, clientId: string): Promise<To
       )
     `)
     .eq("client_id", clientId)
-    .neq("status", "completed")
-    .order("day_number", { referencedTable: "program_days" });
+    .neq("status", "completed");
   if (error) throw error;
-  const activeWeekWorkouts = (data ?? []).filter(
-    (w) => (w.program_days as any)?.program_weeks?.is_active === true
-  );
+  // referencedTable order only sorts the embedded program_days (to-one) rows, not
+  // the scheduled_workouts list — so sort the parent rows by day_number here and
+  // pick the earliest pending day in the active week.
+  const activeWeekWorkouts = (data ?? [])
+    .filter((w) => (w.program_days as any)?.program_weeks?.is_active === true)
+    .sort((a, b) =>
+      ((a.program_days as any)?.day_number ?? 0) - ((b.program_days as any)?.day_number ?? 0)
+    );
   return (activeWeekWorkouts[0] ?? null) as unknown as TodayWorkout | null;
 }
 

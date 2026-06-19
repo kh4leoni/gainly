@@ -128,6 +128,7 @@ export async function getProgramFull(supabase: DB, programId: string): Promise<P
 
 export type CompletedSet = {
   program_exercise_id: string | null;
+  exercise_id: string | null;
   set_number: number | null;
   reps: number | null;
   weight: number | null;
@@ -158,7 +159,7 @@ export async function getProgramCompletion(
       id, day_id, status, completed_at, scheduled_date,
       workout_logs (
         set_logs (
-          program_exercise_id, set_number, reps, weight, rpe
+          program_exercise_id, exercise_id, set_number, reps, weight, rpe
         )
       )
     `)

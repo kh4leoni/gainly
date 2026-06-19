@@ -264,17 +264,20 @@ function shortenExName(name: string): string {
     .slice(0, 18);
 }
 
-// Logs grouped by program_exercise_id
+// Logs grouped by exercise_id (not program_exercise_id): deleting/recreating a
+// program_exercise nulls set_logs.program_exercise_id (FK on delete set null),
+// which orphaned logged sets from this card. exercise_id is NOT NULL and stable.
+// ponytail: same exercise twice in one day would merge; split by program_exercise_id only if that case appears.
 function logsByPe(completion: ProgramCompletion | undefined, dayId: string): Map<string, CompletedSet[]> {
   const map = new Map<string, CompletedSet[]>();
   if (!completion) return map;
   const sw = completion.byDayId[dayId];
   if (!sw) return map;
   for (const log of sw.set_logs) {
-    if (!log.program_exercise_id) continue;
-    const arr = map.get(log.program_exercise_id) ?? [];
+    if (!log.exercise_id) continue;
+    const arr = map.get(log.exercise_id) ?? [];
     arr.push(log);
-    map.set(log.program_exercise_id, arr);
+    map.set(log.exercise_id, arr);
   }
   for (const arr of map.values()) {
     arr.sort((a, b) => (a.set_number ?? 0) - (b.set_number ?? 0));
@@ -309,7 +312,7 @@ function exerciseBlockHistory(
         ex.exercise_id ? p.exercise_id === ex.exercise_id : p.exercises?.name === ex.exercises?.name
       );
       if (!pe) continue;
-      const logs = logsByPe(completion, d.id).get(pe.id) ?? [];
+      const logs = (pe.exercise_id ? logsByPe(completion, d.id).get(pe.exercise_id) : undefined) ?? [];
       if (logs.length === 0) continue;
       const sw = completion.byDayId[d.id];
       sessions.push({
@@ -4255,7 +4258,7 @@ function NeighborWeekCard({
   const cfgs = ex ? configsFromExercise(ex) : [];
   // Past sessions: prefer what the client actually performed over the prescription,
   // so a "done" neighbour week shows logged weights/reps/RPE — not just the plan.
-  const peLogs = ex && day ? logsByPe(completion, day.id).get(ex.id) ?? [] : [];
+  const peLogs = ex?.exercise_id && day ? logsByPe(completion, day.id).get(ex.exercise_id) ?? [] : [];
   const hasLogs = peLogs.length > 0;
   const rows: Array<{ reps: string | number | null; weight: string | number | null; rpe: string | number | null }> =
     hasLogs
