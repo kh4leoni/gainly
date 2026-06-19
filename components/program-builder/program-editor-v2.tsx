@@ -65,6 +65,7 @@ function useIsMobile(maxWidth = 820) {
   return mobile;
 }
 import {
+  Calendar,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
@@ -3481,7 +3482,11 @@ function ExerciseDetail({
   const cfgs = configsFromExercise(ex);
   const isMobile = useIsMobile();
   const [copyMenuOpen, setCopyMenuOpen] = useState(false);
-  const otherDays = week.program_days.filter((d) => d.id !== day.id);
+  // Two-step copy picker: pick a week first, then a day within it.
+  const [copyWeekId, setCopyWeekId] = useState<string | null>(null);
+  const copyWeek = block.program_weeks.find((w) => w.id === copyWeekId) ?? null;
+  const hasCopyTargets = block.program_weeks.some((w) => w.program_days.some((d) => d.id !== day.id));
+  const closeCopyMenu = () => { setCopyMenuOpen(false); setCopyWeekId(null); };
 
   const historySessions = useMemo(
     () => exerciseBlockHistory(block, ex, completion),
@@ -3604,15 +3609,15 @@ function ExerciseDetail({
             <Mv2Button
               kind="ghost"
               size="sm"
-              onClick={() => setCopyMenuOpen((o) => !o)}
-              disabled={otherDays.length === 0}
+              onClick={() => { if (copyMenuOpen) closeCopyMenu(); else setCopyMenuOpen(true); }}
+              disabled={!hasCopyTargets}
               title="Kopioi tämä liike toiselle päivälle"
             >
               <Copy size={12} /> Kopioi ja siirrä
             </Mv2Button>
             {copyMenuOpen && (
               <>
-                <div onClick={() => setCopyMenuOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 50 }} />
+                <div onClick={closeCopyMenu} style={{ position: "fixed", inset: 0, zIndex: 50 }} />
                 <div
                   style={{
                     position: "absolute",
@@ -3624,20 +3629,48 @@ function ExerciseDetail({
                     borderRadius: 12,
                     boxShadow: "0 12px 32px rgba(0,0,0,0.5)",
                     padding: 5,
-                    minWidth: 220,
+                    minWidth: 230,
                   }}
                 >
-                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase", color: "var(--fg-3)", padding: "6px 10px 4px" }}>
-                    Kopioi päivälle
-                  </div>
-                  {otherDays.map((d) => (
-                    <MenuRow
-                      key={d.id}
-                      icon={<Copy size={12} />}
-                      label={dayDisplayName(d)}
-                      onClick={() => { setCopyMenuOpen(false); onCopyToDay(d.id); }}
-                    />
-                  ))}
+                  {copyWeek === null ? (
+                    <>
+                      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase", color: "var(--fg-3)", padding: "6px 10px 4px" }}>
+                        Valitse viikko
+                      </div>
+                      {block.program_weeks.map((w) => (
+                        <MenuRow
+                          key={w.id}
+                          icon={<Calendar size={12} />}
+                          label={`Viikko ${w.week_number}${w.name?.trim() ? ` · ${w.name.trim()}` : ""}`}
+                          onClick={() => setCopyWeekId(w.id)}
+                        />
+                      ))}
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setCopyWeekId(null)}
+                        style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", padding: "6px 10px", background: "transparent", border: "none", color: "var(--fg-3)", fontSize: 10, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase", fontFamily: "inherit", cursor: "pointer", textAlign: "left" }}
+                      >
+                        <ChevronLeft size={12} /> Viikko {copyWeek.week_number} · valitse päivä
+                      </button>
+                      {copyWeek.program_days.filter((d) => d.id !== day.id).length === 0 ? (
+                        <div style={{ padding: "8px 10px", fontSize: 12, color: "var(--fg-3)" }}>Ei muita päiviä.</div>
+                      ) : (
+                        copyWeek.program_days
+                          .filter((d) => d.id !== day.id)
+                          .map((d) => (
+                            <MenuRow
+                              key={d.id}
+                              icon={<Copy size={12} />}
+                              label={dayDisplayName(d)}
+                              onClick={() => { closeCopyMenu(); onCopyToDay(d.id); }}
+                            />
+                          ))
+                      )}
+                    </>
+                  )}
                 </div>
               </>
             )}
