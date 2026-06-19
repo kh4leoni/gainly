@@ -13,6 +13,7 @@ import {
   type CompletedSet,
 } from "@/lib/queries/programs";
 import { getExercises } from "@/lib/queries/exercises";
+import { ExerciseHistoryDialog } from "@/components/client/exercise-history-dialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   DndContext,
@@ -932,6 +933,97 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
     onSettled: invalidate,
   });
 
+  // Move an exercise to another day: re-point day_id, append to the target, then
+  // renumber both days 0..n-1 (two-phase, like reorderExercises, to dodge the
+  // unique (day_id, order_idx) constraint).
+  const moveExerciseToDay = useMutation({
+    mutationFn: async ({ peId, fromDayId, toDayId }: { peId: string; fromDayId: string; toDayId: string }) => {
+      const allDays = (program?.program_blocks ?? []).flatMap((b) => b.program_weeks).flatMap((w) => w.program_days);
+      const toDay = allDays.find((d) => d.id === toDayId);
+      const fromDay = allDays.find((d) => d.id === fromDayId);
+      if (!toDay) throw new Error("Target day not found");
+      const toIds = [...(toDay.program_exercises ?? [])]
+        .sort((a, b) => a.order_idx - b.order_idx).map((e) => e.id).filter((id) => id !== peId);
+      toIds.push(peId);
+      const fromIds = [...(fromDay?.program_exercises ?? [])]
+        .sort((a, b) => a.order_idx - b.order_idx).map((e) => e.id).filter((id) => id !== peId);
+      // 1. Move to target day at a temp-high slot so it can't collide there.
+      const mv = await supabase.from("program_exercises").update({ day_id: toDayId, order_idx: 100000 }).eq("id", peId);
+      if (mv.error) throw mv.error;
+      // 2. Renumber target day (two-phase).
+      const seq = async (ids: string[]) => {
+        const p1 = await Promise.all(ids.map((id, i) => supabase.from("program_exercises").update({ order_idx: 1000 + i }).eq("id", id)));
+        const e1 = p1.find((r) => r.error)?.error; if (e1) throw e1;
+        const p2 = await Promise.all(ids.map((id, i) => supabase.from("program_exercises").update({ order_idx: i }).eq("id", id)));
+        const e2 = p2.find((r) => r.error)?.error; if (e2) throw e2;
+      };
+      await seq(toIds);
+      if (fromIds.length) await seq(fromIds);
+    },
+    onMutate: async ({ peId, fromDayId, toDayId }) => {
+      await qc.cancelQueries({ queryKey: ["program", programId] });
+      const prev = qc.getQueryData<ProgramFull>(["program", programId]);
+      qc.setQueryData(["program", programId], (old: ProgramFull) => {
+        if (!old) return old;
+        const next = structuredClone(old);
+        let moved: ProgramExerciseRow | null = null;
+        for (const b of next.program_blocks ?? [])
+          for (const w of b.program_weeks ?? [])
+            for (const d of w.program_days ?? []) {
+              if (d.id !== fromDayId) continue;
+              const arr = (d.program_exercises ?? []).sort((a, b) => a.order_idx - b.order_idx);
+              const idx = arr.findIndex((e) => e.id === peId);
+              if (idx >= 0) { moved = arr[idx] ?? null; arr.splice(idx, 1); }
+              d.program_exercises = arr.map((e, i) => ({ ...e, order_idx: i }));
+            }
+        if (moved)
+          for (const b of next.program_blocks ?? [])
+            for (const w of b.program_weeks ?? [])
+              for (const d of w.program_days ?? []) {
+                if (d.id !== toDayId) continue;
+                const arr = (d.program_exercises ?? []).sort((a, b) => a.order_idx - b.order_idx);
+                arr.push(moved!);
+                d.program_exercises = arr.map((e, i) => ({ ...e, order_idx: i }));
+              }
+        return next;
+      });
+      return { prev };
+    },
+    onError: (_e, _p, ctx) => {
+      if (ctx?.prev) qc.setQueryData(["program", programId], ctx.prev);
+    },
+    onSettled: invalidate,
+  });
+
+  // Copy an exercise (with its sets) to another day. Original stays put.
+  const copyExerciseToDay = useMutation({
+    mutationFn: async ({ pe, toDayId }: { pe: ProgramExerciseRow; toDayId: string }) => {
+      const allDays = (program?.program_blocks ?? []).flatMap((b) => b.program_weeks).flatMap((w) => w.program_days);
+      const toDay = allDays.find((d) => d.id === toDayId);
+      const order = Math.max(-1, ...((toDay?.program_exercises ?? []).map((e) => e.order_idx))) + 1;
+      const { error } = await supabase.from("program_exercises").insert({
+        day_id: toDayId,
+        exercise_id: pe.exercise_id,
+        order_idx: order,
+        sets: pe.sets,
+        reps: pe.reps,
+        intensity: pe.intensity,
+        intensity_type: pe.intensity_type,
+        target_rpe: pe.target_rpe,
+        target_rpes: pe.target_rpes as any,
+        set_configs: pe.set_configs as any,
+        rest_sec: pe.rest_sec,
+        notes: pe.notes,
+        free_text: pe.free_text,
+        target_distance_m: pe.target_distance_m,
+        target_duration_s: pe.target_duration_s,
+        target_hr_bpm: pe.target_hr_bpm,
+      });
+      if (error) throw error;
+    },
+    onSuccess: invalidate,
+  });
+
   const deleteExercise = useMutation({
     mutationFn: async ({ peId, dayId }: { peId: string; dayId: string }) => {
       const { error: delErr } = await supabase.from("program_exercises").delete().eq("id", peId);
@@ -1174,6 +1266,41 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
     },
     onSuccess: invalidate,
   });
+
+  // One DnD context spans the days list + the exercises list so an exercise can
+  // be dragged onto another day (move), while day- and within-day reordering
+  // keep working. Branch on the dragged item's `type`.
+  const columnSensors = useDndSensors();
+  function handleColumnDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over) return;
+    const aType = active.data.current?.type;
+    if (aType === "day") {
+      if (active.id === over.id || !week) return;
+      const dys = week.program_days;
+      const oldIdx = dys.findIndex((d) => d.id === String(active.id));
+      const newIdx = dys.findIndex((d) => d.id === String(over.id));
+      if (oldIdx === -1 || newIdx === -1) return;
+      reorderDays.mutate({ weekId: week.id, orderedIds: arrayMove(dys, oldIdx, newIdx).map((d) => d.id) });
+      return;
+    }
+    if (aType === "exercise" && day) {
+      const peId = String(active.id);
+      if (over.data.current?.type === "day") {
+        const toDayId = String(over.id);
+        if (toDayId === day.id) return; // dropped on its own day → no-op
+        moveExerciseToDay.mutate({ peId, fromDayId: day.id, toDayId });
+        return;
+      }
+      if (active.id === over.id) return;
+      const items = day.program_exercises;
+      const oldIdx = items.findIndex((e) => e.id === peId);
+      const newIdx = items.findIndex((e) => e.id === String(over.id));
+      if (oldIdx === -1 || newIdx === -1) return;
+      if (selExIdx === oldIdx) setSelExIdx(newIdx);
+      reorderExercises.mutate({ dayId: day.id, orderedIds: arrayMove(items, oldIdx, newIdx).map((e) => e.id) });
+    }
+  }
 
   if (!program) {
     return (
@@ -1465,6 +1592,7 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
           </div>
         )}
         {week && (!isMobile || mobilePane === "list") && (
+          <DndContext id={`mv2-cols-${week.id}`} sensors={columnSensors} collisionDetection={closestCenter} onDragEnd={handleColumnDragEnd}>
           <div style={{ display: "flex", flexDirection: "column", gap: 12, width: isMobile ? "100%" : 320, flex: isMobile ? "1 1 0" : "0 0 auto", minWidth: 0, minHeight: 0 }}>
           <SessionsColumn
             week={week}
@@ -1475,7 +1603,6 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
               setSelExIdx(0);
             }}
             onAddDay={() => addDay.mutate(week.id)}
-            onReorder={(orderedIds) => reorderDays.mutate({ weekId: week.id, orderedIds })}
             onRequestDeleteDay={(d) =>
               setPendingDeleteDay({ id: d.id, weekId: week.id, label: dayDisplayName(d) })
             }
@@ -1494,7 +1621,6 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
               if (isMobile) setMobilePane("detail");
             }}
             onAdd={() => addExerciseMut.mutate(day.id)}
-            onReorder={(orderedIds) => reorderExercises.mutate({ dayId: day.id, orderedIds })}
             onRenameDay={(name) => renameDay.mutate({ dayId: day.id, name })}
             onRequestDeleteExercise={(pe) =>
               setPendingDeleteExercise({ id: pe.id, dayId: day.id, label: pe.exercises?.name ?? "Liike" })
@@ -1502,6 +1628,7 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
           />
           )}
           </div>
+          </DndContext>
         )}
 
         {(!isMobile || mobilePane === "detail") && (
@@ -1543,6 +1670,7 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
           {exercise && day && week && block && (
             <ExerciseDetail
               programId={programId}
+              clientId={clientId}
               ex={exercise}
               day={day}
               week={week}
@@ -1592,6 +1720,7 @@ export function ProgramEditorV2({ programId, clientId }: { programId: string; cl
                 if (!nx) return;
                 copySetsToWeek.mutate({ fromExId: exercise.id, toWeekId: nx.id });
               }}
+              onCopyToDay={(toDayId) => copyExerciseToDay.mutate({ pe: exercise, toDayId })}
             />
           )}
           {!exercise && day && (
@@ -2589,7 +2718,6 @@ function SessionsColumn({
   selDayId,
   onSelect,
   onAddDay,
-  onReorder,
   onRequestDeleteDay,
   onRenameWeek,
   onDuplicateWeek,
@@ -2602,7 +2730,6 @@ function SessionsColumn({
   selDayId: string | null;
   onSelect: (dayId: string) => void;
   onAddDay: () => void;
-  onReorder: (orderedIds: string[]) => void;
   onRequestDeleteDay: (day: Day) => void;
   onRenameWeek: (name: string | null) => void;
   onDuplicateWeek: () => void;
@@ -2610,7 +2737,6 @@ function SessionsColumn({
   onClearActiveWeek: () => void;
   onExportPdf: () => void;
 }) {
-  const sensors = useDndSensors();
   const [menuOpen, setMenuOpen] = useState(false);
   const [pending, setPending] = useState<{
     title: string;
@@ -2620,16 +2746,6 @@ function SessionsColumn({
   } | null>(null);
   const nextWeekNum =
     (block.program_weeks[block.program_weeks.length - 1]?.week_number ?? week.week_number) + 1;
-
-  function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    const days = week.program_days;
-    const oldIdx = days.findIndex((d) => d.id === String(active.id));
-    const newIdx = days.findIndex((d) => d.id === String(over.id));
-    if (oldIdx === -1 || newIdx === -1) return;
-    onReorder(arrayMove(days, oldIdx, newIdx).map((d) => d.id));
-  }
 
   return (
     <>
@@ -2736,19 +2852,17 @@ function SessionsColumn({
           onAction={onAddDay}
         />
       )}
-      <DndContext id={`mv2-days-${week.id}`} sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-        <SC items={week.program_days.map((d) => d.id)} strategy={verticalListSortingStrategy}>
-          {week.program_days.map((d) => (
-            <SortableSessionRow
-              key={d.id}
-              day={d}
-              selected={d.id === selDayId}
-              onSelect={() => onSelect(d.id)}
-              onDelete={() => onRequestDeleteDay(d)}
-            />
-          ))}
-        </SC>
-      </DndContext>
+      <SC items={week.program_days.map((d) => d.id)} strategy={verticalListSortingStrategy}>
+        {week.program_days.map((d) => (
+          <SortableSessionRow
+            key={d.id}
+            day={d}
+            selected={d.id === selDayId}
+            onSelect={() => onSelect(d.id)}
+            onDelete={() => onRequestDeleteDay(d)}
+          />
+        ))}
+      </SC>
     </ColumnShell>
     <ConfirmDialog
       open={!!pending}
@@ -2814,7 +2928,9 @@ function SortableSessionRow({
   onSelect: () => void;
   onDelete: () => void;
 }) {
-  const { setNodeRef, transform, transition, isDragging, attributes, listeners } = useSortable({ id: day.id });
+  const { setNodeRef, transform, transition, isDragging, isOver, active, attributes, listeners } = useSortable({ id: day.id, data: { type: "day" } });
+  // An exercise (from another day) hovering this day = drop target → expand + ring.
+  const exerciseOver = isOver && active?.data?.current?.type === "exercise";
   const style: CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -2831,16 +2947,19 @@ function SortableSessionRow({
         onClick={onSelect}
         className="mv2-row"
         style={{
-          padding: "9px 11px",
+          padding: exerciseOver ? "16px 11px" : "9px 11px",
           margin: "2px 6px",
           borderRadius: 10,
-          background: selected ? "var(--accent-soft)" : "transparent",
-          boxShadow: selected ? "inset 0 0 0 1px var(--accent-line)" : "none",
+          background: exerciseOver ? c.bg : selected ? "var(--accent-soft)" : "transparent",
+          boxShadow: exerciseOver
+            ? `inset 0 0 0 2px ${c.fg}`
+            : selected ? "inset 0 0 0 1px var(--accent-line)" : "none",
           cursor: "pointer",
           display: "flex",
           alignItems: "center",
           gap: 11,
           position: "relative",
+          transition: "padding 0.15s var(--ease-ios), background 0.15s, box-shadow 0.15s",
         }}
       >
         <span
@@ -2874,8 +2993,8 @@ function SortableSessionRow({
           <div style={{ fontSize: 14.5, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {dayDisplayName(day)}
           </div>
-          <div style={{ fontSize: 12, color: "var(--fg-2)", marginTop: 2 }}>
-            {day.program_exercises.length} liikettä · {cfgs} sarjaa
+          <div style={{ fontSize: 12, color: exerciseOver ? c.fg : "var(--fg-2)", marginTop: 2, fontWeight: exerciseOver ? 700 : 400 }}>
+            {exerciseOver ? "Pudota tähän →" : `${day.program_exercises.length} liikettä · ${cfgs} sarjaa`}
           </div>
         </div>
         <button
@@ -2915,7 +3034,6 @@ function ExercisesColumn({
   selExIdx,
   onSelect,
   onAdd,
-  onReorder,
   onRenameDay,
   onRequestDeleteExercise,
 }: {
@@ -2923,24 +3041,10 @@ function ExercisesColumn({
   selExIdx: number;
   onSelect: (idx: number) => void;
   onAdd: () => void;
-  onReorder: (orderedIds: string[]) => void;
   onRenameDay: (name: string | null) => void;
   onRequestDeleteExercise: (pe: ProgramExerciseRow) => void;
 }) {
   const c = dayColor(day.day_number);
-  const sensors = useDndSensors();
-
-  function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    const items = day.program_exercises;
-    const oldIdx = items.findIndex((e) => e.id === String(active.id));
-    const newIdx = items.findIndex((e) => e.id === String(over.id));
-    if (oldIdx === -1 || newIdx === -1) return;
-    // Keep the selected exercise in sync after move
-    if (selExIdx === oldIdx) onSelect(newIdx);
-    onReorder(arrayMove(items, oldIdx, newIdx).map((e) => e.id));
-  }
 
   return (
     <ColumnShell
@@ -2968,21 +3072,20 @@ function ExercisesColumn({
           onAction={onAdd}
         />
       )}
-      <DndContext id={`mv2-ex-${day.id}`} sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-        <SC items={day.program_exercises.map((e) => e.id)} strategy={verticalListSortingStrategy}>
-          {day.program_exercises.map((pe, i) => (
-            <SortableExerciseRow
-              key={pe.id}
-              pe={pe}
-              idx={i}
-              selected={i === selExIdx}
-              accentFg={c.fg}
-              onSelect={() => onSelect(i)}
-              onDelete={() => onRequestDeleteExercise(pe)}
-            />
-          ))}
-        </SC>
-      </DndContext>
+      <SC items={day.program_exercises.map((e) => e.id)} strategy={verticalListSortingStrategy}>
+        {day.program_exercises.map((pe, i) => (
+          <SortableExerciseRow
+            key={pe.id}
+            pe={pe}
+            idx={i}
+            dayId={day.id}
+            selected={i === selExIdx}
+            accentFg={c.fg}
+            onSelect={() => onSelect(i)}
+            onDelete={() => onRequestDeleteExercise(pe)}
+          />
+        ))}
+      </SC>
     </ColumnShell>
   );
 }
@@ -2990,6 +3093,7 @@ function ExercisesColumn({
 function SortableExerciseRow({
   pe,
   idx,
+  dayId,
   selected,
   accentFg,
   onSelect,
@@ -2997,12 +3101,13 @@ function SortableExerciseRow({
 }: {
   pe: ProgramExerciseRow;
   idx: number;
+  dayId: string;
   selected: boolean;
   accentFg: string;
   onSelect: () => void;
   onDelete: () => void;
 }) {
-  const { setNodeRef, transform, transition, isDragging, attributes, listeners } = useSortable({ id: pe.id });
+  const { setNodeRef, transform, transition, isDragging, attributes, listeners } = useSortable({ id: pe.id, data: { type: "exercise", dayId } });
   const style: CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -3327,103 +3432,9 @@ function HistorySessionBlock({ session, accent }: { session: HistorySession; acc
   );
 }
 
-function ExerciseHistoryModal({
-  exName,
-  blockName,
-  sessions,
-  accent,
-  onClose,
-}: {
-  exName: string;
-  blockName: string;
-  sessions: HistorySession[];
-  accent: string;
-  onClose: () => void;
-}) {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
-  return (
-    <div
-      onClick={onClose}
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 100,
-        background: "rgba(0,0,0,0.5)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 20,
-      }}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          background: "var(--bg-0)",
-          border: "1px solid var(--line)",
-          borderRadius: 14,
-          width: "min(560px, 100%)",
-          maxHeight: "85vh",
-          display: "flex",
-          flexDirection: "column",
-          overflow: "hidden",
-          boxShadow: "0 20px 60px rgba(0,0,0,0.45)",
-        }}
-      >
-        <div
-          style={{
-            padding: "16px 20px",
-            borderBottom: "1px solid var(--line)",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-            gap: 12,
-          }}
-        >
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 16, fontWeight: 600, color: "var(--fg-0)" }}>{exName} — historia</div>
-            <div style={{ fontSize: 11.5, color: "var(--fg-3)", marginTop: 2 }}>
-              Käynnissä oleva jakso: {blockName}
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            title="Sulje"
-            style={{ background: "none", border: "none", color: "var(--fg-2)", cursor: "pointer", padding: 4, flexShrink: 0 }}
-          >
-            <X size={18} />
-          </button>
-        </div>
-        <div
-          style={{
-            overflowY: "auto",
-            padding: "14px 20px 20px",
-            display: "flex",
-            flexDirection: "column",
-            gap: 12,
-          }}
-        >
-          {sessions.length === 0 ? (
-            <div style={{ color: "var(--fg-3)", fontSize: 13, textAlign: "center", padding: "30px 0" }}>
-              Ei suoritettuja sarjoja tällä jaksolla.
-            </div>
-          ) : (
-            sessions.map((s) => <HistorySessionBlock key={s.key} session={s} accent={accent} />)
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function ExerciseDetail({
   programId,
+  clientId,
   ex,
   day,
   week,
@@ -3442,8 +3453,10 @@ function ExerciseDetail({
   onUpdateExercise,
   onCopyFromPrev,
   onCopyToNext,
+  onCopyToDay,
 }: {
   programId: string;
+  clientId: string | null;
   ex: ProgramExerciseRow;
   day: Day;
   week: Week;
@@ -3462,17 +3475,18 @@ function ExerciseDetail({
   onUpdateExercise: (patch: ExPatch) => void;
   onCopyFromPrev: () => void;
   onCopyToNext: () => void;
+  onCopyToDay: (toDayId: string) => void;
 }) {
   const c = dayColor(day.day_number);
   const cfgs = configsFromExercise(ex);
   const isMobile = useIsMobile();
+  const [copyMenuOpen, setCopyMenuOpen] = useState(false);
+  const otherDays = week.program_days.filter((d) => d.id !== day.id);
 
-  const [historyOpen, setHistoryOpen] = useState(false);
   const historySessions = useMemo(
     () => exerciseBlockHistory(block, ex, completion),
     [block, ex, completion]
   );
-  const blockName = block.name?.trim() || `Jakso ${block.block_number}`;
 
   const weekIdx = block.program_weeks.findIndex((w) => w.id === week.id);
   const prevWeek: Week | null = weekIdx > 0 ? block.program_weeks[weekIdx - 1] ?? null : null;
@@ -3491,7 +3505,6 @@ function ExerciseDetail({
     return { ex: pe, day: d };
   };
   const prevNb = findNeighbor(prevWeek);
-  const nextNb = findNeighbor(nextWeek);
 
   // Stats
   const totalReps = cfgs.reduce((a, s) => a + (s.reps ? parseInt(s.reps, 10) || 0 : 0), 0);
@@ -3587,17 +3600,48 @@ function ExerciseDetail({
             Seur. <ChevronsRight size={12} />
           </Mv2Button>
           <div style={{ width: 1, height: 22, background: "var(--line)", alignSelf: "center" }} />
-          <Mv2Button
-            kind="ghost"
-            size="sm"
-            onClick={() => setHistoryOpen(true)}
-            title="Näytä tämän liikkeen koko historia tällä jaksolla"
-          >
-            <History size={12} /> Historia
-            {historySessions.length > 0 && (
-              <span style={{ color: "var(--fg-3)", fontWeight: 600 }}>{historySessions.length}</span>
+          <div style={{ position: "relative" }}>
+            <Mv2Button
+              kind="ghost"
+              size="sm"
+              onClick={() => setCopyMenuOpen((o) => !o)}
+              disabled={otherDays.length === 0}
+              title="Kopioi tämä liike toiselle päivälle"
+            >
+              <Copy size={12} /> Kopioi ja siirrä
+            </Mv2Button>
+            {copyMenuOpen && (
+              <>
+                <div onClick={() => setCopyMenuOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 50 }} />
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "calc(100% + 6px)",
+                    right: 0,
+                    zIndex: 51,
+                    background: "var(--bg-3)",
+                    border: "1px solid var(--line-2)",
+                    borderRadius: 12,
+                    boxShadow: "0 12px 32px rgba(0,0,0,0.5)",
+                    padding: 5,
+                    minWidth: 220,
+                  }}
+                >
+                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase", color: "var(--fg-3)", padding: "6px 10px 4px" }}>
+                    Kopioi päivälle
+                  </div>
+                  {otherDays.map((d) => (
+                    <MenuRow
+                      key={d.id}
+                      icon={<Copy size={12} />}
+                      label={dayDisplayName(d)}
+                      onClick={() => { setCopyMenuOpen(false); onCopyToDay(d.id); }}
+                    />
+                  ))}
+                </div>
+              </>
             )}
-          </Mv2Button>
+          </div>
           <Mv2Button kind="ghost" size="sm" onClick={onOpenPicker} title="Vaihda liike toiseksi">
             <Pencil size={12} /> Vaihda liike
           </Mv2Button>
@@ -3609,21 +3653,11 @@ function ExerciseDetail({
         <CardioTargetsPanel ex={ex} onUpdate={onUpdateExercise} />
       )}
 
-      {/* Three-week comparison — only meaningful for lifting */}
+      {/* Current week + always-visible exercise history — only meaningful for lifting.
+          History is grouped by exercise_id so it survives drag/drop edits that the
+          old week-vs-week comparison could not. */}
       {ex.exercises?.kind !== "cardio" && ex.exercises?.kind !== "free" && (
       <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: 12, alignItems: "stretch" }}>
-        <div style={{ flex: isMobile ? "1 1 auto" : "0 0 154px", minWidth: 0, order: isMobile ? 2 : 0 }}>
-          <NeighborWeekCard
-            week={prevWeek}
-            ex={prevNb.ex}
-            day={prevNb.day}
-            accent={c.fg}
-            completion={completion}
-            label="Viime viikko"
-            isFuture={false}
-            onJump={prevWeek ? () => onJumpWeek(prevWeek.id) : null}
-          />
-        </div>
         <div style={{ flex: "1 1 0", minWidth: 0, order: isMobile ? 1 : 0 }}>
           <CurrentWeekTable
             ex={ex}
@@ -3638,17 +3672,40 @@ function ExerciseDetail({
             canCopyToNext={!!nextWeek}
           />
         </div>
-        <div style={{ flex: isMobile ? "1 1 auto" : "0 0 154px", minWidth: 0, order: isMobile ? 3 : 0 }}>
-          <NeighborWeekCard
-            week={nextWeek}
-            ex={nextNb.ex}
-            day={nextNb.day}
-            accent={c.fg}
-            completion={completion}
-            label="Ensi viikko"
-            isFuture={true}
-            onJump={nextWeek ? () => onJumpWeek(nextWeek.id) : null}
-          />
+        <div style={{ flex: isMobile ? "1 1 auto" : "0 0 260px", minWidth: 0, order: isMobile ? 2 : 0, display: "flex" }}>
+          <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", maxHeight: isMobile ? 420 : 520, background: "var(--bg-1)", border: "1px solid var(--line)", borderRadius: 12, overflow: "hidden" }}>
+            <div style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 6, padding: "10px 12px", borderBottom: "1px solid var(--line)", fontSize: 10, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase", color: "var(--fg-3)" }}>
+              <History size={12} /> Historia{historySessions.length > 0 ? ` · ${historySessions.length}` : ""}
+            </div>
+            {historySessions.length === 0 ? (
+              <div style={{ flex: 1, minHeight: 110, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--fg-3)", fontSize: 11, textAlign: "center", padding: 16 }}>
+                Ei suorituksia vielä
+              </div>
+            ) : (
+              <>
+                {/* Show only the most recent session in full; older weeks live behind the button. */}
+                <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: 10 }}>
+                  <HistorySessionBlock session={historySessions[0]!} accent={c.fg} />
+                </div>
+                {clientId && ex.exercise_id && (
+                  <ExerciseHistoryDialog
+                    exerciseName={ex.exercises?.name ?? "Liike"}
+                    exerciseId={ex.exercise_id}
+                    clientId={clientId}
+                    trigger={
+                      <button
+                        type="button"
+                        title="Avaa koko liikehistoria"
+                        style={{ flexShrink: 0, width: "100%", padding: "10px 12px", background: "var(--bg-2)", border: "none", borderTop: "1px solid var(--line)", color: "var(--fg-1)", fontSize: 12, fontWeight: 600, fontFamily: "inherit", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+                      >
+                        <History size={12} /> Liikehistoria
+                      </button>
+                    }
+                  />
+                )}
+              </>
+            )}
+          </div>
         </div>
       </div>
       )}
@@ -3694,16 +3751,6 @@ function ExerciseDetail({
       </div>
       </FitScale>
     </div>
-
-      {historyOpen && (
-        <ExerciseHistoryModal
-          exName={ex.exercises?.name ?? "Liike"}
-          blockName={blockName}
-          sessions={historySessions}
-          accent={c.fg}
-          onClose={() => setHistoryOpen(false)}
-        />
-      )}
     </>
   );
 }
@@ -4191,202 +4238,6 @@ function CellInput({
         >
           {rightAdorn}
         </span>
-      )}
-    </div>
-  );
-}
-
-// ── Neighbor week card ────────────────────────────────────────────────────────
-
-function NeighborWeekCard({
-  week,
-  ex,
-  day,
-  accent,
-  completion,
-  label,
-  isFuture,
-  onJump,
-}: {
-  week: Week | null;
-  ex: ProgramExerciseRow | null;
-  day: Day | null;
-  accent: string;
-  completion: ProgramCompletion | undefined;
-  label: string;
-  isFuture: boolean;
-  onJump: (() => void) | null;
-}) {
-  if (!week) {
-    return (
-      <div
-        style={{
-          background: "transparent",
-          border: "1.5px dashed var(--line)",
-          borderRadius: 12,
-          padding: "20px 12px",
-          minHeight: 180,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 4,
-          color: "var(--fg-3)",
-          fontSize: 11,
-          textAlign: "center",
-        }}
-      >
-        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase" }}>
-          {label}
-        </div>
-        <div style={{ fontSize: 11, marginTop: 4 }}>—</div>
-        <Mv2Button kind="ghost" size="sm">
-          + Lisää viikko
-        </Mv2Button>
-      </div>
-    );
-  }
-
-  // Status by matching day in this neighbor week — actually we need a day from this week corresponding to the same day_number.
-  // For simplicity, mark "done" if any day in week has a completed scheduled_workout matching this exercise.
-  let isDone = false;
-  if (day && completion) {
-    const sw = completion.byDayId[day.id];
-    if (sw?.status === "completed") isDone = true;
-  }
-
-  const cfgs = ex ? configsFromExercise(ex) : [];
-  // Past sessions: prefer what the client actually performed over the prescription,
-  // so a "done" neighbour week shows logged weights/reps/RPE — not just the plan.
-  const peLogs = ex?.exercise_id && day ? logsByPe(completion, day.id).get(ex.exercise_id) ?? [] : [];
-  const hasLogs = peLogs.length > 0;
-  const rows: Array<{ reps: string | number | null; weight: string | number | null; rpe: string | number | null }> =
-    hasLogs
-      ? peLogs.map((l) => ({ reps: l.reps, weight: l.weight, rpe: l.rpe }))
-      : cfgs.map((s) => ({ reps: s.reps, weight: s.weight, rpe: s.rpe }));
-  const summary = !ex ? null : hasLogs ? "Toteutunut" : `${repsLabel(cfgs)} ${rpeLabel(cfgs)}`;
-
-  return (
-    <div
-      onClick={onJump ?? undefined}
-      style={{
-        background: "var(--bg-1)",
-        border: "1px solid var(--line)",
-        borderRadius: 12,
-        overflow: "hidden",
-        cursor: onJump ? "pointer" : "default",
-        opacity: 0.92,
-      }}
-    >
-      <div
-        style={{
-          padding: "8px 12px",
-          borderBottom: "1px solid var(--line)",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: 6,
-          background: "var(--bg-2)",
-        }}
-      >
-        <div style={{ minWidth: 0, display: "flex", flexDirection: "column" }}>
-          <div
-            style={{
-              fontSize: 10,
-              fontWeight: 700,
-              color: "var(--fg-3)",
-              letterSpacing: "0.05em",
-              textTransform: "uppercase",
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-            }}
-          >
-            <span>{label}</span>
-            {isDone ? (
-              <span style={{ color: "var(--green)", fontSize: 10 }}>✓ tehty</span>
-            ) : (
-              <span style={{ color: "var(--fg-3)", fontSize: 10 }}>{isFuture ? "suunniteltu" : "—"}</span>
-            )}
-          </div>
-          <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--fg-1)" }}>
-            VK {week.week_number} — {week.name?.trim() || `Viikko ${week.week_number}`}
-          </div>
-        </div>
-        <ArrowUpRight size={11} style={{ color: "var(--fg-3)" }} />
-      </div>
-
-      {ex ? (
-        <div style={{ padding: "6px 10px 10px" }}>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "baseline",
-              padding: "2px 0 6px",
-            }}
-          >
-            <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, color: accent, fontWeight: 600 }}>
-              {summary}
-            </span>
-            <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 9.5, color: "var(--fg-3)" }}>
-              {rows.length} sarjaa
-            </span>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-            {rows.map((s, i) => (
-              <div
-                key={i}
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "16px 1fr 30px",
-                  alignItems: "center",
-                  gap: 4,
-                  padding: "4px 6px",
-                  background: "var(--bg-2)",
-                  borderRadius: 5,
-                  fontSize: 11,
-                }}
-              >
-                <span style={{ fontFamily: "ui-monospace, monospace", color: "var(--fg-3)", fontSize: 10 }}>
-                  {i + 1}
-                </span>
-                <span
-                  style={{
-                    fontFamily: "ui-monospace, monospace",
-                    color: "var(--fg-0)",
-                    textAlign: "center",
-                  }}
-                >
-                  <b>{s.reps ?? "—"}</b>
-                  <span style={{ color: "var(--fg-3)", margin: "0 4px" }}>×</span>
-                  <b>{s.weight ?? "—"}</b>
-                  <span style={{ color: "var(--fg-3)", fontSize: 9, marginLeft: 2 }}>
-                    {s.weight ? "kg" : ""}
-                  </span>
-                </span>
-                <span
-                  style={{
-                    fontFamily: "ui-monospace, monospace",
-                    color: accent,
-                    fontWeight: 600,
-                    textAlign: "center",
-                    fontSize: 10.5,
-                  }}
-                >
-                  @{s.rpe ?? "—"}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : (
-        <div style={{ padding: "18px 12px", color: "var(--fg-3)", fontSize: 11.5, textAlign: "center" }}>
-          Tätä liikettä ei ole tässä viikossa.
-          <div style={{ marginTop: 6, color: "var(--accent-fg)", cursor: "pointer", fontSize: 11 }}>
-            + Lisää myös tähän
-          </div>
-        </div>
       )}
     </div>
   );
