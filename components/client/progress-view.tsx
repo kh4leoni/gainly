@@ -166,7 +166,9 @@ export function ProgressView({
   for (const [exId, e1rm] of topE1rmByExercise.entries()) {
     const name = byExercise.get(exId)!.values().next().value?.exercises?.name ?? "";
     const key = matchBigThree(name);
-    if (key && bigThreeE1rm[key] === null) bigThreeE1rm[key] = e1rm;
+    // Take the strongest matching variant (max), same as the coach view — first-wins
+    // diverged from the coach's max when a client has several bench/squat variants.
+    if (key && (bigThreeE1rm[key] == null || e1rm > bigThreeE1rm[key]!)) bigThreeE1rm[key] = e1rm;
   }
   const { squat: sqE1, bench: bE1, dead: dE1 } = bigThreeE1rm;
   const bigThreeTotal = sqE1 != null && bE1 != null && dE1 != null ? sqE1 + bE1 + dE1 : null;
