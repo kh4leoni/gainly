@@ -895,3 +895,29 @@ html.light [role="dialog"].client-themed {
   40%  { transform: scale(1.06); }
   100% { transform: scale(1); }
 }
+
+/* Portrait-only on phones. iOS can't lock orientation, so block landscape
+   with an overlay. max-height keeps tablets/desktop (taller in landscape)
+   unaffected; only phone-sized landscape triggers it. */
+.rotate-lock { display: none; }
+@media (orientation: landscape) and (max-height: 500px) {
+  .rotate-lock {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    padding: 24px;
+    text-align: center;
+    background: var(--c-bg);
+  }
+  .rotate-lock p {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--c-text);
+  }
+}

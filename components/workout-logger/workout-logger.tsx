@@ -1209,7 +1209,9 @@ function StepperCell({
           type="text"
           inputMode={inputMode ?? "decimal"}
           value={rawValue ?? ""}
-          onChange={(e) => onRawChange(e.target.value)}
+          // iOS numeric keypad has no period — Finns type a comma. Normalise to
+          // a dot at the boundary so every downstream parseFloat/Number is safe.
+          onChange={(e) => onRawChange(e.target.value.replace(/,/g, "."))}
           disabled={disabled}
           placeholder="–"
           style={{ ...centerStyle, width: "100%", minWidth: 0 }}
