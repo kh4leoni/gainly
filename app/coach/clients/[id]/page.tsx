@@ -11,8 +11,8 @@ import { getClientMealPlanId, listTemplateMealPlans } from "@/lib/queries/meals"
 import { RecordsSection } from "@/components/client-detail/pr-sections";
 import { MeasurementChart } from "@/components/client/measurement-chart";
 import { KilpailutyokaluCard } from "@/components/client/kilpailutyokalu-card";
-import { matchBigThree } from "@/lib/powerlifting";
-import type { BigThreeKey } from "@/lib/powerlifting";
+import { bigThreeE1rmFromSelection } from "@/lib/powerlifting";
+import { setCompLift } from "@/app/coach/clients/actions";
 import { MessageSquare, ChevronLeft, Check, Zap, LayoutGrid, Scale, TrendingUp, TrendingDown, Minus } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -22,7 +22,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
   const supabase = await createClient();
 
   // Single scheduled_workouts query replaces two (upcoming + adherence)
-  const [profileRes, allScheduledRes, threadRes, activeProgRes, pastWorkoutsRes, prExercisesRes, bwRes, waistRes, mealPlanId, me] = await Promise.all([
+  const [profileRes, allScheduledRes, threadRes, activeProgRes, pastWorkoutsRes, prExercisesRes, bwRes, waistRes, mealPlanId, me, compRes] = await Promise.all([
     supabase.from("profiles").select("id, full_name, avatar_url, created_at").eq("id", id).single(),
     supabase
       .from("scheduled_workouts")
@@ -78,6 +78,9 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
       .limit(30),
     getClientMealPlanId(supabase, id),
     getCachedUser(),
+    supabase.from("coach_clients")
+      .select("comp_squat_exercise_id, comp_bench_exercise_id, comp_dead_exercise_id")
+      .eq("client_id", id).maybeSingle(),
   ]);
 
   const mealTemplates = me ? await listTemplateMealPlans(supabase, me.id) : [];
@@ -93,14 +96,21 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
   }
   const exercises = Array.from(exerciseMap.values()).sort((a, b) => a.name.localeCompare(b.name));
 
-  const bigThreeE1rm: Record<BigThreeKey, number | null> = { squat: null, bench: null, dead: null };
+  // Top e1RM per exercise, then map the coach's per-lift picks onto it.
+  const topE1rmByExercise = new Map<string, number>();
   for (const row of prExercisesRes.data ?? []) {
     const ex = (row as any).exercises;
     const e1rm = (row as any).estimated_1rm as number | null;
     if (!ex || e1rm == null) continue;
-    const key = matchBigThree(ex.name as string);
-    if (key && (bigThreeE1rm[key] == null || e1rm > bigThreeE1rm[key]!)) bigThreeE1rm[key] = e1rm;
+    if (e1rm > (topE1rmByExercise.get(ex.id) ?? 0)) topE1rmByExercise.set(ex.id, e1rm);
   }
+  const compSelection = {
+    squat: compRes.data?.comp_squat_exercise_id ?? null,
+    bench: compRes.data?.comp_bench_exercise_id ?? null,
+    dead: compRes.data?.comp_dead_exercise_id ?? null,
+  };
+  const bigThreeE1rm = bigThreeE1rmFromSelection(compSelection, topE1rmByExercise);
+  const compOptions = exercises.filter((e) => topE1rmByExercise.has(e.id));
 
   const name: string = profile.full_name ?? "Unnamed";
   const initials = nameInitials(name);
@@ -340,7 +350,12 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
         </div>
 
         <div className="card-enter rounded-2xl border bg-card p-4">
-          <KilpailutyokaluCard bigThreeE1rm={bigThreeE1rm} />
+          <KilpailutyokaluCard
+            bigThreeE1rm={bigThreeE1rm}
+            selection={compSelection}
+            options={compOptions}
+            onSelect={setCompLift.bind(null, id)}
+          />
         </div>
       </div>
     </div>

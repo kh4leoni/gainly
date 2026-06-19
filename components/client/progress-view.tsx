@@ -10,8 +10,8 @@ import { getRecentPRs, getCardioRecords, getOneRmCurve, type CardioRecord } from
 import { OneRmTrend } from "@/components/client/one-rm-chart";
 import { derivedRepMax, roundKg } from "@/lib/calc/one-rm";
 import { KilpailutyokaluCard } from "@/components/client/kilpailutyokalu-card";
-import { matchBigThree, BIG_THREE } from "@/lib/powerlifting";
-import type { BigThreeKey } from "@/lib/powerlifting";
+import { BIG_THREE, bigThreeE1rmFromSelection } from "@/lib/powerlifting";
+import type { BigThreeKey, CompSelection } from "@/lib/powerlifting";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SurfaceCard, surfaceCardStyle } from "@/components/ui/surface-card";
 import { WifiSlash, Trophy } from "@phosphor-icons/react";
@@ -49,15 +49,25 @@ function latestValue(data: Measurement[]) {
 export function ProgressView({
   clientId,
   exercises,
+  compSelection,
   bwHistory,
   waistHistory,
 }: {
   clientId: string;
   exercises: Exercise[];
+  compSelection: CompSelection;
   bwHistory: Measurement[];
   waistHistory: Measurement[];
 }) {
   const supabase = createClient();
+  const [selection, setSelection] = useState<CompSelection>(compSelection);
+
+  function pickCompLift(key: BigThreeKey, exerciseId: string | null) {
+    setSelection((s) => ({ ...s, [key]: exerciseId }));
+    void supabase.from("profiles")
+      .update({ [`comp_${key}_exercise_id`]: exerciseId })
+      .eq("id", clientId);
+  }
   const [tab, setTab] = useState<Tab>("ennätykset");
   const [selId, setSelId] = useState(exercises[0]?.id ?? "");
   const [query, setQuery] = useState("");
@@ -161,15 +171,9 @@ export function ProgressView({
     ? rankedBests.filter((b) => b.name.toLowerCase().includes(q))
     : rankedBests;
 
-  // Big three e1RMs from PR data
-  const bigThreeE1rm: Record<BigThreeKey, number | null> = { squat: null, bench: null, dead: null };
-  for (const [exId, e1rm] of topE1rmByExercise.entries()) {
-    const name = byExercise.get(exId)!.values().next().value?.exercises?.name ?? "";
-    const key = matchBigThree(name);
-    // Take the strongest matching variant (max), same as the coach view — first-wins
-    // diverged from the coach's max when a client has several bench/squat variants.
-    if (key && (bigThreeE1rm[key] == null || e1rm > bigThreeE1rm[key]!)) bigThreeE1rm[key] = e1rm;
-  }
+  // Big three e1RMs from the client's own per-lift exercise picks.
+  const bigThreeE1rm = bigThreeE1rmFromSelection(selection, topE1rmByExercise);
+  const compOptions = rankedBests.map((b) => ({ id: b.exId, name: b.name }));
   const { squat: sqE1, bench: bE1, dead: dE1 } = bigThreeE1rm;
   const bigThreeTotal = sqE1 != null && bE1 != null && dE1 != null ? sqE1 + bE1 + dE1 : null;
 
@@ -472,7 +476,12 @@ export function ProgressView({
                 </SurfaceCard>
               </div>
 
-              <KilpailutyokaluCard bigThreeE1rm={bigThreeE1rm} />
+              <KilpailutyokaluCard
+                bigThreeE1rm={bigThreeE1rm}
+                selection={selection}
+                options={compOptions}
+                onSelect={pickCompLift}
+              />
             </div>
           </div>
         </div>

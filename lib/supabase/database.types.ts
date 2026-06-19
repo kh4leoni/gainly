@@ -185,18 +185,27 @@ export type Database = {
         Row: {
           client_id: string
           coach_id: string
+          comp_bench_exercise_id: string | null
+          comp_dead_exercise_id: string | null
+          comp_squat_exercise_id: string | null
           created_at: string
           status: string
         }
         Insert: {
           client_id: string
           coach_id: string
+          comp_bench_exercise_id?: string | null
+          comp_dead_exercise_id?: string | null
+          comp_squat_exercise_id?: string | null
           created_at?: string
           status?: string
         }
         Update: {
           client_id?: string
           coach_id?: string
+          comp_bench_exercise_id?: string | null
+          comp_dead_exercise_id?: string | null
+          comp_squat_exercise_id?: string | null
           created_at?: string
           status?: string
         }
@@ -213,6 +222,27 @@ export type Database = {
             columns: ["coach_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coach_clients_comp_bench_exercise_id_fkey"
+            columns: ["comp_bench_exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coach_clients_comp_dead_exercise_id_fkey"
+            columns: ["comp_dead_exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coach_clients_comp_squat_exercise_id_fkey"
+            columns: ["comp_squat_exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
             referencedColumns: ["id"]
           },
         ]
@@ -679,6 +709,9 @@ export type Database = {
         Row: {
           avatar_url: string | null
           co_brand_label: string | null
+          comp_bench_exercise_id: string | null
+          comp_dead_exercise_id: string | null
+          comp_squat_exercise_id: string | null
           created_at: string
           email: string | null
           full_name: string | null
@@ -690,6 +723,9 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           co_brand_label?: string | null
+          comp_bench_exercise_id?: string | null
+          comp_dead_exercise_id?: string | null
+          comp_squat_exercise_id?: string | null
           created_at?: string
           email?: string | null
           full_name?: string | null
@@ -701,6 +737,9 @@ export type Database = {
         Update: {
           avatar_url?: string | null
           co_brand_label?: string | null
+          comp_bench_exercise_id?: string | null
+          comp_dead_exercise_id?: string | null
+          comp_squat_exercise_id?: string | null
           created_at?: string
           email?: string | null
           full_name?: string | null
@@ -709,7 +748,29 @@ export type Database = {
           push_messages?: boolean
           role?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_comp_bench_exercise_id_fkey"
+            columns: ["comp_bench_exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_comp_dead_exercise_id_fkey"
+            columns: ["comp_dead_exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_comp_squat_exercise_id_fkey"
+            columns: ["comp_squat_exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       program_blocks: {
         Row: {
