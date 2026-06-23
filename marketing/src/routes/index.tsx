@@ -22,6 +22,7 @@ import { InfiniteMovingCards } from '@/components/ui/infinite-moving-cards'
 import { Boxes } from '@/components/ui/background-boxes'
 import { TextGenerateEffect } from '@/components/ui/text-generate-effect'
 import { AnimatedHeading, AnimatedText } from '@/components/AnimatedHeading'
+import { CosmicSpectrum } from '@/components/CosmicSpectrum'
 import {
   heroPhoto,
   benefitProgramming,
@@ -39,14 +40,73 @@ function Home() {
       <Header />
       <main className="flex flex-col gap-2 lg:gap-0 pt-32 lg:pt-0">
         <Hero />
+        <SectionBlend from="#0a0a0a" to="#1a1a1a" />
         <WhyGainlySection />
+        <SectionBlend from="#1a1a1a" to="#141414" />
         <ClientFeaturesSection />
+        <SectionBlend from="#141414" to="#1a1a1a" />
         <BenefitsSection />
         <TestimonialsSection />
+        <SectionBlend from="#1a1a1a" to="#141414" />
         <PricingSection />
+        <SectionBlend from="#141414" to="#1a1a1a" className="h-64" />
         <ClosingCTASection />
+        <SectionBlend from="#1a1a1a" to="#0a0a0a" className="h-64" />
       </main>
+      <Footer />
     </div>
+  )
+}
+
+/* Desktop-only seam softener: a flush gradient band that ramps between two
+   adjacent section colors. Its endpoints match each neighbour's bg exactly, so
+   the two hard seams become one smooth transition. On mobile the sections are
+   separate rounded cards (.mobile-card), so no blend is shown. */
+function SectionBlend({
+  from,
+  to,
+  className = 'h-32',
+}: {
+  from: string
+  to: string
+  className?: string
+}) {
+  return (
+    <div
+      aria-hidden
+      className={`pointer-events-none hidden lg:block ${className}`}
+      style={{ background: `linear-gradient(to bottom, ${from}, ${to})` }}
+    />
+  )
+}
+
+/* ======================= FOOTER ======================= */
+function Footer() {
+  return (
+    <footer className="relative overflow-hidden bg-[#0a0a0a] min-h-[60vh] flex flex-col justify-end">
+      {/* Spectrum glow fills the footer, content sits at the bottom edge */}
+      <CosmicSpectrum />
+
+      <div className="relative z-10 mx-auto w-full max-w-7xl px-4 sm:px-8 md:px-12 pb-8">
+        <div className="flex flex-col gap-10 md:flex-row md:items-end md:justify-between pb-10">
+          <img src="/logo.png" alt="Gainly" className="h-16 w-auto" />
+          <nav className="flex flex-wrap gap-x-8 gap-y-3 text-sm text-white/70">
+            <a href="#features" className="hover:text-white transition-colors">
+              Ominaisuudet
+            </a>
+            <a href="#pricing" className="hover:text-white transition-colors">
+              Hinnoittelu
+            </a>
+            <a href="#contact" className="hover:text-white transition-colors">
+              Yhteys
+            </a>
+          </nav>
+        </div>
+        <div className="border-t border-white/10 py-8 text-xs text-white/40">
+          © {new Date().getFullYear()} Gainly — Valmennusalusta
+        </div>
+      </div>
+    </footer>
   )
 }
 
@@ -61,14 +121,11 @@ function LaptopMockup({ src, alt }: { src: string; alt: string }) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.8, ease: EASE }}
     >
-      {/* Neon glow behind laptop — magenta core + cyan rim */}
+      {/* Neon backlight — sits behind the top edge of the laptop and spills to the
+          sides, so it haloes the machine without washing color across its face */}
       <div
         aria-hidden
-        className="absolute -inset-x-20 -top-10 bottom-0 bg-[radial-gradient(ellipse_at_center,rgba(255,45,149,0.25),transparent_65%)] blur-2xl -z-10"
-      />
-      <div
-        aria-hidden
-        className="absolute -inset-x-32 top-1/3 -bottom-10 bg-[radial-gradient(ellipse_at_center,rgba(0,245,255,0.12),transparent_70%)] blur-3xl -z-10"
+        className="absolute -inset-x-24 -top-16 bottom-1/2 bg-[radial-gradient(ellipse_at_center,rgba(255,45,149,0.22),transparent_60%)] blur-3xl -z-10"
       />
 
       {/* Lid — 3D open animation, rotates from closed to upright */}
@@ -137,10 +194,11 @@ function Hero() {
         fill="#00f5ff"
       />
 
-      {/* Neon atmospheric glows — magenta TR, cyan BL, violet center */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(255,45,149,0.18),_transparent_55%)]" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_rgba(0,245,255,0.10),_transparent_55%)]" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_80%,_rgba(131,56,236,0.16),_transparent_60%)]" />
+      {/* Neon atmospheric glows — kept in the upper hero (behind the heading) so
+          the laptop below sits on clean #0a0a0a instead of being washed by color */}
+      <div className="absolute inset-x-0 top-0 h-[55%] bg-[radial-gradient(ellipse_at_top_right,_rgba(255,45,149,0.18),_transparent_50%)]" />
+      <div className="absolute inset-x-0 top-0 h-[55%] bg-[radial-gradient(ellipse_at_top_left,_rgba(0,245,255,0.10),_transparent_55%)]" />
+      <div className="absolute inset-x-0 top-0 h-[55%] bg-[radial-gradient(ellipse_at_50%_20%,_rgba(131,56,236,0.16),_transparent_60%)]" />
 
       <div className="relative mx-auto w-full max-w-7xl px-4 sm:px-8 md:px-12 pt-12 sm:pt-24 md:pt-36 pb-16 md:pb-24">
         {/* Text block — left aligned, editorial feel */}
@@ -1269,25 +1327,27 @@ function ClosingCTASection() {
       id="contact"
       className="mobile-card relative overflow-hidden bg-surface"
     >
-      {/* Spotlight beams continuing the hero's stage motif */}
-      <Spotlight
-        className="-top-32 left-0 md:-top-16 md:left-40"
-        fill="#ff2d95"
-      />
-      <Spotlight
-        className="top-20 right-0 md:right-32 md:top-0 scale-x-[-1]"
-        fill="#00f5ff"
-      />
+      {/* All colored decoration fades in at the top and out at the bottom, so
+          the section bleeds out of the dark section above and into the footer
+          below instead of cutting hard glow edges at either seam. */}
+      <div
+        aria-hidden
+        className="absolute inset-0 [mask-image:linear-gradient(to_bottom,transparent,black_35%,black_70%,transparent)] [-webkit-mask-image:linear-gradient(to_bottom,transparent,black_35%,black_70%,transparent)]"
+      >
+        {/* Spotlight beams continuing the hero's stage motif */}
+        <Spotlight
+          className="-top-32 left-0 md:-top-16 md:left-40"
+          fill="#ff2d95"
+        />
+        <Spotlight
+          className="top-20 right-0 md:right-32 md:top-0 scale-x-[-1]"
+          fill="#00f5ff"
+        />
 
-      {/* Atmospheric glows */}
-      <div
-        aria-hidden
-        className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(255,45,149,0.15),transparent_55%)]"
-      />
-      <div
-        aria-hidden
-        className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_80%,rgba(131,56,236,0.12),transparent_60%)]"
-      />
+        {/* Atmospheric glows */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(255,45,149,0.15),transparent_55%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_80%,rgba(131,56,236,0.12),transparent_60%)]" />
+      </div>
 
       <div className="relative mx-auto w-full max-w-5xl px-4 sm:px-8 md:px-12 py-24 md:py-40 text-center">
         <AnimatedHeading
